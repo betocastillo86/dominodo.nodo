@@ -18,7 +18,7 @@ resolved from the **domain**. Full design: `docs/architecture.md`.
   runtime-compatible with Angular 20). Tabler v1 uses Sass `@import` → expect deprecation warnings from Tabler.
 
 ## Commands
-- `npm start` — dev server at `http://localhost:4200`.
+- `npm start` — dev server at `http://localhost:4201` (4201, not 4200, to avoid clashing with `admin`).
 - `npm run build` — production build (must pass with no type errors before any change is done).
 - API base URL + tenant config live in `src/environments/`.
 - API Swagger: `http://localhost:5083/swagger/index.html`.
@@ -41,10 +41,11 @@ resolved from the **domain**. Full design: `docs/architecture.md`.
 
 ## Structure (`src/app/`)
 - `core/` — singletons & cross-cutting, no feature UI: `auth/`, **`tenant/`** (resolver, `TenantStore`,
-  bootstrap), **`authz/`** (`PermissionStore`), `http/` (tenant + auth + error interceptors), `guards/`, `models/`.
+  bootstrap), **`authz/`** (`PermissionStore`), `http/` (tenant + auth + error interceptors), `guards/`,
+  `models/`, `notifications/` (signal-based notification bus).
 - `layout/` — top-navbar chrome: `shell/`, `header/` (branding + user menu), `navbar/` (permission/feature-filtered).
 - `shared/ui/` — reusable presentational pieces: `data-table/` (generic paged table, ported from `admin`),
-  `page-header/`, `spinner/`, `empty-state/`.
+  `page-header/`, `spinner/`, `empty-state/`, `notifications/` (toast host rendering the bus).
 - `features/<name>/` — lazy-loaded domains; each splits `data-access/` (services + models) from components.
   Initial: `auth/`, `requests/` (PQRS, the core module), `announcements/`.
 
@@ -64,13 +65,18 @@ resolved from the **domain**. Full design: `docs/architecture.md`.
 - **Proposed new reads** (contracts in `docs/architecture.md` §3.1; API team to implement):
   `GET /tenant/current` (anonymous, X-Tenant-scoped → branding + features) and
   `GET /me/permissions` (authenticated → effective permissions for this tenant).
+  **The client is already wired with graceful fallbacks** so the app runs before these ship:
+  `/tenant/current` 404/network → default branding + all features on (logged TODO); `/me/permissions`
+  404/network → permissive empty permissions (guards pass, logged TODO); genuine `400`/`403` still route
+  to the not-found / no-access pages. Remove the fallbacks once the endpoints exist.
 - PQRS/announcements: `GET/PUT /requests*`, `GET/POST/PUT /announcements*` (verify against Swagger).
 - Paged: `PagedResult<T> = { items, page, pageSize, totalCount, totalPages }`.
 - Errors: RFC 9457 `ProblemDetails` — `{ type, title, status, detail, errors? }`.
 
 ## Authorization in the client
 - The JWT has no permissions. `GET /me/permissions` → `PermissionStore` drives nav, guards, and buttons.
-- Guards: `authGuard` (valid session) + `tenantMemberGuard` (has membership → not 403) +
+- Guards: `tenantResolvedGuard` (tenant resolved at bootstrap → else `/conjunto-no-encontrado`) +
+  `authGuard` (valid session) + `tenantMemberGuard` (has membership → not 403) +
   per-module `permissionGuard('requests.view' | 'announcements.view' | …)`.
 - The **server is authoritative**; hiding a button is UX, not security. Handle `403 ProblemDetails` gracefully.
 

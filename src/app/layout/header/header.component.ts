@@ -1,0 +1,30 @@
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { NgbDropdownModule } from '@ng-bootstrap/ng-bootstrap';
+import { TablerIconComponent } from 'angular-tabler-icons';
+import { AuthService } from '../../core/auth/auth.service';
+import { AuthStore } from '../../core/auth/auth.store';
+import { TenantStore } from '../../core/tenant/tenant.store';
+
+/**
+ * Tabler horizontal header: tenant logo + name (from TenantStore) on the left,
+ * user menu (from AuthStore) with logout on the right.
+ */
+@Component({
+  selector: 'app-header',
+  standalone: true,
+  imports: [NgbDropdownModule, TablerIconComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    class: 'navbar navbar-expand-md d-print-none',
+  },
+  templateUrl: './header.component.html',
+})
+export class HeaderComponent {
+  private readonly auth = inject(AuthService);
+  readonly authStore = inject(AuthStore);
+  readonly tenant = inject(TenantStore);
+
+  logout(): void {
+    this.auth.logout().subscribe();
+  }
+}

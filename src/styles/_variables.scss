@@ -1,0 +1,8 @@
+// Design tokens / palette overrides.
+// These are plain Sass variables consumed by Bootstrap/Tabler; they must be
+// declared BEFORE Tabler is imported (Tabler v1 uses `@import` internally and
+// its own values are `!default`, so ours win when defined first).
+
+// Fallback primary color — overridden at runtime via --tb-primary CSS custom property
+// driven by TenantStore.branding.primaryColor.
+$primary: #066fd1;

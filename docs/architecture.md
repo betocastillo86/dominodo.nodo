@@ -78,6 +78,18 @@ Two reads do not exist in the API yet. They are documented here as the contract 
 team implements them. Until then, the client wires them behind a small adapter and can fall back to
 defaults (branding) or a permissive stance (permissions) with a logged `TODO`.
 
+> **Status (foundation scaffold shipped):** both endpoints are **still proposed / not implemented in the
+> API**, and the client is already wired against these shapes with the fallbacks now in place:
+> - `GET /tenant/current` → `TenantService.getCurrent()`: `404`/network ⇒ fallback profile (name
+>   titleized from slug, default primary color `#066fd1`, all features enabled) + `console.warn` TODO;
+>   genuine `400 Tenant.Unknown` ⇒ `TenantStore.error` ⇒ `tenantResolvedGuard` routes to
+>   `/conjunto-no-encontrado`.
+> - `GET /me/permissions` → `PermissionService.load()`: `404`/network ⇒ **permissive** empty permission
+>   set marked `loaded` (guards pass, nav renders) + `console.warn` TODO; `403` ⇒ `noMembership` ⇒
+>   `tenantMemberGuard` routes to `/sin-acceso`.
+>
+> Remove both fallbacks once the endpoints ship (search for the `TODO` warnings).
+
 **`GET /tenant/current`** — *the tenant bootstrap read.* **Anonymous** (`[AllowAnonymous]`) but
 **scoped by `X-Tenant`** — it must work before login, because the login screen itself needs the tenant's
 name, logo and colors. Returns only data that is **safe to be public per tenant**:
@@ -184,24 +196,34 @@ feature separates `data-access` (services + models) from its presentation compon
 **lazy-loaded**. The **only structural differences** from `admin` are the added `core/tenant/` and a
 `core/authz/` (permission store), and a **top-navbar `layout/`** instead of a sidebar.
 
+The tree below reflects what the **foundation scaffold actually ships** (the `requests/`/`announcements/`
+feature folders are the planned next step, not yet present):
+
 ```
 src/app/
 ├── core/                # singletons & cross-cutting, no feature UI
 │   ├── auth/               # service, store (signals), token storage, jwt util
-│   ├── tenant/             # ← Nodo-specific: TenantResolver, TenantStore, TenantBootstrap, tenant.models
-│   ├── authz/              # ← PermissionStore (effective permissions) + hasPermission helper
-│   ├── http/               # tenant + auth + error interceptors (functional)
-│   ├── guards/             # authGuard, tenantMemberGuard, permissionGuard(perm)
-│   └── models/             # shared contracts (PagedResult, ProblemDetails)
+│   ├── tenant/             # ← Nodo-specific: tenant-resolver, TenantStore, tenant.bootstrap, tenant.service, tenant.models
+│   ├── authz/              # ← PermissionStore (effective permissions) + PermissionService (loads /me/permissions)
+│   ├── http/               # tenant + auth + error interceptors (functional) + problem-details (+ toMessage)
+│   ├── guards/             # tenantResolvedGuard, authGuard, tenantMemberGuard, permissionGuard(perm)
+│   ├── models/             # shared contracts (PagedResult)
+│   └── notifications/      # signal-based notification bus (NotificationService)
 ├── layout/              # portal chrome — HORIZONTAL top-navbar layout
 │   ├── shell/              # header + top navbar + <router-outlet>
 │   ├── header/             # tenant logo/name (from TenantStore) + user menu (AuthStore)
-│   └── navbar/             # horizontal menu; items filtered by PermissionStore + TenantStore.features
-├── shared/ui/           # reusable presentational pieces (data-table, page-header, spinner, empty-state)
+│   └── navbar/             # horizontal menu; items filtered by PermissionStore + TenantStore.features (ships empty)
+├── shared/ui/           # reusable presentational pieces
+│   ├── data-table/         # generic paged table (ported 1:1 from admin)
+│   ├── page-header/  spinner/  empty-state/
+│   └── notifications/      # toast host rendering NotificationService.items()
 └── features/            # lazy domains, each with data-access/ + components
     ├── auth/               # blank layout → login (branded from TenantStore)
-    ├── requests/           # PQRS: list (filters) + detail/manage page (edit, status, timeline, participants)
-    └── announcements/      # list (filters) + create/edit form (draft/publish/archive)
+    ├── home/               # placeholder landing (shell default route) until modules arrive
+    ├── tenant-error/       # standalone "conjunto no encontrado" page (no shell)
+    ├── no-access/          # standalone "sin acceso a este conjunto" page
+    ├── requests/           # (planned) PQRS: list (filters) + detail/manage page
+    └── announcements/      # (planned) list (filters) + create/edit form (draft/publish/archive)
 ```
 
 - **`core/`**: single instances and cross-cutting concerns; no business UI. The tenant and authz stores
@@ -218,9 +240,10 @@ src/app/
 
 Everything is lazy. Login lives in a **blank** layout (no shell), branded from `TenantStore`. All other
 routes hang off the `ShellComponent` (top navbar) and are protected by `authGuard` + `tenantMemberGuard`;
-individual modules add a `permissionGuard('requests.view' | 'announcements.view' | …)`. The shell defaults
-to the PQRS list (the portal's primary job). The `400 Tenant.Unknown` bootstrap failure short-circuits
-routing entirely (§4.3).
+individual modules add a `permissionGuard('requests.view' | 'announcements.view' | …)`. The shell
+currently defaults to a **placeholder `home`** page; once PQRS ships, repoint the default child to the
+request list (the portal's primary job). The `400 Tenant.Unknown` bootstrap failure short-circuits routing
+entirely — `tenantResolvedGuard` sends it to `/conjunto-no-encontrado` (§4.3).
 
 ---
 
@@ -259,6 +282,22 @@ triggers resident notifications server-side (via `Admin`), so the publish action
 
 The `DataTable` is generic and presentational: columns declared as data (value + optional badge/link
 functions), server-side pagination via `PagedResult`, and it renders loading/error/empty states itself.
+
+### 7.1 Adding your first module (on-ramp)
+
+The scaffold is built so a module is a mechanical, `admin`-style exercise. To add e.g. PQRS:
+
+1. Create `features/requests/` with `data-access/` (a service holding `items`/`paging`/`loading`/`error`
+   signals + Observable writes, DTOs typed exactly as Swagger returns) and its list/detail components.
+2. Add `requests.routes.ts` and register it as a **child of the shell** in `app.routes.ts`, guarded by
+   `permissionGuard('requests.view')`.
+3. Add its nav entry to `navItems` in `layout/navbar/navbar.component.ts` (it already filters by
+   `PermissionStore.has` + `TenantStore.hasFeature`) — see the worked example in that file's class doc.
+4. Register any new `<tabler-icon>` names in `app.config.ts` (`provideTablerIcons`).
+5. Reuse `shared/ui/` (`DataTable`, `PageHeader`, `EmptyState`, `Spinner`) and `toMessage` from
+   `core/http/problem-details.ts` for `ProblemDetails` field mapping.
+
+The optional `nodo-new-module` skill (§11) automates exactly this.
 
 ---
 
@@ -318,8 +357,8 @@ These are the Claude Code skills worth authoring in `.claude/skills/` once the s
 described here (per the "docs only" scope) so the guidance is captured; create the files when you start
 building modules. The first two are the payoff of keeping Nodo aligned with `admin`.
 
-1. **`nodo-new-module`** — *scaffold a CRUD feature module.* A near-clone of `dominodo.admin`'s
-   `domi-new-module` skill, adapted to Nodo's single-tenant reality. Same interactive contract-gathering
+1. **`nodo-new-module`** ✅ *authored* (`.claude/skills/nodo-new-module/SKILL.md`) — *scaffold a CRUD feature
+   module.* A near-clone of `dominodo.admin`'s `domi-new-module` skill, adapted to Nodo's single-tenant reality. Same interactive contract-gathering
    (identity, operations, endpoints/DTOs, list filters, form rules), same Roles-style reference pattern
    (data-access signals + Observable writes, `DataTable` list, one create/edit form, `ProblemDetails`
    mapping, icon registration). **Adaptations:** no tenant filter/slug-resolution in components (the header
@@ -344,20 +383,26 @@ building modules. The first two are the payoff of keeping Nodo aligned with `adm
 
 ---
 
-## 12. Setup (when scaffolding begins)
+## 12. Setup (done — foundation scaffold shipped)
+
+The scaffold described in this doc has been built. For reference, it was created with:
 
 ```bash
 ng new dominodo-nodo --style=scss --routing --ssr=false --directory .
-npm i @tabler/core @ng-bootstrap/ng-bootstrap @popperjs/core angular-tabler-icons jwt-decode
+npm i @tabler/core@^1.4 @ng-bootstrap/ng-bootstrap@^19 @popperjs/core angular-tabler-icons@^3.26 jwt-decode@^4
 ```
 
+- `npm start` → dev server on **`http://localhost:4201`** (4201, not 4200, to avoid clashing with `admin`).
 - `app.config.ts` wires the router, `HttpClient` with the **three** interceptors (tenant → auth → error),
   the icons provider, and the **`provideAppInitializer` tenant bootstrap** (§4.3).
 - `styles.scss` (Tabler + overrides) registered in `angular.json`; `environment.development.ts` sets
-  `apiBaseUrl`, `baseDomain`, and `defaultTenantSlug` (dev override).
-- Use the Tabler **top-navbar** layout HTML as the base for `layout/` (not the sidebar layout).
+  `apiBaseUrl`, `baseDomain`, `defaultTenantSlug` (dev override), and `ignoredHosts`.
+- The Tabler **top-navbar** layout is the base for `layout/` (not the sidebar layout).
 - A repo-root `.npmrc` sets `legacy-peer-deps=true`; Tabler v1 Sass `@import` deprecation warnings are
   expected and originate in Tabler.
+
+**Still open (TODO, non-blocking):** confirm the prod `baseDomain` (placeholder `nodo.dominodo.com`) and a
+real dev `defaultTenantSlug` (placeholder `demo`); both live in `src/environments/`.
 
 ---
 

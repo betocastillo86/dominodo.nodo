@@ -1,0 +1,24 @@
+@if (visibleItems().length) {
+  <div class="navbar navbar-light">
+    <div class="container-xl">
+      <div class="navbar-collapse collapse show">
+        <ul class="navbar-nav">
+          @for (item of visibleItems(); track item.path) {
+            <li class="nav-item">
+              <a
+                class="nav-link"
+                [routerLink]="item.path"
+                routerLinkActive="active"
+              >
+                <span class="nav-link-icon d-md-none d-lg-inline-block">
+                  <tabler-icon [name]="item.icon"></tabler-icon>
+                </span>
+                <span class="nav-link-title">{{ item.label }}</span>
+              </a>
+            </li>
+          }
+        </ul>
+      </div>
+    </div>
+  </div>
+}
