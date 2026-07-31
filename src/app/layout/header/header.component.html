@@ -17,10 +17,10 @@
           <tabler-icon name="user-circle"></tabler-icon>
         </span>
         <div class="d-none d-xl-block ps-2">
-          <div>{{ authStore.user()?.id ?? 'Usuario' }}</div>
-          <div class="mt-1 small text-secondary">
-            {{ (authStore.user()?.roles ?? []).join(', ') }}
-          </div>
+          <div>{{ authStore.user()?.name || 'Usuario' }}</div>
+          @if (authStore.user()?.roleName) {
+            <div class="mt-1 small text-secondary">{{ authStore.user()?.roleName }}</div>
+          }
         </div>
       </a>
       <div ngbDropdownMenu class="dropdown-menu dropdown-menu-end" aria-labelledby="user-menu">

@@ -31,7 +31,7 @@ one conjunto** (`Administrador`, `AsistenteAdministracion` — `Tenant`-scoped r
 | --- | --- | --- |
 | **Authentication** | Login by phone + password; establishes a tenant-scoped session. | `Users` — `POST /auth/*` |
 | **PQRS (Requests)** | See the requests created in this tenant, respond to and manage them simply. | `Operations.Request` (§3.1 of the domain model) |
-| **Announcements** | Draft, publish and manage community announcements/boletín. | `Operations.Announcement` (§3.4) |
+| **Announcements** ✅ | Browse/filter, review and manage community announcements (edit + publish/archive). | `Operations.Announcement` (§3.4) |
 
 Future modules (memberships, deliveries, visits, settings) follow the same conventions described here.
 
@@ -78,17 +78,18 @@ Two reads do not exist in the API yet. They are documented here as the contract 
 team implements them. Until then, the client wires them behind a small adapter and can fall back to
 defaults (branding) or a permissive stance (permissions) with a logged `TODO`.
 
-> **Status (foundation scaffold shipped):** both endpoints are **still proposed / not implemented in the
-> API**, and the client is already wired against these shapes with the fallbacks now in place:
-> - `GET /tenant/current` → `TenantService.getCurrent()`: `404`/network ⇒ fallback profile (name
->   titleized from slug, default primary color `#066fd1`, all features enabled) + `console.warn` TODO;
->   genuine `400 Tenant.Unknown` ⇒ `TenantStore.error` ⇒ `tenantResolvedGuard` routes to
->   `/conjunto-no-encontrado`.
-> - `GET /me/permissions` → `PermissionService.load()`: `404`/network ⇒ **permissive** empty permission
->   set marked `loaded` (guards pass, nav renders) + `console.warn` TODO; `403` ⇒ `noMembership` ⇒
->   `tenantMemberGuard` routes to `/sin-acceso`.
->
-> Remove both fallbacks once the endpoints ship (search for the `TODO` warnings).
+> **Status:**
+> - **Authorization read — DONE.** The permissions read shipped as **`GET /auth/current`** (not the
+>   originally-proposed `GET /me/permissions`). `PermissionService.load()` consumes it after login and at
+>   startup (`authBootstrap`, an app initializer that runs after the tenant bootstrap so `X-Tenant` is
+>   set). It fills `PermissionStore` (permissions), derives `noMembership` from the returned Active
+>   membership (`tenantMemberGuard` → `/sin-acceso`), and enriches `AuthStore` with the profile
+>   (name/email/role) for the header. The old permissive fallback has been **removed**; on a genuine
+>   failure it fails closed. Nav/guards/buttons use `PermissionStore.has(code)`.
+> - `GET /tenant/current` → `TenantService.getCurrent()`: still carries a graceful fallback — `404`/network
+>   ⇒ fallback profile (name titleized from slug, default primary color `#066fd1`, all features enabled) +
+>   `console.warn` TODO; genuine `400 Tenant.Unknown` ⇒ `TenantStore.error` ⇒ `tenantResolvedGuard` routes
+>   to `/conjunto-no-encontrado`. Remove this fallback once confirmed the endpoint is stable.
 
 **`GET /tenant/current`** — *the tenant bootstrap read.* **Anonymous** (`[AllowAnonymous]`) but
 **scoped by `X-Tenant`** — it must work before login, because the login screen itself needs the tenant's
@@ -115,15 +116,29 @@ name, logo and colors. Returns only data that is **safe to be public per tenant*
 > endpoints that are still tenant-scoped by the slug. Branding on the login page is exactly this case.
 > The endpoint must expose **nothing** that isn't already public.
 
-**`GET /me/permissions`** — *the post-login authorization read.* Authenticated + `X-Tenant`. Returns the
-**effective permissions** for `(current user, resolved tenant)` — the union described by
-`IUsersModuleApi.GetEffectivePermissions` (domain model §1.8). Drives which nav items show and which
-route guards pass. The server still enforces on every write; this read only shapes the UI.
+**`GET /auth/current`** ✅ *implemented* — *the post-login authorization read.* Authenticated + `X-Tenant`.
+Returns the caller's **profile**, their **effective permission codes** for `(current user, resolved
+tenant)` (the union described by `IUsersModuleApi.GetEffectivePermissions`, domain model §1.8), and their
+**membership(s)** in the resolved tenant. Drives which nav items show and which route guards pass; the
+server still enforces on every write, this read only shapes the UI.
 
 ```jsonc
-// 200 OK
-{ "permissions": ["requests.view", "requests.manage", "announcements.view", "announcements.create"] }
-// 403 — the user has no membership in this tenant → Nodo shows a "no access to this conjunto" screen
+// 200 OK — always 200 for an authenticated caller (no 403 for missing membership)
+{
+  "user": {
+    "id": "…", "phone": "+57…", "email": "a@b.co",
+    "firstName": "Ana", "lastName": "Ruiz",
+    "status": "Active", "phoneVerified": true
+  },
+  "permissions": ["announcements.view", "announcements.edit", "requests.view"],
+  "memberships": [
+    { "userId": "…", "tenantId": "…", "roleId": 2, "roleName": "Administrador",
+      "status": "Active", "userName": "Ana Ruiz", "phone": "+57…", "email": "a@b.co",
+      "invitedAtUtc": "…", "joinedAtUtc": "…" }
+  ]
+}
+// A caller with no Active membership here → 200 with empty `permissions`/no Active membership →
+// the client sets `noMembership` → "sin acceso" screen.
 ```
 
 ### 3.2 Existing endpoints the initial modules consume
@@ -204,7 +219,7 @@ src/app/
 ├── core/                # singletons & cross-cutting, no feature UI
 │   ├── auth/               # service, store (signals), token storage, jwt util
 │   ├── tenant/             # ← Nodo-specific: tenant-resolver, TenantStore, tenant.bootstrap, tenant.service, tenant.models
-│   ├── authz/              # ← PermissionStore (effective permissions) + PermissionService (loads /me/permissions)
+│   ├── authz/              # ← PermissionStore (effective permissions) + PermissionService (loads /auth/current)
 │   ├── http/               # tenant + auth + error interceptors (functional) + problem-details (+ toMessage)
 │   ├── guards/             # tenantResolvedGuard, authGuard, tenantMemberGuard, permissionGuard(perm)
 │   ├── models/             # shared contracts (PagedResult)
@@ -223,7 +238,9 @@ src/app/
     ├── tenant-error/       # standalone "conjunto no encontrado" page (no shell)
     ├── no-access/          # standalone "sin acceso a este conjunto" page
     ├── requests/           # (planned) PQRS: list (filters) + detail/manage page
-    └── announcements/      # (planned) list (filters) + create/edit form (draft/publish/archive)
+    └── announcements/      # ✅ list (status/category filters) + detail + edit + publish/archive
+                            #    data-access/ (models, announcements.service signals, status util,
+                            #    permission codes) · announcement-list / -detail / -edit components
 ```
 
 - **`core/`**: single instances and cross-cutting concerns; no business UI. The tenant and authz stores
@@ -253,8 +270,9 @@ Reference implementations that new features should mirror — the same CRUD temp
 `domi-new-module` skill (see §11) applies here almost verbatim.
 
 **Authentication.** `LoginComponent` (reactive phone + password) → `AuthService.login()`, which decodes
-the JWT and stores the session in `AuthStore` (signals). Immediately after, it loads `GET /me/permissions`
-into `PermissionStore` (so the nav renders correctly) and enters the portal. The login screen reads the
+the JWT and stores the session in `AuthStore` (signals). Immediately after, it loads `GET /auth/current`
+into `PermissionStore` + `AuthStore` (so the nav renders correctly and the header shows the real name/role)
+and enters the portal. On a hard refresh, `authBootstrap` re-runs the same load for the rehydrated session. The login screen reads the
 tenant name/logo/loginText from `TenantStore` for branding. `tenantInterceptor` adds `X-Tenant` on every
 request; `authInterceptor` attaches the Bearer token (except `/auth/login`, `/auth/refresh`);
 `errorInterceptor` attempts a single refresh-and-retry on 401 and maps `ProblemDetails` to messages.
@@ -274,11 +292,24 @@ category / free-text search) using the shared `DataTable`, and a **detail/manage
 Because this portal is single-tenant, there is **no tenant filter and no slug-resolution dance** on the
 detail page (contrast `admin`'s cross-tenant requests) — the `X-Tenant` header is already set globally.
 
-**Announcements.** Standard list + single create/edit form. Fields per the domain model (§3.4): `title`,
-`body`, free-form `category` (filterable), numeric `priority` (0 = highest), `audienceType`
-(`AllTenant`/`ByTower`/`ByApartments`) with an `audienceFilter`, and `expiresAtUtc`. Status transitions
-`Draft → Published → Archived` are actions on the form/list, not free-text fields. Publishing is what
-triggers resident notifications server-side (via `Admin`), so the publish action deserves a confirm step.
+**Announcements.** ✅ *Implemented* (list + detail + edit; no create — out of the initial scope). Fields
+per the domain model (§3.4): `title`, `body`, free-form `category`, numeric `priority` (0 = highest),
+`audienceType` (`AllTenant`/`ByTower`/`ByApartments`) with an `audienceFilter`, and `expiresAtUtc`. Notes:
+
+- **List filters are `status` + `category` only** (plus paging) — these are the *only* filters
+  `GET /announcements` exposes. There is **no** free-text search, priority, or audience filter; do not add
+  UI for filters the API can't honor.
+- **"Is it active?" is derived, never stored/edited.** An announcement is *Activo* (visible to residents)
+  iff `status === 'Published'` **and** (`expiresAtUtc` is null or in the future). The derived display
+  states — `Activo` / `Borrador` / `Expirado` / `Archivado` — come from one helper
+  (`data-access/announcement-status.util.ts`, `getDisplayState`) reused by the list, detail and edit
+  views (badge in the list "Estado" column and in the detail/edit headers).
+- Status transitions `Draft → Published → Archived` are **actions** (`PUT …/publish`, `PUT …/archive`) on
+  the detail view, not form fields. Publishing triggers resident notifications server-side, so it is
+  behind an ng-bootstrap confirm modal. **Permission codes** (matching the API catalog exactly):
+  list/detail need `announcements.view`; edit **and** publish/archive all need `announcements.edit`
+  (there is no separate publish/archive code); create would need `announcements.create`. The server
+  remains authoritative on every write.
 
 The `DataTable` is generic and presentational: columns declared as data (value + optional badge/link
 functions), server-side pagination via `PagedResult`, and it renders loading/error/empty states itself.
@@ -304,7 +335,7 @@ The optional `nodo-new-module` skill (§11) automates exactly this.
 ## 8. Authorization in the client (how permissions shape the UI)
 
 The JWT carries no permissions and no tenant. The client's picture of "what can this admin do here" comes
-entirely from `GET /me/permissions` (§3.1), cached in `PermissionStore`:
+entirely from `GET /auth/current` (§3.1), cached in `PermissionStore`:
 
 - **Navbar** items are filtered by `PermissionStore.has('…')` **and** `TenantStore.hasFeature('…')`.
 - **Route guards**: `permissionGuard('requests.view')` etc. redirect to a "sin acceso" page when missing.

@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
+import { permissionGuard } from './core/guards/permission.guard';
 import { tenantMemberGuard } from './core/guards/tenant-member.guard';
 import { tenantResolvedGuard } from './core/guards/tenant-resolved.guard';
 
@@ -33,6 +34,12 @@ export const routes: Routes = [
       {
         path: 'home',
         loadComponent: () => import('./features/home/home.component').then((m) => m.HomeComponent),
+      },
+      {
+        path: 'announcements',
+        canActivate: [permissionGuard('announcements.view')],
+        loadChildren: () =>
+          import('./features/announcements/announcements.routes').then((m) => m.announcementsRoutes),
       },
       { path: '', pathMatch: 'full', redirectTo: 'home' },
       { path: '**', redirectTo: 'home' },

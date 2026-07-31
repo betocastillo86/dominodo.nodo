@@ -4,12 +4,8 @@
       <div class="navbar-collapse collapse show">
         <ul class="navbar-nav">
           @for (item of visibleItems(); track item.path) {
-            <li class="nav-item">
-              <a
-                class="nav-link"
-                [routerLink]="item.path"
-                routerLinkActive="active"
-              >
+            <li class="nav-item" routerLinkActive="active">
+              <a class="nav-link" [routerLink]="item.path">
                 <span class="nav-link-icon d-md-none d-lg-inline-block">
                   <tabler-icon [name]="item.icon"></tabler-icon>
                 </span>

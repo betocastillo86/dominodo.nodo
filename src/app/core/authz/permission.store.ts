@@ -2,15 +2,16 @@ import { computed, Injectable, signal } from '@angular/core';
 
 /**
  * Root store of the effective permissions for (current user, resolved tenant),
- * loaded from `GET /me/permissions` after login. Drives nav visibility and
- * route guards. The server is authoritative on every write; this only shapes UI.
+ * loaded from `GET /auth/current` after login and at startup. Drives nav
+ * visibility and route guards. The server is authoritative on every write; this
+ * only shapes UI.
  */
 @Injectable({ providedIn: 'root' })
 export class PermissionStore {
   private readonly _permissions = signal<string[]>([]);
   private readonly _loading = signal(false);
   private readonly _loaded = signal(false);
-  /** Set when `GET /me/permissions` returns 403 → user has no membership here. */
+  /** Set when the caller has no Active membership in this tenant. */
   private readonly _noMembership = signal(false);
 
   readonly permissions = this._permissions.asReadonly();

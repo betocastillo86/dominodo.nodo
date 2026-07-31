@@ -1,0 +1,106 @@
+@if (loading()) {
+  <app-spinner />
+} @else if (error()) {
+  <app-page-header [title]="'Anuncio'" [pretitle]="'Comunidad'" />
+  <div class="alert alert-danger" role="alert">{{ error() }}</div>
+  <a routerLink="/announcements" class="btn btn-link px-0">
+    <tabler-icon name="arrow-left" class="me-1" />
+    Volver al listado
+  </a>
+} @else if (announcement(); as a) {
+  <app-page-header [title]="a.title" [pretitle]="'Anuncio'">
+    <div actions class="btn-list">
+      <a routerLink="/announcements" class="btn btn-link">
+        <tabler-icon name="arrow-left" class="me-1" />
+        Volver
+      </a>
+      @if (canEdit()) {
+        <a [routerLink]="['/announcements', a.id, 'edit']" class="btn btn-primary">
+          <tabler-icon name="edit" class="me-1" />
+          Editar
+        </a>
+      }
+      @if (canPublish()) {
+        <button type="button" class="btn btn-success" [disabled]="pending()" (click)="confirmPublish(publishTpl)">
+          <tabler-icon name="send" class="me-1" />
+          Publicar
+        </button>
+      }
+      @if (canArchive()) {
+        <button type="button" class="btn btn-outline-danger" [disabled]="pending()" (click)="confirmArchive(archiveTpl)">
+          <tabler-icon name="archive" class="me-1" />
+          Archivar
+        </button>
+      }
+    </div>
+  </app-page-header>
+
+  <div class="card">
+    <div class="card-header d-flex align-items-center">
+      <span [class]="stateBadgeClass()">{{ stateLabel() }}</span>
+      <span class="text-secondary ms-3">
+        Prioridad {{ a.priority }} · {{ audienceLabel() }}
+        @if (a.audienceFilter) {
+          <span> ({{ a.audienceFilter }})</span>
+        }
+      </span>
+    </div>
+    <div class="card-body">
+      @if (categoryName()) {
+        <div class="mb-2">
+          <span class="badge bg-blue-lt">{{ categoryName() }}</span>
+        </div>
+      }
+      <div class="markdown" style="white-space: pre-wrap">{{ a.body }}</div>
+    </div>
+    <div class="card-footer">
+      <div class="row g-3 text-secondary">
+        <div class="col-6 col-md-3">
+          <div class="fw-bold">Publicado</div>
+          <div>{{ formatDateTime(a.publishedAtUtc) }}</div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="fw-bold">Expira</div>
+          <div>{{ formatDateTime(a.expiresAtUtc) }}</div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="fw-bold">Creado</div>
+          <div>{{ formatDateTime(a.createdAtUtc) }}</div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="fw-bold">Actualizado</div>
+          <div>{{ formatDateTime(a.updatedAtUtc) }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <ng-template #publishTpl let-modal>
+    <div class="modal-header">
+      <h5 class="modal-title">Publicar anuncio</h5>
+      <button type="button" class="btn-close" (click)="modal.dismiss()"></button>
+    </div>
+    <div class="modal-body">
+      Al publicar, el anuncio quedará visible para los residentes y se enviarán las notificaciones
+      correspondientes. ¿Deseas continuar?
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-link link-secondary" (click)="modal.dismiss()">Cancelar</button>
+      <button type="button" class="btn btn-success" (click)="modal.close()">Publicar</button>
+    </div>
+  </ng-template>
+
+  <ng-template #archiveTpl let-modal>
+    <div class="modal-header">
+      <h5 class="modal-title">Archivar anuncio</h5>
+      <button type="button" class="btn-close" (click)="modal.dismiss()"></button>
+    </div>
+    <div class="modal-body">
+      El anuncio dejará de estar visible para los residentes. ¿Deseas archivarlo?
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-link link-secondary" (click)="modal.dismiss()">Cancelar</button>
+      <button type="button" class="btn btn-danger" (click)="modal.close()">Archivar</button>
+    </div>
+  </ng-template>
+}

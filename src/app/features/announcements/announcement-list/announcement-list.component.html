@@ -1,0 +1,43 @@
+<app-page-header [title]="'Anuncios'" [pretitle]="'Comunidad'">
+  @if (canCreate()) {
+    <div actions>
+      <a routerLink="/announcements/new" class="btn btn-primary">
+        <tabler-icon name="plus" class="me-1" />
+        Crear anuncio
+      </a>
+    </div>
+  }
+</app-page-header>
+
+<div class="card">
+  <div class="card-header">
+    <div class="row g-2">
+      <div class="col-12 col-md-4">
+        <select class="form-select" [formControl]="statusControl">
+          @for (opt of statusOptions; track opt.value) {
+            <option [value]="opt.value">{{ opt.label }}</option>
+          }
+        </select>
+      </div>
+      <div class="col-12 col-md-8">
+        <app-multi-select
+          [formControl]="categoryControl"
+          [options]="categoryOptions()"
+          placeholder="Todas las categorías"
+          emptyText="No hay categorías disponibles"
+        />
+      </div>
+    </div>
+  </div>
+  <app-data-table
+    [columns]="columns()"
+    [rows]="service.items()"
+    [paging]="service.paging()"
+    [loading]="service.loading()"
+    [error]="service.error()"
+    [rowKey]="rowKey"
+    [actionLink]="rowLink"
+    [actionIcon]="'eye'"
+    (pageChange)="onPageChange($event)"
+  />
+</div>

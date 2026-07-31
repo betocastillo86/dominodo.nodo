@@ -1,0 +1,106 @@
+<app-page-header [title]="'Nuevo anuncio'" [pretitle]="'Comunidad'" />
+
+<form [formGroup]="form" (ngSubmit)="submit()">
+  <div class="card">
+    <div class="card-body">
+      @if (formError()) {
+        <div class="alert alert-danger" role="alert">{{ formError() }}</div>
+      }
+
+      <div class="mb-3">
+        <label class="form-label required" for="title">Título</label>
+        <input
+          id="title"
+          type="text"
+          class="form-control"
+          formControlName="title"
+          [class.is-invalid]="form.controls.title.invalid && form.controls.title.touched"
+        />
+        @if (form.controls.title.invalid && form.controls.title.touched) {
+          <div class="invalid-feedback">El título es obligatorio (máx. 200 caracteres).</div>
+        }
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label required" for="body">Contenido</label>
+        <textarea
+          id="body"
+          rows="6"
+          class="form-control"
+          formControlName="body"
+          [class.is-invalid]="form.controls.body.invalid && form.controls.body.touched"
+        ></textarea>
+        @if (form.controls.body.invalid && form.controls.body.touched) {
+          <div class="invalid-feedback">El contenido es obligatorio.</div>
+        }
+      </div>
+
+      <div class="row g-3">
+        <div class="col-12 col-md-4">
+          <label class="form-label required" for="priority">Prioridad</label>
+          <input
+            id="priority"
+            type="number"
+            min="0"
+            class="form-control"
+            formControlName="priority"
+            [class.is-invalid]="form.controls.priority.invalid && form.controls.priority.touched"
+          />
+          <small class="form-hint">0 es la prioridad más alta.</small>
+        </div>
+
+        <div class="col-12 col-md-4">
+          <label class="form-label" for="categoryId">Categoría</label>
+          <select id="categoryId" class="form-select" formControlName="categoryId">
+            <option value="">Sin categoría</option>
+            @for (cat of categoriesService.categories(); track cat.id) {
+              <option [value]="cat.id">{{ cat.name }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="col-12 col-md-4">
+          <label class="form-label" for="expires">Fecha de expiración</label>
+          <input id="expires" type="datetime-local" class="form-control" formControlName="expiresAtLocal" />
+          <small class="form-hint">Déjalo vacío para que no expire.</small>
+        </div>
+
+        <div class="col-12 col-md-4">
+          <label class="form-label required" for="audienceType">Audiencia</label>
+          <select id="audienceType" class="form-select" formControlName="audienceType">
+            @for (opt of audienceOptions; track opt.value) {
+              <option [value]="opt.value">{{ opt.label }}</option>
+            }
+          </select>
+        </div>
+
+        @if (needsAudienceFilter()) {
+          <div class="col-12 col-md-8">
+            <label class="form-label required" for="audienceFilter">Filtro de audiencia</label>
+            <input
+              id="audienceFilter"
+              type="text"
+              class="form-control"
+              formControlName="audienceFilter"
+              placeholder="Ej. Torre 1, o 101,102,103"
+              [class.is-invalid]="
+                form.controls.audienceFilter.invalid && form.controls.audienceFilter.touched
+              "
+            />
+            @if (form.controls.audienceFilter.invalid && form.controls.audienceFilter.touched) {
+              <div class="invalid-feedback">Indica las torres o apartamentos destinatarios.</div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="card-footer d-flex">
+      <a routerLink="/announcements" class="btn btn-link">Cancelar</a>
+      <button type="submit" class="btn btn-primary ms-auto" [disabled]="saving()">
+        <tabler-icon name="plus" class="me-1" />
+        Crear anuncio
+      </button>
+    </div>
+  </div>
+</form>

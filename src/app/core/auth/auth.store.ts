@@ -36,6 +36,11 @@ export class AuthStore {
     this.storage.save(tokens);
   }
 
+  /** Enrich the current user with the profile from `GET /auth/current`. */
+  setProfile(profile: { name: string; email: string | null; roleName: string | null }): void {
+    this._user.update((user) => (user ? { ...user, ...profile } : user));
+  }
+
   /** Wipe the in-memory session and persisted tokens. */
   clear(): void {
     this._accessToken.set(null);

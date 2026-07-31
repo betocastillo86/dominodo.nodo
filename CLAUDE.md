@@ -62,22 +62,25 @@ resolved from the **domain**. Full design: `docs/architecture.md`.
 - Base URL: `http://localhost:5083/api/v1`. **Every** call sends `X-Tenant: <slug>`.
 - Auth: `POST /auth/login {phone,password}` → `{accessToken, refreshToken, expiresAt}`;
   `POST /auth/refresh {token}`; `POST /auth/logout {token}`. JWT is tenant-agnostic, carries no permissions.
-- **Proposed new reads** (contracts in `docs/architecture.md` §3.1; API team to implement):
-  `GET /tenant/current` (anonymous, X-Tenant-scoped → branding + features) and
-  `GET /me/permissions` (authenticated → effective permissions for this tenant).
-  **The client is already wired with graceful fallbacks** so the app runs before these ship:
-  `/tenant/current` 404/network → default branding + all features on (logged TODO); `/me/permissions`
-  404/network → permissive empty permissions (guards pass, logged TODO); genuine `400`/`403` still route
-  to the not-found / no-access pages. Remove the fallbacks once the endpoints exist.
+- **Bootstrap/authz reads:**
+  - `GET /auth/current` (authenticated, X-Tenant-scoped) ✅ **implemented** → `{ user, permissions[],
+    memberships[] }`. `PermissionService.load()` consumes it after login and at startup (`authBootstrap`,
+    an app initializer run after the tenant bootstrap). Fills `PermissionStore` (permissions), derives
+    `noMembership` from the Active membership, and enriches `AuthStore` (name/email/role). No permissive
+    fallback — fails closed on error. (Replaced the originally-proposed `GET /me/permissions`.)
+  - `GET /tenant/current` (anonymous, X-Tenant-scoped → branding + features) — client still keeps a
+    graceful fallback: 404/network → default branding + all features on (logged TODO); genuine
+    `400 Tenant.Unknown` → not-found page. Remove the fallback once confirmed stable.
 - PQRS/announcements: `GET/PUT /requests*`, `GET/POST/PUT /announcements*` (verify against Swagger).
 - Paged: `PagedResult<T> = { items, page, pageSize, totalCount, totalPages }`.
 - Errors: RFC 9457 `ProblemDetails` — `{ type, title, status, detail, errors? }`.
 
 ## Authorization in the client
-- The JWT has no permissions. `GET /me/permissions` → `PermissionStore` drives nav, guards, and buttons.
+- The JWT has no permissions. `GET /auth/current` → `PermissionStore` drives nav, guards, and buttons.
 - Guards: `tenantResolvedGuard` (tenant resolved at bootstrap → else `/conjunto-no-encontrado`) +
-  `authGuard` (valid session) + `tenantMemberGuard` (has membership → not 403) +
+  `authGuard` (valid session) + `tenantMemberGuard` (has an Active membership → else `/sin-acceso`) +
   per-module `permissionGuard('requests.view' | 'announcements.view' | …)`.
+  Announcement write actions (edit/publish/archive) all require `announcements.edit`.
 - The **server is authoritative**; hiding a button is UX, not security. Handle `403 ProblemDetails` gracefully.
 
 ## Docs

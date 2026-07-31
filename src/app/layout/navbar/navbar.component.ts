@@ -44,7 +44,15 @@ export class NavbarComponent {
   private readonly tenant = inject(TenantStore);
 
   /** Add the first module's entry here (see class doc). */
-  private readonly navItems = signal<readonly NavItem[]>([]);
+  private readonly navItems = signal<readonly NavItem[]>([
+    {
+      label: 'Anuncios',
+      path: '/announcements',
+      icon: 'speakerphone',
+      permission: 'announcements.view',
+      feature: 'Announcements',
+    },
+  ]);
 
   /** Items the current user + tenant are allowed to see. */
   readonly visibleItems = computed(() =>

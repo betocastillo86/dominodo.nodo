@@ -4,9 +4,9 @@ import { PermissionStore } from '../authz/permission.store';
 
 /**
  * Factory returning a route guard that requires the given permission code.
- * Permissive when permissions are not yet `loaded` (fallback stance) so the app
- * remains usable before the `/me/permissions` endpoint exists. Once loaded, a
- * missing permission redirects to the "sin acceso" page.
+ * Permissive only during the brief window before `GET /auth/current` has loaded
+ * (so a hard refresh doesn't flash the no-access page); once loaded, a missing
+ * permission redirects to the "sin acceso" page.
  *
  * Usage in a route: `canActivate: [permissionGuard('requests.view')]`.
  */
@@ -15,7 +15,7 @@ export function permissionGuard(code: string): CanActivateFn {
     const store = inject(PermissionStore);
     const router = inject(Router);
 
-    // Not loaded (or fallback with empty set) → permissive until wired.
+    // Not loaded yet → permissive until the current-user snapshot resolves.
     if (!store.loaded()) {
       return true;
     }
