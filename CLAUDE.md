@@ -20,8 +20,10 @@ resolved from the **domain**. Full design: `docs/architecture.md`.
 ## Commands
 - `npm start` — dev server at `http://localhost:4201` (4201, not 4200, to avoid clashing with `admin`).
 - `npm run build` — production build (must pass with no type errors before any change is done).
-- API base URL + tenant config live in `src/environments/`.
+- `npm run build:prod` — prod bundle (`main` branch / prod env). `npm run build:stage` — stage bundle (`develop` branch / stage env).
+- API base URL + tenant config live in `src/environments/` (`environment.ts` = prod, `environment.stage.ts` = stage, `environment.development.ts` = dev).
 - API Swagger: `http://localhost:5083/swagger/index.html`.
+- Deployment: Azure DevOps FTP pipeline (`pipelines/build-ftp-pipeline.yaml`) → Windows/IIS. See `docs/deployment.md`.
 
 ## Testing
 - **No unit tests. No automated test suite** (same policy as `admin`). This is a deliberate, standing
@@ -48,6 +50,8 @@ resolved from the **domain**. Full design: `docs/architecture.md`.
   `page-header/`, `spinner/`, `empty-state/`, `notifications/` (toast host rendering the bus).
 - `features/<name>/` — lazy-loaded domains; each splits `data-access/` (services + models) from components.
   Initial: `auth/`, `requests/` (PQRS, the core module), `announcements/`.
+- **Deploy artifacts:** `public/web.config` (IIS SPA fallback, copied to build root) and
+  `pipelines/build-ftp-pipeline.yaml` (Azure DevOps FTP pipeline).
 
 ## Conventions
 - `changeDetection: OnPush`; `inject()`, not constructor DI.
@@ -86,3 +90,5 @@ resolved from the **domain**. Full design: `docs/architecture.md`.
 ## Docs
 - `docs/architecture.md` — authoritative architecture, structure, multi-tenancy, API contract, and the
   list of recommended future skills (§11).
+- `docs/deployment.md` — FTP deployment model: environments, branch→env mapping, build configs,
+  `web.config`, the Azure DevOps pipeline, and the two variable groups.
