@@ -36,13 +36,19 @@ export const routes: Routes = [
         loadComponent: () => import('./features/home/home.component').then((m) => m.HomeComponent),
       },
       {
+        path: 'requests',
+        canActivate: [permissionGuard('requests.view')],
+        loadChildren: () =>
+          import('./features/requests/requests.routes').then((m) => m.requestsRoutes),
+      },
+      {
         path: 'announcements',
         canActivate: [permissionGuard('announcements.view')],
         loadChildren: () =>
           import('./features/announcements/announcements.routes').then((m) => m.announcementsRoutes),
       },
-      { path: '', pathMatch: 'full', redirectTo: 'home' },
-      { path: '**', redirectTo: 'home' },
+      { path: '', pathMatch: 'full', redirectTo: 'requests' },
+      { path: '**', redirectTo: 'requests' },
     ],
   },
   { path: '**', redirectTo: '' },

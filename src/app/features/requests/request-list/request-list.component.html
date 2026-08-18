@@ -1,0 +1,191 @@
+<app-page-header title="PQRS" pretitle="Solicitudes">
+  <div actions class="btn-group" role="group" aria-label="Cambiar vista">
+    <button
+      type="button"
+      class="btn btn-sm"
+      [class.btn-primary]="view() === 'list'"
+      [class.btn-outline-secondary]="view() !== 'list'"
+      title="Vista de listado"
+      (click)="switchView('list')"
+    >
+      <tabler-icon name="list" />
+    </button>
+    <button
+      type="button"
+      class="btn btn-sm"
+      [class.btn-primary]="view() === 'board'"
+      [class.btn-outline-secondary]="view() !== 'board'"
+      title="Vista de tablero"
+      (click)="switchView('board')"
+    >
+      <tabler-icon name="layout-columns" />
+    </button>
+  </div>
+</app-page-header>
+
+<div class="page-body">
+
+  @if (view() === 'list') {
+
+    <!-- ── VISTA LISTADO ───────────────────────────────────────────────────── -->
+    <div class="card">
+      <div class="card-header">
+        <div class="row g-2 w-100">
+          <div class="col-12 col-lg-6">
+            <div class="input-group">
+              <span class="input-group-text">
+                <tabler-icon name="search" />
+              </span>
+              <input
+                type="text"
+                class="form-control"
+                placeholder="Buscar por código o título…"
+                [formControl]="searchControl"
+              />
+            </div>
+          </div>
+          <div class="col-12 col-sm-6 col-lg-3">
+            <select class="form-select" [formControl]="statusControl">
+              <option value="">Todos los estados</option>
+              <option value="New">Nuevo</option>
+              <option value="InProgress">En progreso</option>
+              <option value="Resolved">Resuelto</option>
+              <option value="Closed">Cerrado</option>
+            </select>
+          </div>
+          <div class="col-12 col-sm-6 col-lg-3">
+            <select class="form-select" [formControl]="priorityControl">
+              <option value="">Todas las prioridades</option>
+              <option value="High">Alta</option>
+              <option value="Medium">Media</option>
+              <option value="Low">Baja</option>
+            </select>
+          </div>
+          <div class="col-12 col-sm-6">
+            <app-search-select
+              [formControl]="apartmentControl"
+              [search]="searchApartments"
+              placeholder="Buscar por apartamento"
+              clearLabel="Quitar filtro de apartamento"
+            />
+          </div>
+          <div class="col-12 col-sm-6">
+            <app-search-select
+              [formControl]="residentControl"
+              [search]="searchResidents"
+              placeholder="Buscar por residente"
+              clearLabel="Quitar filtro de residente"
+            />
+          </div>
+        </div>
+      </div>
+      <app-data-table
+        [columns]="columns"
+        [rows]="items()"
+        [paging]="paging()"
+        [loading]="loading()"
+        [error]="error()"
+        [rowKey]="rowKey"
+        actionIcon="eye"
+        [actionLink]="detailLink"
+        (pageChange)="onPageChange($event)"
+      />
+    </div>
+
+  } @else {
+
+    <!-- ── VISTA TABLERO ───────────────────────────────────────────────────── -->
+    @if (boardLoading()) {
+      <div class="text-center py-5">
+        <app-spinner />
+      </div>
+    } @else if (boardError()) {
+      <div class="alert alert-danger">{{ boardError() }}</div>
+    } @else {
+      @if (canEdit()) {
+        <p class="text-secondary small mb-2">
+          <tabler-icon name="grip-vertical" class="me-1" />
+          Arrastra una tarjeta a otra columna para cambiar su estado.
+        </p>
+      }
+      <div class="d-flex gap-3 overflow-x-auto align-items-start pb-3" cdkDropListGroup>
+        @for (status of boardStatuses; track status) {
+          <div class="flex-shrink-0" style="width: 320px">
+            <div class="card">
+              <div [class]="'card-status-top bg-' + statusColor[status]"></div>
+              <div class="card-header">
+                <h4 class="card-title">{{ statusLabel[status] }}</h4>
+                <div class="card-options">
+                  <span class="badge bg-secondary-lt text-secondary fw-normal">
+                    {{ boardTotals()[status] }}
+                  </span>
+                </div>
+              </div>
+              <div
+                class="list-group list-group-flush requests-board-column"
+                style="min-height: 80px; max-height: 65vh; overflow-y: auto"
+                cdkDropList
+                [cdkDropListData]="status"
+                [cdkDropListEnterPredicate]="canDropInto"
+                (cdkDropListDropped)="onDrop($event)"
+              >
+                @if (boardColumns()[status].length === 0) {
+                  <div class="list-group-item text-center text-secondary py-5">
+                    Sin solicitudes
+                  </div>
+                }
+                @for (item of boardColumns()[status]; track item.id) {
+                  <div
+                    class="list-group-item p-3"
+                    [class.requests-board-card--draggable]="canEdit()"
+                    cdkDrag
+                    [cdkDragData]="item"
+                    [cdkDragDisabled]="!canEdit()"
+                  >
+                    <div class="requests-board-card__placeholder" *cdkDragPlaceholder></div>
+                    <!-- Código + Prioridad -->
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                      <span class="text-secondary small font-monospace d-flex align-items-center gap-1">
+                        @if (canEdit()) {
+                          <tabler-icon name="grip-vertical" class="text-secondary" cdkDragHandle />
+                        }
+                        {{ item.code }}
+                      </span>
+                      <span [class]="priorityBadge[item.priority]">
+                        {{ priorityLabel[item.priority] }}
+                      </span>
+                    </div>
+                    <!-- Título -->
+                    <p class="mb-2 fw-medium lh-sm" [title]="item.title">{{ item.title }}</p>
+                    <!-- Tipo + Fecha + Enlace detalle -->
+                    <div class="d-flex justify-content-between align-items-center">
+                      <span class="badge bg-secondary-lt text-secondary">
+                        {{ typeLabel[item.type] }}
+                      </span>
+                      <div class="d-flex align-items-center gap-1">
+                        <span class="text-secondary small">{{ formatDate(item.createdAtUtc) }}</span>
+                        <a
+                          [routerLink]="['/requests', item.id]"
+                          class="btn btn-icon btn-sm btn-ghost-secondary"
+                          title="Ver detalle"
+                        >
+                          <tabler-icon name="eye" />
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+              @if (boardTotals()[status] > boardColumns()[status].length) {
+                <div class="card-footer text-center small text-secondary py-2">
+                  Mostrando {{ boardColumns()[status].length }} de {{ boardTotals()[status] }}
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+  }
+
+</div>

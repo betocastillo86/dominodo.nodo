@@ -211,9 +211,6 @@ feature separates `data-access` (services + models) from its presentation compon
 **lazy-loaded**. The **only structural differences** from `admin` are the added `core/tenant/` and a
 `core/authz/` (permission store), and a **top-navbar `layout/`** instead of a sidebar.
 
-The tree below reflects what the **foundation scaffold actually ships** (the `requests/`/`announcements/`
-feature folders are the planned next step, not yet present):
-
 ```
 src/app/
 ├── core/                # singletons & cross-cutting, no feature UI
@@ -227,17 +224,20 @@ src/app/
 ├── layout/              # portal chrome — HORIZONTAL top-navbar layout
 │   ├── shell/              # header + top navbar + <router-outlet>
 │   ├── header/             # tenant logo/name (from TenantStore) + user menu (AuthStore)
-│   └── navbar/             # horizontal menu; items filtered by PermissionStore + TenantStore.features (ships empty)
+│   └── navbar/             # horizontal menu; items filtered by PermissionStore + TenantStore.features
 ├── shared/ui/           # reusable presentational pieces
 │   ├── data-table/         # generic paged table (ported 1:1 from admin)
 │   ├── page-header/  spinner/  empty-state/
 │   └── notifications/      # toast host rendering NotificationService.items()
 └── features/            # lazy domains, each with data-access/ + components
     ├── auth/               # blank layout → login (branded from TenantStore)
-    ├── home/               # placeholder landing (shell default route) until modules arrive
+    ├── home/               # placeholder (no longer the default route — requests is)
     ├── tenant-error/       # standalone "conjunto no encontrado" page (no shell)
     ├── no-access/          # standalone "sin acceso a este conjunto" page
-    ├── requests/           # (planned) PQRS: list (filters) + detail/manage page
+    ├── requests/           # ✅ PQRS: list view (filters + pagination) + board/kanban view (4 status columns)
+    │                       #    data-access/ (request.models, requests.service: list + loadBoard + changeStatus/moveInBoard)
+    │                       #    request-list/ (dual-mode: list table + kanban with @angular/cdk drag-drop to
+    │                       #    change status — dragging gated by requests.edit; permission: requests.view)
     └── announcements/      # ✅ list (status/category filters) + detail + edit + publish/archive
                             #    data-access/ (models, announcements.service signals, status util,
                             #    permission codes) · announcement-list / -detail / -edit components
@@ -258,9 +258,8 @@ src/app/
 Everything is lazy. Login lives in a **blank** layout (no shell), branded from `TenantStore`. All other
 routes hang off the `ShellComponent` (top navbar) and are protected by `authGuard` + `tenantMemberGuard`;
 individual modules add a `permissionGuard('requests.view' | 'announcements.view' | …)`. The shell
-currently defaults to a **placeholder `home`** page; once PQRS ships, repoint the default child to the
-request list (the portal's primary job). The `400 Tenant.Unknown` bootstrap failure short-circuits routing
-entirely — `tenantResolvedGuard` sends it to `/conjunto-no-encontrado` (§4.3).
+defaults to `/requests` (the portal's primary job). The `400 Tenant.Unknown` bootstrap failure
+short-circuits routing entirely — `tenantResolvedGuard` sends it to `/conjunto-no-encontrado` (§4.3).
 
 ---
 

@@ -43,8 +43,14 @@ export class NavbarComponent {
   private readonly permissions = inject(PermissionStore);
   private readonly tenant = inject(TenantStore);
 
-  /** Add the first module's entry here (see class doc). */
   private readonly navItems = signal<readonly NavItem[]>([
+    {
+      label: 'PQRS',
+      path: '/requests',
+      icon: 'list-details',
+      permission: 'requests.view',
+      feature: 'Requests',
+    },
     {
       label: 'Anuncios',
       path: '/announcements',
