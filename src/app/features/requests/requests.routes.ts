@@ -6,4 +6,9 @@ export const requestsRoutes: Routes = [
     loadComponent: () =>
       import('./request-list/request-list.component').then((m) => m.RequestListComponent),
   },
+  {
+    path: ':id',
+    loadComponent: () =>
+      import('./request-detail/request-detail.component').then((m) => m.RequestDetailComponent),
+  },
 ];

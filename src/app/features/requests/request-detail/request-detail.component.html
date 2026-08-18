@@ -1,0 +1,542 @@
+<app-page-header [title]="headerTitle()">
+  <div actions>
+    <a routerLink="/requests" class="btn btn-outline-secondary btn-sm">
+      <tabler-icon name="arrow-left" class="me-1" />
+      Volver
+    </a>
+  </div>
+</app-page-header>
+
+<div class="page-body">
+
+  @if (loading()) {
+    <div class="text-center py-5">
+      <app-spinner />
+    </div>
+  } @else if (error()) {
+    <div class="alert alert-danger">{{ error() }}</div>
+  } @else if (detail(); as d) {
+
+    <!-- ── TARJETA CON TABS ──────────────────────────────────────────────────── -->
+    <div class="card">
+      <div class="card-header">
+        <ul class="nav nav-tabs card-header-tabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <a
+              class="nav-link"
+              [class.active]="activeTab() === 'info'"
+              href="javascript:void(0)"
+              role="tab"
+              [attr.aria-selected]="activeTab() === 'info'"
+              (click)="activeTab.set('info')"
+            >
+              <tabler-icon name="info-circle" class="me-1" />
+              Información
+            </a>
+          </li>
+          <li class="nav-item" role="presentation">
+            <a
+              class="nav-link"
+              [class.active]="activeTab() === 'comments'"
+              href="javascript:void(0)"
+              role="tab"
+              [attr.aria-selected]="activeTab() === 'comments'"
+              (click)="activeTab.set('comments')"
+            >
+              <tabler-icon name="message" class="me-1" />
+              Comentarios
+              @if (d.updates.length > 0) {
+                <span class="badge bg-blue-lt ms-2">{{ d.updates.length }}</span>
+              }
+            </a>
+          </li>
+          <li class="nav-item" role="presentation">
+            <a
+              class="nav-link"
+              [class.active]="activeTab() === 'history'"
+              href="javascript:void(0)"
+              role="tab"
+              [attr.aria-selected]="activeTab() === 'history'"
+              (click)="activeTab.set('history')"
+            >
+              <tabler-icon name="history" class="me-1" />
+              Histórico
+              @if (d.statusHistory.length > 0) {
+                <span class="badge bg-secondary-lt text-secondary ms-2">{{ d.statusHistory.length }}</span>
+              }
+            </a>
+          </li>
+        </ul>
+      </div>
+      <div class="card-body">
+        <div class="tab-content">
+
+          <!-- ══════════════════════════════════════════════════════════════════
+               TAB-PANE: INFORMACIÓN
+               ══════════════════════════════════════════════════════════════════ -->
+          <div
+            class="tab-pane"
+            [class.active]="activeTab() === 'info'"
+            [class.show]="activeTab() === 'info'"
+            role="tabpanel"
+          >
+            <div class="row g-4 align-items-start">
+
+              <!-- ── Columna principal ─────────────────────────────────────────── -->
+              <div class="col-12 col-lg-8">
+
+                <!-- Progreso / etapas (clic en una etapa válida abre el modal de cambio) -->
+                <h3 class="card-title mb-3">Progreso</h3>
+                <div class="steps steps-counter mb-2">
+                  @for (status of boardStatuses; track status; let i = $index) {
+                    @if (isClickableStatus(status)) {
+                      <a
+                        href="javascript:void(0)"
+                        class="step-item requests-step--clickable"
+                        [class.active]="i === currentStatusIndex()"
+                        [title]="'Cambiar estado a ' + statusLabel[status]"
+                        (click)="openStatusModal(status, statusTpl)"
+                      >{{ statusLabel[status] }}</a>
+                    } @else {
+                      <span class="step-item" [class.active]="i === currentStatusIndex()">
+                        {{ statusLabel[status] }}
+                      </span>
+                    }
+                  }
+                </div>
+                @if (canEdit()) {
+                  <p class="text-secondary small mb-0">
+                    Haz clic en una etapa disponible para cambiar el estado.
+                  </p>
+                }
+
+                <hr class="my-4" />
+
+                <!-- Info general (solo lectura) -->
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                  <h3 class="card-title mb-0">Información general</h3>
+                  <div>
+                    <span [class]="statusBadge[d.status]">{{ statusLabel[d.status] }}</span>
+                    <span class="ms-2" [class]="priorityBadge[d.priority]">{{ priorityLabel[d.priority] }}</span>
+                  </div>
+                </div>
+
+                <div class="mb-3">
+                  <div class="text-secondary small mb-1">Título</div>
+                  <div class="fw-medium">{{ d.title }}</div>
+                </div>
+                <div class="mb-3">
+                  <div class="text-secondary small mb-1">Descripción</div>
+                  <div style="white-space: pre-wrap">{{ d.description }}</div>
+                </div>
+                @if (d.location) {
+                  <div class="mb-3">
+                    <div class="text-secondary small mb-1">Ubicación</div>
+                    <div>{{ d.location }}</div>
+                  </div>
+                }
+
+                <hr class="my-4" />
+
+                <!-- Campos editables -->
+                @if (canEdit()) {
+                  <form [formGroup]="infoForm" (ngSubmit)="saveInfo()">
+                    <div class="row g-3">
+                      <div class="col-12 col-sm-6">
+                        <label class="form-label required">Tipo</label>
+                        <select class="form-select" formControlName="type">
+                          <option value="Peticion">Petición</option>
+                          <option value="Queja">Queja</option>
+                          <option value="Reclamo">Reclamo</option>
+                          <option value="Sugerencia">Sugerencia</option>
+                          <option value="Maintenance">Mantenimiento</option>
+                        </select>
+                      </div>
+                      <div class="col-12 col-sm-6">
+                        <label class="form-label required">Prioridad</label>
+                        <select class="form-select" formControlName="priority">
+                          <option value="High">Alta</option>
+                          <option value="Medium">Media</option>
+                          <option value="Low">Baja</option>
+                        </select>
+                      </div>
+                      <div class="col-12 col-sm-6">
+                        <label class="form-label required">Visibilidad</label>
+                        <select class="form-select" formControlName="visibility">
+                          <option value="Private">Privada</option>
+                          <option value="Public">Pública</option>
+                        </select>
+                      </div>
+                      <div class="col-12 col-sm-6">
+                        <label class="form-label required">Categoría</label>
+                        <select
+                          class="form-select"
+                          formControlName="categoryId"
+                          [class.is-invalid]="infoForm.get('categoryId')?.invalid && infoForm.get('categoryId')?.touched"
+                        >
+                          <option value="">Seleccionar categoría…</option>
+                          @for (cat of categories(); track cat.id) {
+                            <option [value]="cat.id">{{ cat.name }}</option>
+                          }
+                        </select>
+                        <div class="invalid-feedback">Selecciona una categoría.</div>
+                      </div>
+                    </div>
+                    <div class="mt-3">
+                      <button
+                        type="submit"
+                        class="btn btn-primary"
+                        [disabled]="saving() || infoForm.invalid"
+                      >
+                        @if (saving()) {
+                          <span class="spinner-border spinner-border-sm me-2"></span>
+                        } @else {
+                          <tabler-icon name="device-floppy" class="me-1" />
+                        }
+                        Guardar cambios
+                      </button>
+                    </div>
+                  </form>
+                } @else {
+                  <div class="row g-3">
+                    <div class="col-6 col-sm-3">
+                      <div class="text-secondary small">Tipo</div>
+                      <div class="fw-medium mt-1">{{ typeLabel[d.type] }}</div>
+                    </div>
+                    <div class="col-6 col-sm-3">
+                      <div class="text-secondary small">Prioridad</div>
+                      <div class="mt-1"><span [class]="priorityBadge[d.priority]">{{ priorityLabel[d.priority] }}</span></div>
+                    </div>
+                    <div class="col-6 col-sm-3">
+                      <div class="text-secondary small">Visibilidad</div>
+                      <div class="fw-medium mt-1">{{ d.visibility === 'Public' ? 'Pública' : 'Privada' }}</div>
+                    </div>
+                    <div class="col-6 col-sm-3">
+                      <div class="text-secondary small">Categoría</div>
+                      <div class="fw-medium mt-1">{{ categoryName(d.categoryId) }}</div>
+                    </div>
+                  </div>
+                }
+
+              </div>
+
+              <!-- ── Columna lateral ───────────────────────────────────────────── -->
+              <div class="col-12 col-lg-4">
+
+                <!-- Adjuntos -->
+                <div class="card card-sm">
+                  <div class="card-header">
+                    <h4 class="card-title">
+                      <tabler-icon name="paperclip" class="me-1 icon-sm" />
+                      Adjuntos
+                    </h4>
+                    <div class="card-actions">
+                      <span class="badge bg-secondary-lt text-secondary">{{ d.attachments.length }}</span>
+                    </div>
+                  </div>
+                  @if (d.attachments.length === 0) {
+                    <div class="card-body text-center text-secondary py-4 small">Sin adjuntos</div>
+                  } @else {
+                    <div class="list-group list-group-flush">
+                      @for (att of d.attachments; track att.id) {
+                        <div class="list-group-item d-flex align-items-center gap-2 py-2">
+                          <tabler-icon name="file" class="text-secondary flex-shrink-0" />
+                          <div class="flex-grow-1 overflow-hidden">
+                            <div class="text-truncate small fw-medium" [title]="att.fileName">{{ att.fileName }}</div>
+                            <div class="text-secondary" style="font-size: 0.75rem">{{ formatDate(att.createdAtUtc) }}</div>
+                          </div>
+                          <button
+                            type="button"
+                            class="btn btn-icon btn-sm btn-ghost-secondary flex-shrink-0"
+                            title="Descargar"
+                            [disabled]="downloadingId() === att.id"
+                            (click)="downloadAttachment(att.id)"
+                          >
+                            @if (downloadingId() === att.id) {
+                              <span class="spinner-border spinner-border-sm"></span>
+                            } @else {
+                              <tabler-icon name="download" />
+                            }
+                          </button>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+
+                <!-- Metadatos -->
+                <div class="card card-sm mt-3">
+                  <div class="card-body py-3">
+                    <dl class="row small mb-0 g-1">
+                      <dt class="col-5 text-secondary fw-normal">Creado</dt>
+                      <dd class="col-7 mb-0">{{ formatDate(d.createdAtUtc) }}</dd>
+                      @if (d.updatedAtUtc) {
+                        <dt class="col-5 text-secondary fw-normal">Actualizado</dt>
+                        <dd class="col-7 mb-0">{{ formatDate(d.updatedAtUtc) }}</dd>
+                      }
+                      @if (d.resolvedAtUtc) {
+                        <dt class="col-5 text-secondary fw-normal">Resuelto</dt>
+                        <dd class="col-7 mb-0">{{ formatDate(d.resolvedAtUtc) }}</dd>
+                      }
+                      @if (d.closedAtUtc) {
+                        <dt class="col-5 text-secondary fw-normal">Cerrado</dt>
+                        <dd class="col-7 mb-0">{{ formatDate(d.closedAtUtc) }}</dd>
+                      }
+                    </dl>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+          <!-- ══════════════════════════════════════════════════════════════════
+               TAB-PANE: COMENTARIOS
+               ══════════════════════════════════════════════════════════════════ -->
+          <div
+            class="tab-pane"
+            [class.active]="activeTab() === 'comments'"
+            [class.show]="activeTab() === 'comments'"
+            role="tabpanel"
+          >
+            <div class="row g-4 align-items-start">
+
+              <!-- ── Conversación + formulario ─────────────────────────────────── -->
+              <div class="col-12 col-lg-8">
+
+                <h3 class="card-title mb-3">Historial de comentarios</h3>
+
+                @if (d.updates.length === 0) {
+                  <div class="text-center text-secondary py-5 small">
+                    Aún no hay comentarios en esta solicitud.
+                  </div>
+                } @else {
+                  <div class="divide-y">
+                    @for (upd of d.updates; track upd.id) {
+                      <div class="py-3">
+                        <div class="d-flex align-items-start gap-2">
+                          <span
+                            class="avatar avatar-sm rounded-circle bg-secondary-lt text-secondary fw-bold flex-shrink-0"
+                            style="font-size: 0.7rem"
+                          >
+                            {{ memberInitials(upd.authorUserId) }}
+                          </span>
+                          <div class="flex-grow-1 overflow-hidden">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-1 mb-1">
+                              <div class="d-flex align-items-center gap-1 flex-wrap">
+                                <strong class="small">{{ memberName(upd.authorUserId) }}</strong>
+                                <span [class]="updateTypeBadge[upd.type]" style="font-size: 0.7rem">
+                                  {{ updateTypeLabel[upd.type] }}
+                                </span>
+                                @if (upd.isInternal) {
+                                  <span class="badge bg-orange-lt" style="font-size: 0.7rem">Interno</span>
+                                }
+                              </div>
+                              <span class="text-secondary text-nowrap" style="font-size: 0.75rem">
+                                {{ formatDateTime(upd.createdAtUtc) }}
+                              </span>
+                            </div>
+                            @if (upd.body) {
+                              <p class="mb-0 small" style="white-space: pre-wrap">{{ upd.body }}</p>
+                            }
+                          </div>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+
+                <hr class="my-4" />
+
+                <!-- Agregar respuesta -->
+                <h3 class="card-title mb-3">Agregar respuesta</h3>
+                <form [formGroup]="commentForm" (ngSubmit)="addComment()">
+                  <div class="row g-3">
+                    <div class="col-12 col-sm-5">
+                      <label class="form-label required">Tipo</label>
+                      <select class="form-select" formControlName="type">
+                        <option value="Comment">Comentario</option>
+                        <option value="Progress">Progreso</option>
+                        <option value="Evidence">Evidencia</option>
+                        <option value="Resolution">Resolución</option>
+                      </select>
+                    </div>
+                    @if (canEdit()) {
+                      <div class="col-12 col-sm-7 d-flex align-items-end pb-2">
+                        <label class="form-check mb-0">
+                          <input type="checkbox" class="form-check-input" formControlName="isInternal" />
+                          <span class="form-check-label small">Nota interna</span>
+                        </label>
+                      </div>
+                    }
+                    <div class="col-12">
+                      <label class="form-label required">Mensaje</label>
+                      <textarea
+                        class="form-control"
+                        formControlName="body"
+                        rows="4"
+                        placeholder="Escribe tu respuesta…"
+                        [class.is-invalid]="commentForm.get('body')?.invalid && commentForm.get('body')?.touched"
+                      ></textarea>
+                      <div class="invalid-feedback">El mensaje es requerido.</div>
+                    </div>
+                  </div>
+                  <div class="mt-3">
+                    <button
+                      type="submit"
+                      class="btn btn-primary"
+                      [disabled]="addingComment() || commentForm.invalid"
+                    >
+                      @if (addingComment()) {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                      } @else {
+                        <tabler-icon name="send" class="me-1" />
+                      }
+                      Enviar respuesta
+                    </button>
+                  </div>
+                </form>
+
+              </div>
+
+              <!-- ── Participantes ─────────────────────────────────────────────── -->
+              <div class="col-12 col-lg-4">
+                <div class="card card-sm">
+                  <div class="card-header">
+                    <h4 class="card-title">
+                      <tabler-icon name="users" class="me-1 icon-sm" />
+                      Participantes
+                    </h4>
+                    <div class="card-actions">
+                      <span class="badge bg-secondary-lt text-secondary">{{ d.participants.length }}</span>
+                    </div>
+                  </div>
+                  @if (d.participants.length === 0) {
+                    <div class="card-body text-center text-secondary py-4 small">
+                      Sin participantes registrados.
+                    </div>
+                  } @else {
+                    <div class="list-group list-group-flush">
+                      @for (p of d.participants; track p.id) {
+                        <div class="list-group-item py-3">
+                          <div class="d-flex align-items-start gap-2">
+                            <span
+                              class="avatar avatar-sm rounded-circle bg-secondary-lt text-secondary fw-bold flex-shrink-0"
+                              style="font-size: 0.7rem"
+                            >
+                              {{ memberInitials(p.userId) }}
+                            </span>
+                            <div class="flex-grow-1 overflow-hidden">
+                              <div class="fw-medium text-truncate">{{ memberName(p.userId) }}</div>
+                              <div class="text-secondary small d-flex align-items-center gap-1">
+                                <tabler-icon name="phone" class="icon-sm" />
+                                {{ memberPhone(p.userId) || '—' }}
+                              </div>
+                              <span class="badge bg-secondary-lt text-secondary mt-1" style="font-size: 0.7rem">
+                                {{ participantTypeLabel[p.participantType] }}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- ══════════════════════════════════════════════════════════════════
+               TAB-PANE: HISTÓRICO
+               ══════════════════════════════════════════════════════════════════ -->
+          <div
+            class="tab-pane"
+            [class.active]="activeTab() === 'history'"
+            [class.show]="activeTab() === 'history'"
+            role="tabpanel"
+          >
+            <div class="row justify-content-center">
+              <div class="col-12 col-lg-9">
+
+                <h3 class="card-title mb-3">Histórico de estados</h3>
+
+                @if (statusHistory().length === 0) {
+                  <div class="text-center text-secondary py-5 small">
+                    Aún no hay cambios de estado registrados.
+                  </div>
+                } @else {
+                  <div class="divide-y">
+                    @for (h of statusHistory(); track h.id) {
+                      <div class="py-3">
+                        <div class="d-flex align-items-start gap-3">
+                          <span
+                            class="avatar avatar-sm rounded-circle bg-secondary-lt text-secondary flex-shrink-0"
+                          >
+                            <tabler-icon name="arrow-right" />
+                          </span>
+                          <div class="flex-grow-1 overflow-hidden">
+                            <!-- Transición de estado -->
+                            <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                              @if (h.fromStatus) {
+                                <span [class]="statusBadge[h.fromStatus]">{{ statusLabel[h.fromStatus] }}</span>
+                                <tabler-icon name="arrow-right" class="text-secondary icon-sm" />
+                              } @else {
+                                <span class="badge bg-secondary-lt text-secondary">Creación</span>
+                                <tabler-icon name="arrow-right" class="text-secondary icon-sm" />
+                              }
+                              <span [class]="statusBadge[h.toStatus]">{{ statusLabel[h.toStatus] }}</span>
+                            </div>
+                            <!-- Autor y fecha -->
+                            <div class="text-secondary small">
+                              por <strong>{{ memberName(h.changedByUserId) }}</strong>
+                              · {{ formatDateTime(h.changedAtUtc) }}
+                            </div>
+                            <!-- Nota -->
+                            @if (h.note) {
+                              <p class="mb-0 small mt-1" style="white-space: pre-wrap">{{ h.note }}</p>
+                            }
+                          </div>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  }
+
+</div>
+
+<!-- ── MODAL: cambio de estado ────────────────────────────────────────────── -->
+<ng-template #statusTpl let-modal>
+  <div class="modal-header">
+    <h5 class="modal-title">
+      Cambiar estado
+      @if (pendingStatus(); as ps) {
+        a «{{ statusLabel[ps] }}»
+      }
+    </h5>
+    <button type="button" class="btn-close" (click)="modal.dismiss()"></button>
+  </div>
+  <div class="modal-body">
+    <label class="form-label">Nota <span class="text-secondary">(opcional)</span></label>
+    <textarea
+      class="form-control"
+      [formControl]="statusNoteControl"
+      rows="3"
+      placeholder="Describe el motivo del cambio de estado…"
+    ></textarea>
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-link link-secondary" (click)="modal.dismiss()">Cancelar</button>
+    <button type="button" class="btn btn-primary" (click)="modal.close()">Confirmar cambio</button>
+  </div>
+</ng-template>

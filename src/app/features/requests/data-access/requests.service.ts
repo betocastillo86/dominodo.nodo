@@ -5,11 +5,15 @@ import { environment } from '../../../../environments/environment';
 import { toMessage } from '../../../core/http/problem-details';
 import { PagedResult } from '../../../core/models/paged-result';
 import {
+  AddRequestUpdateBody,
+  AttachmentDownloadUrlDto,
   BOARD_STATUSES,
   compareByPriorityThenDate,
+  RequestDetailDto,
   RequestDto,
   RequestPriority,
   RequestStatus,
+  UpdateRequestBody,
 } from './request.models';
 
 const BOARD_PAGE_SIZE = 50;
@@ -144,9 +148,31 @@ export class RequestsService {
     });
   }
 
+  /** Fetch the full detail of one request (`GET /requests/{id}`). */
+  getById(id: string): Observable<RequestDetailDto> {
+    return this.http.get<RequestDetailDto>(`${this.base}/${id}`);
+  }
+
+  /** Patch editable fields (`PUT /requests/{id}`, requires requests.edit). */
+  update(id: string, body: UpdateRequestBody): Observable<void> {
+    return this.http.put<void>(`${this.base}/${id}`, body);
+  }
+
   /** Persist a lifecycle status change (`PUT /requests/{id}/status`, requires requests.edit). */
-  changeStatus(id: string, status: RequestStatus): Observable<void> {
-    return this.http.put<void>(`${this.base}/${id}/status`, { status, note: null });
+  changeStatus(id: string, status: RequestStatus, note: string | null = null): Observable<void> {
+    return this.http.put<void>(`${this.base}/${id}/status`, { status, note });
+  }
+
+  /** Add a timeline entry (`POST /requests/{id}/updates`). */
+  addUpdate(id: string, body: AddRequestUpdateBody): Observable<void> {
+    return this.http.post<void>(`${this.base}/${id}/updates`, body);
+  }
+
+  /** Mint a signed download URL for an attachment (`GET /requests/{id}/attachments/{aid}/download-url`). */
+  getAttachmentDownloadUrl(requestId: string, attachmentId: string): Observable<AttachmentDownloadUrlDto> {
+    return this.http.get<AttachmentDownloadUrlDto>(
+      `${this.base}/${requestId}/attachments/${attachmentId}/download-url`,
+    );
   }
 
   /**

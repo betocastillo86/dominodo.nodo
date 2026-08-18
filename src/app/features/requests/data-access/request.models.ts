@@ -94,3 +94,111 @@ export const TYPE_LABEL: Record<RequestType, string> = {
   Sugerencia: 'Sugerencia',
   Maintenance: 'Mantenimiento',
 };
+
+// ── Detail DTOs ───────────────────────────────────────────────────────────────
+
+export type RequestParticipantType = 'Reporter' | 'Follower';
+export type RequestParticipantSource = 'Self' | 'AutoMatched' | 'Admin';
+export type RequestUpdateType = 'Progress' | 'Comment' | 'Evidence' | 'Resolution';
+
+export interface RequestParticipantDto {
+  id: string;
+  userId: string;
+  participantType: RequestParticipantType;
+  source: RequestParticipantSource;
+  joinedAtUtc: string;
+}
+
+export interface RequestUpdateDto {
+  id: string;
+  authorUserId: string;
+  type: RequestUpdateType;
+  body: string | null;
+  isInternal: boolean;
+  createdAtUtc: string;
+}
+
+export interface RequestStatusHistoryDto {
+  id: string;
+  fromStatus: RequestStatus | null;
+  toStatus: RequestStatus;
+  changedByUserId: string;
+  changedAtUtc: string;
+  note: string | null;
+}
+
+export interface RequestAttachmentDto {
+  id: string;
+  requestId: string;
+  requestUpdateId: string | null;
+  fileName: string;
+  contentType: string;
+  uploadedByUserId: string;
+  createdAtUtc: string;
+}
+
+/** Full detail shape returned by `GET /requests/{id}`. */
+export interface RequestDetailDto extends RequestDto {
+  resolvedAtUtc: string | null;
+  closedAtUtc: string | null;
+  metadata: string | null;
+  participants: RequestParticipantDto[];
+  updates: RequestUpdateDto[];
+  statusHistory: RequestStatusHistoryDto[];
+  attachments: RequestAttachmentDto[];
+}
+
+// ── Request bodies ────────────────────────────────────────────────────────────
+
+export interface UpdateRequestBody {
+  type: RequestType;
+  title: string;
+  description: string;
+  priority: RequestPriority;
+  categoryId: string;
+  location: string | null;
+  metadata: string | null;
+  visibility: RequestVisibility;
+}
+
+export interface AddRequestUpdateBody {
+  type: RequestUpdateType;
+  body: string | null;
+  isInternal: boolean;
+}
+
+export interface AttachmentDownloadUrlDto {
+  url: string;
+}
+
+// ── Label maps for detail view ────────────────────────────────────────────────
+
+export const UPDATE_TYPE_LABEL: Record<RequestUpdateType, string> = {
+  Progress: 'Progreso',
+  Comment: 'Comentario',
+  Evidence: 'Evidencia',
+  Resolution: 'Resolución',
+};
+
+export const UPDATE_TYPE_BADGE: Record<RequestUpdateType, string> = {
+  Progress: 'badge bg-blue-lt',
+  Comment: 'badge bg-secondary-lt',
+  Evidence: 'badge bg-purple-lt',
+  Resolution: 'badge bg-green-lt',
+};
+
+export const PARTICIPANT_TYPE_LABEL: Record<RequestParticipantType, string> = {
+  Reporter: 'Solicitante',
+  Follower: 'Seguidor',
+};
+
+/**
+ * Valid target statuses from each source status.
+ * Rule: every transition is allowed EXCEPT Closed → New and Resolved → New.
+ */
+export const ALLOWED_TRANSITIONS: Record<RequestStatus, RequestStatus[]> = {
+  New: ['InProgress', 'Resolved', 'Closed'],
+  InProgress: ['New', 'Resolved', 'Closed'],
+  Resolved: ['InProgress', 'Closed'],
+  Closed: ['InProgress', 'Resolved'],
+};
