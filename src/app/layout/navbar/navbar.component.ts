@@ -58,6 +58,13 @@ export class NavbarComponent {
       permission: 'announcements.view',
       feature: 'Announcements',
     },
+    {
+      label: 'Base de conocimiento',
+      path: '/knowledge-resources',
+      icon: 'book',
+      permission: 'knowledge.view',
+      feature: 'KnowledgeResources',
+    },
   ]);
 
   /** Items the current user + tenant are allowed to see. */

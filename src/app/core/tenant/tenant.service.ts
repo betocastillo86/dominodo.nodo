@@ -7,7 +7,7 @@ import { TenantCurrentResponse, TenantProfile } from './tenant.models';
 /** Default primary color used when the API does not return branding yet (Tabler blue). */
 const DEFAULT_PRIMARY_COLOR = '#066fd1';
 /** Features assumed enabled until the API returns the `features` array. */
-const DEFAULT_FEATURES = ['Requests', 'Announcements'];
+const DEFAULT_FEATURES = ['Requests', 'Announcements', 'KnowledgeResources'];
 
 @Injectable({ providedIn: 'root' })
 export class TenantService {

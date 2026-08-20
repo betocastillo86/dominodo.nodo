@@ -1,0 +1,76 @@
+@if (loading()) {
+  <app-spinner />
+} @else if (loadError()) {
+  <app-page-header [title]="'Editar recurso'" [pretitle]="'Base de conocimiento'" />
+  <div class="alert alert-danger" role="alert">{{ loadError() }}</div>
+  <a routerLink="/knowledge-resources" class="btn btn-link px-0">
+    <tabler-icon name="arrow-left" class="me-1" />
+    Volver al listado
+  </a>
+} @else {
+  <app-page-header [title]="'Editar recurso'" [pretitle]="'Base de conocimiento'" />
+
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <div class="card">
+      <div class="card-body">
+        @if (formError()) {
+          <div class="alert alert-danger" role="alert">{{ formError() }}</div>
+        }
+
+        <div class="mb-3">
+          <label class="form-label required" for="title">Título</label>
+          <input
+            id="title"
+            type="text"
+            class="form-control"
+            formControlName="title"
+            [class.is-invalid]="form.controls.title.invalid && form.controls.title.touched"
+          />
+          @if (form.controls.title.invalid && form.controls.title.touched) {
+            <div class="invalid-feedback">El título es obligatorio (máx. 200 caracteres).</div>
+          }
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label required" for="body">Contenido</label>
+          <textarea
+            id="body"
+            rows="10"
+            class="form-control"
+            formControlName="body"
+            [class.is-invalid]="form.controls.body.invalid && form.controls.body.touched"
+          ></textarea>
+          @if (form.controls.body.invalid && form.controls.body.touched) {
+            <div class="invalid-feedback">El contenido es obligatorio.</div>
+          }
+        </div>
+
+        <div class="col-12 col-md-4">
+          <label class="form-label required" for="status">Estado</label>
+          <select
+            id="status"
+            class="form-select"
+            formControlName="status"
+            [class.is-invalid]="form.controls.status.invalid && form.controls.status.touched"
+          >
+            @for (opt of statusOptions; track opt.value) {
+              <option [value]="opt.value">{{ opt.label }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <div class="card-footer d-flex">
+        <a routerLink="/knowledge-resources" class="btn btn-link">Cancelar</a>
+        <button type="submit" class="btn btn-primary ms-auto" [disabled]="saving()">
+          @if (saving()) {
+            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+          } @else {
+            <tabler-icon name="device-floppy" class="me-1" />
+          }
+          Guardar cambios
+        </button>
+      </div>
+    </div>
+  </form>
+}

@@ -47,6 +47,14 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./features/announcements/announcements.routes').then((m) => m.announcementsRoutes),
       },
+      {
+        path: 'knowledge-resources',
+        canActivate: [permissionGuard('knowledge.view')],
+        loadChildren: () =>
+          import('./features/knowledge-resources/knowledge-resources.routes').then(
+            (m) => m.knowledgeResourcesRoutes,
+          ),
+      },
       { path: '', pathMatch: 'full', redirectTo: 'requests' },
       { path: '**', redirectTo: 'requests' },
     ],

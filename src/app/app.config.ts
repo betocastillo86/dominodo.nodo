@@ -11,6 +11,7 @@ import {
   IconArchive,
   IconArrowLeft,
   IconArrowRight,
+  IconBook,
   IconBuildingCommunity,
   IconDeviceFloppy,
   IconDownload,
@@ -85,6 +86,8 @@ export const appConfig: ApplicationConfig = {
       IconPhone,
       IconHistory,
       IconArrowRight,
+      // Knowledge Resources module
+      IconBook,
     }),
   ],
 };
