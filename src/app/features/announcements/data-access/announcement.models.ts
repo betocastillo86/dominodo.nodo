@@ -6,6 +6,9 @@
 /** Lifecycle status (`OperationsAnnouncementStatus`). */
 export type AnnouncementStatus = 'Draft' | 'Published' | 'Archived';
 
+/** Priority level (`OperationsAnnouncementPriority`). */
+export type AnnouncementPriority = 'High' | 'Medium' | 'Low';
+
 /** Target audience (`OperationsAudienceType`). */
 export type AudienceType = 'AllTenant' | 'ByTower' | 'ByApartments';
 
@@ -15,7 +18,7 @@ export interface AnnouncementListItem {
   tenantId: string;
   title: string;
   categoryId: string | null;
-  priority: number;
+  priority: AnnouncementPriority;
   status: AnnouncementStatus;
   audienceType: string;
   publishedAtUtc: string | null;
@@ -29,7 +32,7 @@ export interface AnnouncementDetail {
   title: string;
   body: string;
   categoryId: string | null;
-  priority: number;
+  priority: AnnouncementPriority;
   status: AnnouncementStatus;
   audienceType: AudienceType;
   audienceFilter: string | null;
@@ -46,7 +49,7 @@ export interface AnnouncementDetail {
 export interface CreateAnnouncementRequest {
   title: string;
   body: string;
-  priority: number;
+  priority: AnnouncementPriority;
   audienceType: AudienceType;
   audienceFilter: string | null;
   categoryId: string | null;
@@ -57,7 +60,7 @@ export interface CreateAnnouncementRequest {
 export interface UpdateAnnouncementRequest {
   title: string;
   body: string;
-  priority: number;
+  priority: AnnouncementPriority;
   audienceType: AudienceType;
   audienceFilter: string | null;
   categoryId: string | null;

@@ -19,6 +19,7 @@ import { SpinnerComponent } from '../../../shared/ui/spinner/spinner.component';
 import { AnnouncementsService } from '../data-access/announcements.service';
 import {
   AnnouncementDetail,
+  AnnouncementPriority,
   AudienceType,
   UpdateAnnouncementRequest,
 } from '../data-access/announcement.models';
@@ -29,6 +30,7 @@ import {
 } from '../data-access/announcement-status.util';
 import { RequestCategoriesService } from '../data-access/request-categories.service';
 import { AUDIENCE_OPTIONS } from '../shared/audience';
+import { DEFAULT_PRIORITY, PRIORITY_OPTIONS } from '../shared/priority';
 import { fromDatetimeLocal, toDatetimeLocal } from '../shared/format-date';
 
 /**
@@ -67,6 +69,7 @@ export class AnnouncementEditComponent implements OnInit {
   private readonly current = signal<AnnouncementDetail | null>(null);
 
   readonly audienceOptions = AUDIENCE_OPTIONS;
+  readonly priorityOptions = PRIORITY_OPTIONS;
 
   readonly stateLabel = computed(() => {
     const a = this.current();
@@ -80,7 +83,9 @@ export class AnnouncementEditComponent implements OnInit {
   readonly form = this.fb.group({
     title: this.fb.nonNullable.control('', [Validators.required, Validators.maxLength(200)]),
     body: this.fb.nonNullable.control('', [Validators.required]),
-    priority: this.fb.nonNullable.control(0, [Validators.required, Validators.min(0)]),
+    priority: this.fb.nonNullable.control<AnnouncementPriority>(DEFAULT_PRIORITY, [
+      Validators.required,
+    ]),
     audienceType: this.fb.nonNullable.control<AudienceType>('AllTenant', [Validators.required]),
     audienceFilter: this.fb.control<string>(''),
     categoryId: this.fb.control<string>(''),

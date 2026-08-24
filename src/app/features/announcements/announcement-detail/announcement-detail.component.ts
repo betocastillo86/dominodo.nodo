@@ -27,6 +27,7 @@ import {
 import { ANNOUNCEMENTS_EDIT } from '../data-access/announcement.permissions';
 import { RequestCategoriesService } from '../data-access/request-categories.service';
 import { audienceTypeLabel } from '../shared/audience';
+import { priorityLabel } from '../shared/priority';
 import { formatDateTime } from '../shared/format-date';
 
 /**
@@ -97,6 +98,8 @@ export class AnnouncementDetailComponent implements OnInit {
     const a = this.announcement();
     return a ? audienceTypeLabel(a.audienceType) : '';
   }
+
+  priorityLabel = priorityLabel;
 
   formatDateTime = formatDateTime;
 
