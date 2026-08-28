@@ -24,6 +24,9 @@ resolved from the **domain**. Full design: `docs/architecture.md`.
 - API base URL + tenant config live in `src/environments/` (`environment.ts` = prod, `environment.stage.ts` = stage, `environment.development.ts` = dev).
 - API Swagger: `http://localhost:5083/swagger/index.html`.
 - Deployment: Azure DevOps FTP pipeline (`pipelines/build-ftp-pipeline.yaml`) → Windows/IIS. See `docs/deployment.md`.
+- **Caching (do not regress):** the hosting caches every static file for a year, so
+  `public/web.config` carves out `index.html` as `no-cache` — otherwise deploys stay invisible to
+  users for days. Never add an unhashed file to `public/` without its own `<location>` block.
 
 ## Testing
 - **No unit tests. No automated test suite** (same policy as `admin`). This is a deliberate, standing
@@ -91,4 +94,4 @@ resolved from the **domain**. Full design: `docs/architecture.md`.
 - `docs/architecture.md` — authoritative architecture, structure, multi-tenancy, API contract, and the
   list of recommended future skills (§11).
 - `docs/deployment.md` — FTP deployment model: environments, branch→env mapping, build configs,
-  `web.config`, the Azure DevOps pipeline, and the two variable groups.
+  `web.config`, the **cache strategy**, the Azure DevOps pipeline, and the two variable groups.
