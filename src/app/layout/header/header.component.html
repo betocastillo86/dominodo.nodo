@@ -10,7 +10,10 @@
   </a>
 
   <!-- User menu -->
-  <div class="navbar-nav flex-row order-md-last">
+  <div class="navbar-nav flex-row order-md-last align-items-center">
+    <span class="nav-item small text-secondary d-none d-md-inline me-3" title="Versión instalada">
+      v{{ versions.currentVersion }}
+    </span>
     <div class="nav-item" ngbDropdown placement="bottom-end">
       <a class="nav-link d-flex lh-1 text-reset p-0" role="button" ngbDropdownToggle id="user-menu">
         <span class="avatar avatar-sm">

@@ -4,6 +4,7 @@ import { TablerIconComponent } from 'angular-tabler-icons';
 import { AuthService } from '../../core/auth/auth.service';
 import { AuthStore } from '../../core/auth/auth.store';
 import { TenantStore } from '../../core/tenant/tenant.store';
+import { VersionCheckService } from '../../core/version/version-check.service';
 
 /**
  * Tabler horizontal header: tenant logo + name (from TenantStore) on the left,
@@ -23,6 +24,7 @@ export class HeaderComponent {
   private readonly auth = inject(AuthService);
   readonly authStore = inject(AuthStore);
   readonly tenant = inject(TenantStore);
+  readonly versions = inject(VersionCheckService);
 
   logout(): void {
     this.auth.logout().subscribe();

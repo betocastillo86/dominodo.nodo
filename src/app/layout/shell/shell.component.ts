@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { HeaderComponent } from '../header/header.component';
 import { NavbarComponent } from '../navbar/navbar.component';
+import { VersionBannerComponent } from '../../shared/ui/version-banner/version-banner.component';
 
 /**
  * Authenticated portal shell — Tabler HORIZONTAL top-navbar layout (not admin's
@@ -10,10 +11,11 @@ import { NavbarComponent } from '../navbar/navbar.component';
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterOutlet, HeaderComponent, NavbarComponent],
+  imports: [RouterOutlet, HeaderComponent, NavbarComponent, VersionBannerComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page">
+      <app-version-banner />
       <app-header />
       <app-navbar />
       <div class="page-wrapper">

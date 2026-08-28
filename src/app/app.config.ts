@@ -29,6 +29,7 @@ import {
   IconPaperclip,
   IconPhone,
   IconPlus,
+  IconRefresh,
   IconSearch,
   IconSend,
   IconSpeakerphone,
@@ -88,6 +89,8 @@ export const appConfig: ApplicationConfig = {
       IconArrowRight,
       // Knowledge Resources module
       IconBook,
+      // New-version banner
+      IconRefresh,
     }),
   ],
 };

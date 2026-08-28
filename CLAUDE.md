@@ -27,6 +27,9 @@ resolved from the **domain**. Full design: `docs/architecture.md`.
 - **Caching (do not regress):** the hosting caches every static file for a year, so
   `public/web.config` carves out `index.html` as `no-cache` — otherwise deploys stay invisible to
   users for days. Never add an unhashed file to `public/` without its own `<location>` block.
+- **Version banner:** the pipeline stamps `$(Build.BuildId)` into `core/version/app-version.ts` and
+  `public/version.json`; `VersionCheckService` polls the latter and prompts open tabs to reload. The
+  header shows the running version. Keep the `___buildid___` placeholder intact in both files.
 
 ## Testing
 - **No unit tests. No automated test suite** (same policy as `admin`). This is a deliberate, standing
