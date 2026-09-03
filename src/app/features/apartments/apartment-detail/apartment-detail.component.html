@@ -1,0 +1,389 @@
+<app-page-header [title]="title()" pretitle="Apartamentos">
+  <a actions routerLink="/apartments" class="btn btn-link link-secondary">
+    <tabler-icon name="arrow-left" class="me-1" />
+    Volver al listado
+  </a>
+</app-page-header>
+
+@if (loading()) {
+  <app-spinner />
+} @else if (error()) {
+  <div class="alert alert-danger" role="alert">{{ error() }}</div>
+} @else if (apartment(); as apt) {
+  <div class="row row-cards">
+    <!-- Apartment information (read-only) -->
+    <div class="col-12 col-lg-4">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Información</h3>
+        </div>
+        <div class="card-body">
+          <dl class="row mb-0">
+            <dt class="col-5 text-secondary">Torre</dt>
+            <dd class="col-7">{{ apt.tower ?? '—' }}</dd>
+
+            <dt class="col-5 text-secondary">Apartamento</dt>
+            <dd class="col-7 fw-medium">{{ apt.number }}</dd>
+
+            <dt class="col-5 text-secondary">Tipo</dt>
+            <dd class="col-7">{{ typeLabel[apt.type] }}</dd>
+
+            @if (apt.attributes) {
+              <dt class="col-5 text-secondary">Atributos</dt>
+              <dd class="col-7">{{ apt.attributes }}</dd>
+            }
+          </dl>
+        </div>
+      </div>
+    </div>
+
+    <!-- Residents -->
+    <div class="col-12 col-lg-8">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Residentes</h3>
+          @if (canAddResident()) {
+            <div class="card-actions">
+              <button type="button" class="btn btn-primary" (click)="openAdd(addTpl)">
+                <tabler-icon name="user-plus" class="me-1" />
+                Agregar residente
+              </button>
+            </div>
+          }
+        </div>
+
+        @if (residentsLoading()) {
+          <app-spinner />
+        } @else if (residentsError()) {
+          <div class="alert alert-danger m-3" role="alert">{{ residentsError() }}</div>
+        } @else if (activeResidents().length === 0) {
+          <app-empty-state
+            icon="users"
+            title="Sin residentes activos"
+            subtitle="Este apartamento no tiene residentes registrados."
+          />
+        } @else {
+          <div class="table-responsive">
+            <table class="table card-table table-vcenter">
+              <thead>
+                <tr>
+                  <th>Residente</th>
+                  <th>Teléfono</th>
+                  <th>Relación</th>
+                  <th>Vive aquí</th>
+                  <th>Desde</th>
+                  @if (canEdit()) {
+                    <th class="w-1"></th>
+                  }
+                </tr>
+              </thead>
+              <tbody>
+                @for (resident of activeResidents(); track resident.id) {
+                  <tr>
+                    <td class="fw-medium">{{ resident.user?.fullName ?? '—' }}</td>
+                    <td class="text-secondary text-nowrap">{{ resident.user?.phone ?? '—' }}</td>
+                    <td>
+                      <span [class]="relationBadge[resident.relationType]">
+                        {{ relationLabel[resident.relationType] }}
+                      </span>
+                    </td>
+                    <td>
+                      @if (resident.livesHere) {
+                        <span class="badge bg-green-lt">Sí</span>
+                      } @else {
+                        <span class="badge bg-secondary-lt">No</span>
+                      }
+                    </td>
+                    <td class="text-secondary text-nowrap">{{ formatDate(resident.startDate) }}</td>
+                    @if (canEdit()) {
+                      <td class="text-end">
+                        <button
+                          type="button"
+                          class="btn btn-icon btn-sm btn-ghost-danger"
+                          aria-label="Finalizar residencia"
+                          [disabled]="saving()"
+                          (click)="confirmEnd(resident, endStep1Tpl, endStep2Tpl)"
+                        >
+                          <tabler-icon name="user-minus" />
+                        </button>
+                      </td>
+                    }
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+
+      <!-- Ended residencies, kept as history by the API -->
+      @if (pastResidents().length > 0) {
+        <div class="card mt-3">
+          <div class="card-header">
+            <h3 class="card-title text-secondary">Residencias finalizadas</h3>
+          </div>
+          <div class="table-responsive">
+            <table class="table card-table table-vcenter">
+              <thead>
+                <tr>
+                  <th>Residente</th>
+                  <th>Teléfono</th>
+                  <th>Relación</th>
+                  <th>Hasta</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (resident of pastResidents(); track resident.id) {
+                  <tr class="text-secondary">
+                    <td>{{ resident.user?.fullName ?? '—' }}</td>
+                    <td class="text-nowrap">{{ resident.user?.phone ?? '—' }}</td>
+                    <td>{{ relationLabel[resident.relationType] }}</td>
+                    <td class="text-nowrap">{{ formatDate(resident.endDate) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+
+      <!-- PQRS raised for this apartment (requests.view only) -->
+      @if (canViewRequests()) {
+        <div class="card mt-3">
+          <div class="card-header">
+            <h3 class="card-title">PQRS del apartamento</h3>
+          </div>
+
+          @if (requestsLoading()) {
+            <app-spinner />
+          } @else if (requestsError()) {
+            <div class="alert alert-danger m-3" role="alert">{{ requestsError() }}</div>
+          } @else if (requests().length === 0) {
+            <app-empty-state
+              icon="list-details"
+              title="Sin PQRS"
+              subtitle="Este apartamento no tiene solicitudes registradas."
+            />
+          } @else {
+            <div class="table-responsive">
+              <table class="table card-table table-vcenter text-nowrap">
+                <thead>
+                  <tr>
+                    <th class="w-1">Código</th>
+                    <th>Título</th>
+                    <th>Tipo</th>
+                    <th>Estado</th>
+                    <th>Prioridad</th>
+                    <th>Fecha</th>
+                    <th class="w-1"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (request of requests(); track request.id) {
+                    <tr>
+                      <td class="text-secondary">{{ request.code }}</td>
+                      <td class="text-wrap">{{ request.title }}</td>
+                      <td>{{ requestTypeLabel[request.type] }}</td>
+                      <td>
+                        <span [class]="requestStatusBadge[request.status]">
+                          {{ requestStatusLabel[request.status] }}
+                        </span>
+                      </td>
+                      <td>
+                        <span [class]="requestPriorityBadge[request.priority]">
+                          {{ requestPriorityLabel[request.priority] }}
+                        </span>
+                      </td>
+                      <td class="text-secondary">{{ formatInstant(request.createdAtUtc) }}</td>
+                      <td class="text-end">
+                        <a [routerLink]="['/requests', request.id]" class="btn btn-icon btn-sm" aria-label="Ver PQRS">
+                          <tabler-icon name="eye" />
+                        </a>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            @if (requestsTotal() > requests().length) {
+              <div class="card-footer text-secondary">
+                Mostrando las {{ requests().length }} más recientes de {{ requestsTotal() }}.
+              </div>
+            }
+          }
+        </div>
+      }
+    </div>
+  </div>
+}
+
+<!-- Add resident ------------------------------------------------------------->
+<ng-template #addTpl let-modal>
+  <form [formGroup]="addForm" (ngSubmit)="submitAdd()">
+    <div class="modal-header">
+      <h5 class="modal-title">Agregar residente</h5>
+      <button type="button" class="btn-close" (click)="modal.dismiss()"></button>
+    </div>
+
+    <div class="modal-body">
+      @if (formError(); as message) {
+        <div class="alert alert-danger" role="alert">{{ message }}</div>
+      }
+
+      @if (!registerNew()) {
+        <div class="mb-3">
+          <label class="form-label required" for="add-person">Persona</label>
+          <app-search-select
+            id="add-person"
+            [search]="searchPeople"
+            formControlName="userId"
+            placeholder="Buscar por teléfono o nombre…"
+            clearLabel="Quitar persona seleccionada"
+          />
+          @if (submitted() && addForm.controls.userId.invalid) {
+            <div class="text-danger small mt-1">Selecciona una persona.</div>
+          }
+          <small class="form-hint">
+            Busca a alguien que ya pertenezca al conjunto.
+            @if (canInvite()) {
+              ¿No aparece?
+              <button type="button" class="btn btn-link p-0 align-baseline" (click)="toggleRegisterNew()">
+                Registrar una nueva persona
+              </button>
+            }
+          </small>
+        </div>
+      } @else {
+        <div class="mb-3">
+          <label class="form-label required" for="add-phone">Teléfono</label>
+          <input
+            id="add-phone"
+            type="tel"
+            class="form-control"
+            placeholder="+573001234567"
+            formControlName="phone"
+            [class.is-invalid]="submitted() && addForm.controls.phone.invalid"
+          />
+          <div class="invalid-feedback">
+            Ingresa el teléfono en formato internacional, por ejemplo +573001234567.
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-12 col-md-6 mb-3">
+            <label class="form-label required" for="add-first-name">Nombre</label>
+            <input
+              id="add-first-name"
+              type="text"
+              class="form-control"
+              maxlength="100"
+              formControlName="firstName"
+              [class.is-invalid]="submitted() && addForm.controls.firstName.invalid"
+            />
+            <div class="invalid-feedback">El nombre es obligatorio.</div>
+          </div>
+          <div class="col-12 col-md-6 mb-3">
+            <label class="form-label" for="add-last-name">Apellido</label>
+            <input
+              id="add-last-name"
+              type="text"
+              class="form-control"
+              maxlength="100"
+              formControlName="lastName"
+            />
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label" for="add-email">Correo</label>
+          <input
+            id="add-email"
+            type="email"
+            class="form-control"
+            formControlName="email"
+            [class.is-invalid]="submitted() && addForm.controls.email.invalid"
+          />
+          <div class="invalid-feedback">Ingresa un correo válido.</div>
+          <small class="form-hint">
+            Opcional.
+            @if (canEdit()) {
+              ¿Ya pertenece al conjunto?
+              <button type="button" class="btn btn-link p-0 align-baseline" (click)="toggleRegisterNew()">
+                Buscarla en la lista
+              </button>
+            }
+          </small>
+        </div>
+      }
+
+      <div class="mb-3">
+        <span class="form-label required">Relación</span>
+        <div>
+          <label class="form-selectgroup-item">
+            <input type="radio" class="form-selectgroup-input" value="Owner" formControlName="relationType" />
+            <span class="form-selectgroup-label">Propietario</span>
+          </label>
+          <label class="form-selectgroup-item">
+            <input type="radio" class="form-selectgroup-input" value="Renter" formControlName="relationType" />
+            <span class="form-selectgroup-label">Arrendatario</span>
+          </label>
+        </div>
+      </div>
+
+      <label class="form-check">
+        <input type="checkbox" class="form-check-input" formControlName="livesHere" />
+        <span class="form-check-label">Vive en el apartamento</span>
+      </label>
+
+      <p class="form-hint mt-3 mb-0">El rol asignado será siempre <strong>Residente</strong>.</p>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn btn-link link-secondary" (click)="modal.dismiss()">Cancelar</button>
+      <button type="submit" class="btn btn-primary" [disabled]="saving()">
+        @if (saving()) {
+          <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        }
+        Agregar
+      </button>
+    </div>
+  </form>
+</ng-template>
+
+<!-- End residency — step 1 of 2 ----------------------------------------------->
+<ng-template #endStep1Tpl let-modal>
+  <div class="modal-header">
+    <h5 class="modal-title">Finalizar residencia</h5>
+    <button type="button" class="btn-close" (click)="modal.dismiss()"></button>
+  </div>
+  <div class="modal-body">
+    <p>
+      <strong>{{ residentName(targetResident()) }}</strong> dejará de figurar como residente de este
+      apartamento.
+    </p>
+    <p class="text-secondary mb-0">
+      La residencia queda registrada en el historial y su acceso al conjunto no se modifica desde aquí.
+    </p>
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-link link-secondary" (click)="modal.dismiss()">Cancelar</button>
+    <button type="button" class="btn btn-danger" (click)="modal.close()">Continuar</button>
+  </div>
+</ng-template>
+
+<!-- End residency — step 2 of 2 ----------------------------------------------->
+<ng-template #endStep2Tpl let-modal>
+  <div class="modal-header">
+    <h5 class="modal-title">Confirmación final</h5>
+    <button type="button" class="btn-close" (click)="modal.dismiss()"></button>
+  </div>
+  <div class="modal-body">
+    ¿Confirmas que deseas finalizar la residencia de
+    <strong>{{ residentName(targetResident()) }}</strong>?
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-link link-secondary" (click)="modal.dismiss()">Cancelar</button>
+    <button type="button" class="btn btn-danger" (click)="modal.close()">Sí, finalizar</button>
+  </div>
+</ng-template>

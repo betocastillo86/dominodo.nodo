@@ -60,6 +60,8 @@ export interface CurrentUser {
 
 /** A membership of the caller in a tenant (`MembershipDto`). */
 export interface Membership {
+  /** Membership id — required by the `/memberships/{id}/…` write endpoints. */
+  id: string;
   userId: string;
   tenantId: string;
   roleId: number;

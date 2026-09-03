@@ -12,6 +12,7 @@ import {
   IconArrowLeft,
   IconArrowRight,
   IconBook,
+  IconBuilding,
   IconBuildingCommunity,
   IconDeviceFloppy,
   IconDownload,
@@ -34,6 +35,8 @@ import {
   IconSend,
   IconSpeakerphone,
   IconUserCircle,
+  IconUserMinus,
+  IconUserPlus,
   IconUsers,
   IconX,
 } from 'angular-tabler-icons/icons';
@@ -87,6 +90,10 @@ export const appConfig: ApplicationConfig = {
       IconPhone,
       IconHistory,
       IconArrowRight,
+      // Apartments module
+      IconBuilding,
+      IconUserPlus,
+      IconUserMinus,
       // Knowledge Resources module
       IconBook,
       // New-version banner

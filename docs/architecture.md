@@ -238,10 +238,34 @@ src/app/
     │                       #    data-access/ (request.models, requests.service: list + loadBoard + changeStatus/moveInBoard)
     │                       #    request-list/ (dual-mode: list table + kanban with @angular/cdk drag-drop to
     │                       #    change status — dragging gated by requests.edit; permission: requests.view)
-    └── announcements/      # ✅ list (status/category filters) + detail + edit + publish/archive
-                            #    data-access/ (models, announcements.service signals, status util,
-                            #    permission codes) · announcement-list / -detail / -edit components
+    ├── announcements/      # ✅ list (status/category filters) + detail + edit + publish/archive
+    │                       #    data-access/ (models, announcements.service signals, status util,
+    │                       #    permission codes) · announcement-list / -detail / -edit components
+    └── apartments/         # ✅ READ-ONLY apartments + resident management (permission: apartments.view;
+                            #    no FeatureKey.Apartments exists server-side, so no feature gate)
+                            #    data-access/ (apartment.models, apartments.service signals,
+                            #    residents-lookup.service) · apartment-list / -detail components
 ```
+
+**Apartments — the two write paths.** Apartments themselves are never created, edited or deleted here;
+what the administrator manages is the resident list of `GET /apartments/{id}/residents`. Adding one
+branches on whether the person already belongs to the conjunto, because the API models membership and
+residency as separate rows in different modules:
+
+| Situation | Endpoint | Permission |
+|---|---|---|
+| Picked from the typeahead (already a member) | `POST /apartments/{id}/residents` | `apartments.edit` |
+| New phone → "registrar nueva persona" | `POST /memberships/invite` (`roleId` = Residente) | `memberships.manage` |
+| Remove | `PUT /apartments/{id}/residents/{residentId}/end` | `apartments.edit` |
+
+Inviting someone who already holds a membership returns `409 Membership.AlreadyExists`, which is why the
+first row exists. The invite path links the apartment **asynchronously** (via a domain event), so an
+immediate refetch may not show the new resident yet. Removal disables the **residency** only, keeping it
+as history — the membership is deliberately untouched; the API deactivates it on its own when warranted.
+
+The resident filter on the list resolves a phone to a `userId` through `GET /memberships?search=` before
+sending `residentUserId`, because `GET /apartments` has no phone filter and its `search` matches the
+apartment **number** only.
 
 - **`core/`**: single instances and cross-cutting concerns; no business UI. The tenant and authz stores
   live here because they are set once and read everywhere.

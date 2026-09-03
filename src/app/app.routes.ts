@@ -48,6 +48,12 @@ export const routes: Routes = [
           import('./features/announcements/announcements.routes').then((m) => m.announcementsRoutes),
       },
       {
+        path: 'apartments',
+        canActivate: [permissionGuard('apartments.view')],
+        loadChildren: () =>
+          import('./features/apartments/apartments.routes').then((m) => m.apartmentsRoutes),
+      },
+      {
         path: 'knowledge-resources',
         canActivate: [permissionGuard('knowledge.view')],
         loadChildren: () =>
