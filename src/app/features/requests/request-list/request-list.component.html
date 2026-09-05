@@ -163,6 +163,18 @@
                         {{ typeLabel[item.type] }}
                       </span>
                       <div class="d-flex align-items-center gap-1">
+                        <span
+                          class="text-secondary small d-inline-flex align-items-center gap-1"
+                          title="Comentarios"
+                        >
+                          <tabler-icon name="message" class="icon-sm" />{{ item.updatesCount }}
+                        </span>
+                        <span
+                          class="text-secondary small d-inline-flex align-items-center gap-1"
+                          title="Participantes"
+                        >
+                          <tabler-icon name="users" class="icon-sm" />{{ item.participantsCount }}
+                        </span>
                         <span class="text-secondary small">{{ formatDate(item.createdAtUtc) }}</span>
                         <a
                           [routerLink]="['/requests', item.id]"

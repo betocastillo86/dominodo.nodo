@@ -22,7 +22,6 @@ import { toMessage } from '../../../core/http/problem-details';
 
 import { RequestsService } from '../data-access/requests.service';
 import { CategoriesLookupService, RequestCategoryDto } from '../data-access/categories-lookup.service';
-import { UsersLookupService } from '../data-access/users-lookup.service';
 import {
   ALLOWED_TRANSITIONS,
   BOARD_STATUSES,
@@ -30,6 +29,7 @@ import {
   PRIORITY_BADGE,
   PRIORITY_LABEL,
   RequestDetailDto,
+  RequestParticipantApartmentDto,
   RequestPriority,
   RequestStatus,
   RequestType,
@@ -75,7 +75,6 @@ export class RequestDetailComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly service = inject(RequestsService);
   private readonly categoriesLookup = inject(CategoriesLookupService);
-  private readonly usersLookup = inject(UsersLookupService);
   private readonly permissions = inject(PermissionStore);
   private readonly notifications = inject(NotificationService);
   private readonly modal = inject(NgbModal);
@@ -87,8 +86,19 @@ export class RequestDetailComponent {
   readonly error = signal<string | null>(null);
   readonly detail = signal<RequestDetailDto | null>(null);
   readonly categories = signal<RequestCategoryDto[]>([]);
-  /** userId → resolved profile, filled from `GET /users/{id}` for participants and comment authors. */
-  readonly usersMap = signal<Record<string, { name: string; phone: string }>>({});
+
+  /**
+   * userId → display name, derived from the participants embedded in the detail
+   * response. Comment and status-history authors are resolved through this map;
+   * an author who is not a participant falls back to a generic label.
+   */
+  private readonly participantNames = computed<Record<string, string>>(() => {
+    const map: Record<string, string> = {};
+    for (const p of this.detail()?.participants ?? []) {
+      map[p.userId] = p.user.fullName;
+    }
+    return map;
+  });
 
   readonly saving = signal(false);
   readonly statusSaving = signal(false);
@@ -205,31 +215,11 @@ export class RequestDetailComponent {
         });
 
         this.loading.set(false);
-        this.loadUsers(detail);
       },
       error: (err: HttpErrorResponse) => {
         this.error.set(toMessage(err));
         this.loading.set(false);
       },
-    });
-  }
-
-  /**
-   * Resolve names/phones for every userId referenced by the request (participants
-   * and comment authors) via `GET /users/{id}`, merging into the shared map.
-   */
-  private loadUsers(detail: RequestDetailDto): void {
-    const ids = [
-      ...detail.participants.map((p) => p.userId),
-      ...detail.updates.map((u) => u.authorUserId),
-      ...detail.statusHistory.map((h) => h.changedByUserId),
-    ];
-    this.usersLookup.getByIds(ids).subscribe((users) => {
-      const map = { ...this.usersMap() };
-      for (const u of users) {
-        map[u.id] = { name: `${u.firstName} ${u.lastName}`.trim(), phone: u.phone };
-      }
-      this.usersMap.set(map);
     });
   }
 
@@ -294,10 +284,7 @@ export class RequestDetailComponent {
           this.detail.update((prev) => (prev ? { ...prev, status: newStatus } : prev));
           // Reload to pick up the new status-history entry.
           this.service.getById(d.id).subscribe({
-            next: (refreshed) => {
-              this.detail.set(refreshed);
-              this.loadUsers(refreshed);
-            },
+            next: (refreshed) => this.detail.set(refreshed),
           });
         },
         error: (err: HttpErrorResponse) => this.notifications.error(toMessage(err)),
@@ -321,10 +308,7 @@ export class RequestDetailComponent {
           this.commentForm.reset({ type: 'Comment', body: '', isInternal: false });
           // Reload full detail to pick up the new update entry.
           this.service.getById(d.id).subscribe({
-            next: (refreshed) => {
-              this.detail.set(refreshed);
-              this.loadUsers(refreshed);
-            },
+            next: (refreshed) => this.detail.set(refreshed),
           });
         },
         error: (err: HttpErrorResponse) => this.notifications.error(toMessage(err)),
@@ -347,21 +331,28 @@ export class RequestDetailComponent {
 
   // ── Template helpers ──────────────────────────────────────────────────────
 
+  /** Display name for a comment or status-history author. */
   memberName(userId: string): string {
-    return this.usersMap()[userId]?.name ?? 'Usuario';
-  }
-
-  memberPhone(userId: string): string {
-    return this.usersMap()[userId]?.phone ?? '';
+    return this.participantNames()[userId] ?? 'Usuario';
   }
 
   memberInitials(userId: string): string {
-    const name = this.usersMap()[userId]?.name ?? '';
+    return this.initials(this.participantNames()[userId] ?? '');
+  }
+
+  /** First + last initial of a full name, for the avatar placeholders. */
+  initials(fullName: string): string {
+    const name = fullName.trim();
     if (!name) return '?';
-    const parts = name.trim().split(/\s+/);
+    const parts = name.split(/\s+/);
     const first = parts[0]?.[0] ?? '?';
     const last = parts.length >= 2 ? (parts[parts.length - 1][0] ?? '') : '';
     return (first + last).toUpperCase();
+  }
+
+  /** `Torre · Número` when the apartment has a tower, otherwise just the number. */
+  apartmentLabel(apartment: RequestParticipantApartmentDto): string {
+    return apartment.tower ? `${apartment.tower} · ${apartment.number}` : apartment.number;
   }
 
   categoryName(categoryId: string): string {

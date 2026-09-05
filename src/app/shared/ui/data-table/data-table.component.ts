@@ -12,6 +12,8 @@ export interface TableColumn<T> {
   value: (row: T) => string | number;
   /** When it returns a non-empty class, the value is rendered as a badge. */
   badgeClass?: (row: T) => string;
+  /** Tabler icon rendered before the value (ignored when `badgeClass` matches). */
+  icon?: string;
   /** Optional CSS class applied to the header and cells. */
   class?: string;
 }

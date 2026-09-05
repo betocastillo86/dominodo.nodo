@@ -223,8 +223,59 @@
               <!-- ── Columna lateral ───────────────────────────────────────────── -->
               <div class="col-12 col-lg-4">
 
-                <!-- Adjuntos -->
+                <!-- Participantes -->
                 <div class="card card-sm">
+                  <div class="card-header">
+                    <h4 class="card-title">
+                      <tabler-icon name="users" class="me-1 icon-sm" />
+                      Participantes
+                    </h4>
+                    <div class="card-actions">
+                      <span class="badge bg-secondary-lt text-secondary">{{ d.participants.length }}</span>
+                    </div>
+                  </div>
+                  @if (d.participants.length === 0) {
+                    <div class="card-body text-center text-secondary py-4 small">
+                      Sin participantes registrados.
+                    </div>
+                  } @else {
+                    <div class="list-group list-group-flush">
+                      @for (p of d.participants; track p.id) {
+                        <div class="list-group-item py-3">
+                          <div class="d-flex align-items-start gap-2">
+                            <span
+                              class="avatar avatar-sm rounded-circle bg-secondary-lt text-secondary fw-bold flex-shrink-0"
+                              style="font-size: 0.7rem"
+                            >
+                              {{ initials(p.user.fullName) }}
+                            </span>
+                            <div class="flex-grow-1 overflow-hidden">
+                              <div class="fw-medium text-truncate">{{ p.user.fullName }}</div>
+                              <div class="text-secondary small d-flex align-items-center gap-1">
+                                <tabler-icon name="phone" class="icon-sm" />
+                                {{ p.user.phone || '—' }}
+                              </div>
+                              <div class="text-secondary small d-flex align-items-center gap-1">
+                                <tabler-icon name="building" class="icon-sm" />
+                                @if (p.apartment) {
+                                  {{ apartmentLabel(p.apartment) }}
+                                } @else {
+                                  Sin apartamento
+                                }
+                              </div>
+                              <span class="badge bg-secondary-lt text-secondary mt-1" style="font-size: 0.7rem">
+                                {{ participantTypeLabel[p.participantType] }}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+
+                <!-- Adjuntos -->
+                <div class="card card-sm mt-3">
                   <div class="card-header">
                     <h4 class="card-title">
                       <tabler-icon name="paperclip" class="me-1 icon-sm" />
@@ -299,10 +350,10 @@
             [class.show]="activeTab() === 'comments'"
             role="tabpanel"
           >
-            <div class="row g-4 align-items-start">
+            <div class="row justify-content-center">
 
               <!-- ── Conversación + formulario ─────────────────────────────────── -->
-              <div class="col-12 col-lg-8">
+              <div class="col-12 col-lg-9">
 
                 <h3 class="card-title mb-3">Historial de comentarios</h3>
 
@@ -397,51 +448,6 @@
                   </div>
                 </form>
 
-              </div>
-
-              <!-- ── Participantes ─────────────────────────────────────────────── -->
-              <div class="col-12 col-lg-4">
-                <div class="card card-sm">
-                  <div class="card-header">
-                    <h4 class="card-title">
-                      <tabler-icon name="users" class="me-1 icon-sm" />
-                      Participantes
-                    </h4>
-                    <div class="card-actions">
-                      <span class="badge bg-secondary-lt text-secondary">{{ d.participants.length }}</span>
-                    </div>
-                  </div>
-                  @if (d.participants.length === 0) {
-                    <div class="card-body text-center text-secondary py-4 small">
-                      Sin participantes registrados.
-                    </div>
-                  } @else {
-                    <div class="list-group list-group-flush">
-                      @for (p of d.participants; track p.id) {
-                        <div class="list-group-item py-3">
-                          <div class="d-flex align-items-start gap-2">
-                            <span
-                              class="avatar avatar-sm rounded-circle bg-secondary-lt text-secondary fw-bold flex-shrink-0"
-                              style="font-size: 0.7rem"
-                            >
-                              {{ memberInitials(p.userId) }}
-                            </span>
-                            <div class="flex-grow-1 overflow-hidden">
-                              <div class="fw-medium text-truncate">{{ memberName(p.userId) }}</div>
-                              <div class="text-secondary small d-flex align-items-center gap-1">
-                                <tabler-icon name="phone" class="icon-sm" />
-                                {{ memberPhone(p.userId) || '—' }}
-                              </div>
-                              <span class="badge bg-secondary-lt text-secondary mt-1" style="font-size: 0.7rem">
-                                {{ participantTypeLabel[p.participantType] }}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      }
-                    </div>
-                  }
-                </div>
               </div>
 
             </div>

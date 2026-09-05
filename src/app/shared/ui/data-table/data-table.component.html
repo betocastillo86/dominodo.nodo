@@ -22,6 +22,11 @@
               <td [class]="col.class ?? ''">
                 @if (col.badgeClass?.(row); as badge) {
                   <span [class]="badge">{{ col.value(row) }}</span>
+                } @else if (col.icon) {
+                  <span class="d-inline-flex align-items-center gap-1">
+                    <tabler-icon [name]="col.icon" class="icon-sm" />
+                    {{ col.value(row) }}
+                  </span>
                 } @else {
                   {{ col.value(row) }}
                 }

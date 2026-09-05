@@ -28,6 +28,10 @@ export interface RequestDto {
   updatedAtUtc: string | null;
   createdBy: string | null;
   updatedBy: string | null;
+  /** Number of participants (reporter + followers) attached to the request. */
+  participantsCount: number;
+  /** Number of updates (comments, progress, evidence, resolution) on the request. */
+  updatesCount: number;
 }
 
 /** Ordered list of statuses for the board view columns. */
@@ -101,12 +105,29 @@ export type RequestParticipantType = 'Reporter' | 'Follower';
 export type RequestParticipantSource = 'Self' | 'AutoMatched' | 'Admin';
 export type RequestUpdateType = 'Progress' | 'Comment' | 'Evidence' | 'Resolution';
 
+/** User profile embedded in each participant by `GET /requests/{id}`. */
+export interface RequestParticipantUserDto {
+  fullName: string;
+  phone: string | null;
+  email: string | null;
+}
+
+/** Apartment embedded in each participant; null when the participant has none. */
+export interface RequestParticipantApartmentDto {
+  id: string;
+  tower: string | null;
+  number: string;
+}
+
 export interface RequestParticipantDto {
   id: string;
   userId: string;
   participantType: RequestParticipantType;
   source: RequestParticipantSource;
   joinedAtUtc: string;
+  apartmentId: string | null;
+  user: RequestParticipantUserDto;
+  apartment: RequestParticipantApartmentDto | null;
 }
 
 export interface RequestUpdateDto {

@@ -165,6 +165,18 @@ export class RequestListComponent {
       badgeClass: (r) => PRIORITY_BADGE[r.priority],
     },
     {
+      header: 'Comentarios',
+      value: (r) => r.updatesCount,
+      icon: 'message',
+      class: 'w-1 text-center text-secondary',
+    },
+    {
+      header: 'Participantes',
+      value: (r) => r.participantsCount,
+      icon: 'users',
+      class: 'w-1 text-center text-secondary',
+    },
+    {
       header: 'Fecha',
       value: (r) => this.formatDate(r.createdAtUtc),
       class: 'text-secondary text-nowrap',
