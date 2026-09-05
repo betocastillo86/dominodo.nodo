@@ -14,7 +14,10 @@ export interface TableColumn<T> {
   badgeClass?: (row: T) => string;
   /** Tabler icon rendered before the value (ignored when `badgeClass` matches). */
   icon?: string;
-  /** Optional CSS class applied to the header and cells. */
+  /**
+   * Optional CSS class applied to the header and cells. Use `table-cell-wrap`
+   * to let a long value wrap within a bounded column.
+   */
   class?: string;
 }
 
@@ -28,6 +31,18 @@ export interface TableColumn<T> {
   imports: [SpinnerComponent, RouterLink, TablerIconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './data-table.component.html',
+  styles: [
+    `
+      /* Opt-in per column (\`class: 'table-cell-wrap'\`). The table is globally
+         \`text-nowrap\`, whose utility carries !important — hence the override.
+         The width bounds keep the column from stretching the whole table. */
+      .table-cell-wrap {
+        white-space: normal !important;
+        min-width: 14rem;
+        max-width: 24rem;
+      }
+    `,
+  ],
 })
 export class DataTableComponent<T> {
   readonly columns = input.required<readonly TableColumn<T>[]>();

@@ -153,7 +153,11 @@ export class RequestListComponent {
       value: (r) => r.code,
       class: 'w-1 text-nowrap text-secondary',
     },
-    { header: 'Título', value: (r) => r.title },
+    {
+      header: 'Título',
+      value: (r) => this.truncate(r.title),
+      class: 'table-cell-wrap',
+    },
     {
       header: 'Estado',
       value: (r) => STATUS_LABEL[r.status],
@@ -236,6 +240,11 @@ export class RequestListComponent {
 
   onPageChange(page: number): void {
     this.reload(page);
+  }
+
+  /** Titles can run long; cap them so a row keeps a predictable height. */
+  private truncate(text: string, max = 150): string {
+    return text.length > max ? `${text.slice(0, max).trimEnd()}…` : text;
   }
 
   formatDate(dateStr: string): string {
