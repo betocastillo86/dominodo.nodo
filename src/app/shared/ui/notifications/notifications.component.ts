@@ -23,6 +23,14 @@ import { NotificationService, NotificationType } from '../../../core/notificatio
       }
     </div>
   `,
+  // `.toast-container` ships `pointer-events: none` so it never blocks the page
+  // behind it, and Tabler re-enables them on `.toast`. We stack `.alert`s instead,
+  // which inherit `none` — that is what made the close button unclickable.
+  styles: `
+    .alert {
+      pointer-events: auto;
+    }
+  `,
 })
 export class NotificationsComponent {
   protected readonly notifications = inject(NotificationService);
