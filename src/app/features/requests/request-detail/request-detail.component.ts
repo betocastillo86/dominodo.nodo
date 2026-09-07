@@ -33,7 +33,6 @@ import {
   RequestPriority,
   RequestStatus,
   RequestType,
-  RequestUpdateType,
   RequestVisibility,
   STATUS_BADGE,
   STATUS_LABEL,
@@ -179,11 +178,9 @@ export class RequestDetailComponent {
   readonly statusNoteControl = new FormControl<string>('', { nonNullable: true });
 
   // ── Comment form ──────────────────────────────────────────────────────────
+  // Every update posted from here is a plain comment — the type selector was
+  // dropped, so `Comment` is sent unconditionally.
   readonly commentForm = new FormGroup({
-    type: new FormControl<RequestUpdateType>('Comment', {
-      nonNullable: true,
-      validators: [Validators.required],
-    }),
     body: new FormControl<string>('', {
       nonNullable: true,
       validators: [Validators.required, Validators.maxLength(2000)],
@@ -297,15 +294,15 @@ export class RequestDetailComponent {
     if (!d) return;
 
     this.addingComment.set(true);
-    const { type, body, isInternal } = this.commentForm.getRawValue();
+    const { body, isInternal } = this.commentForm.getRawValue();
 
     this.service
-      .addUpdate(d.id, { type, body, isInternal })
+      .addUpdate(d.id, { type: 'Comment', body, isInternal })
       .pipe(finalize(() => this.addingComment.set(false)))
       .subscribe({
         next: () => {
           this.notifications.success('Respuesta agregada.');
-          this.commentForm.reset({ type: 'Comment', body: '', isInternal: false });
+          this.commentForm.reset({ body: '', isInternal: false });
           // Reload full detail to pick up the new update entry.
           this.service.getById(d.id).subscribe({
             next: (refreshed) => this.detail.set(refreshed),
