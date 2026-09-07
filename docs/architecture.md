@@ -227,6 +227,7 @@ src/app/
 │   └── navbar/             # horizontal menu; items filtered by PermissionStore + TenantStore.features
 ├── shared/ui/           # reusable presentational pieces
 │   ├── data-table/         # generic paged table (ported 1:1 from admin)
+│   ├── schedule-editor/    # weekly opening-hours control (CVA + Validator over a JSON string)
 │   ├── page-header/  spinner/  empty-state/
 │   └── notifications/      # toast host rendering NotificationService.items()
 └── features/            # lazy domains, each with data-access/ + components
@@ -241,11 +242,32 @@ src/app/
     ├── announcements/      # ✅ list (status/category filters) + detail + edit + publish/archive
     │                       #    data-access/ (models, announcements.service signals, status util,
     │                       #    permission codes) · announcement-list / -detail / -edit components
-    └── apartments/         # ✅ READ-ONLY apartments + resident management (permission: apartments.view;
+    ├── apartments/         # ✅ READ-ONLY apartments + resident management (permission: apartments.view;
                             #    no FeatureKey.Apartments exists server-side, so no feature gate)
                             #    data-access/ (apartment.models, apartments.service signals,
                             #    residents-lookup.service) · apartment-list / -detail components
+    └── tenant-info/        # ✅ "Mi Conjunto": single-record contact-info form (GET/PUT /tenants/info)
+                            #    guarded by the `tenant.info` permission (read + write in one code);
+                            #    saving goes through a confirmation modal · no feature gate
 ```
+
+### Opening hours (`schedules`)
+
+`TenantSettings.Schedules` is a free-text `string` (required, max 1000) on the API, and
+`dominodo.admin` still edits it as a plain textarea. Nodo writes a structured envelope into that same
+column via `shared/ui/schedule-editor`:
+
+```json
+{"v":1,"d":{"mon":["08:00-12:00","14:00-18:00"],"tue":["08:00-17:00"]}}
+```
+
+Only open days appear; an absent day is closed. Worst case (7 days × 6 ranges) serializes to ~660
+chars, inside the 1000 cap. Hours are entered as slots only; because the column is shared, a stored
+value that is not this envelope is shown read-only in a warning banner so the admin sees what the
+save replaces (and the form stays invalid until real slots exist). `formatSchedule()` in
+`schedule-editor/schedule.model.ts` renders the envelope as the sentence a resident reads — reuse it
+instead of re-parsing. Nothing outside the Tenants module consumes `Schedules` today; any future
+consumer (resident app, WhatsApp bot) must handle both shapes.
 
 **Apartments — the two write paths.** Apartments themselves are never created, edited or deleted here;
 what the administrator manages is the resident list of `GET /apartments/{id}/residents`. Adding one

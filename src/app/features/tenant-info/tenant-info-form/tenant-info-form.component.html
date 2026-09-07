@@ -1,0 +1,130 @@
+<app-page-header [title]="'Mi Conjunto'" [pretitle]="tenantName" />
+
+@if (loading()) {
+  <app-spinner />
+} @else if (loadError()) {
+  <div class="alert alert-danger" role="alert">{{ loadError() }}</div>
+} @else {
+  <form [formGroup]="form" (ngSubmit)="confirmSave(confirmTpl)">
+    <div class="card">
+      <div class="card-body">
+        @if (formError(); as message) {
+          <div class="alert alert-danger" role="alert">{{ message }}</div>
+        }
+
+        <p class="text-secondary">
+          Estos datos son los que ven los residentes cuando necesitan contactar a la administración.
+        </p>
+
+        <div class="row">
+          <div class="col-12 col-md-6 mb-3">
+            <label class="form-label required" for="phone">Teléfono de contacto</label>
+            <input
+              id="phone"
+              type="text"
+              class="form-control"
+              formControlName="phone"
+              [class.is-invalid]="form.controls.phone.invalid && form.controls.phone.touched"
+            />
+            @if (form.controls.phone.invalid && form.controls.phone.touched) {
+              <div class="invalid-feedback">El teléfono es obligatorio (máx. 50 caracteres).</div>
+            }
+          </div>
+
+          <div class="col-12 col-md-6 mb-3">
+            <label class="form-label required" for="administratorName">Nombre del administrador</label>
+            <input
+              id="administratorName"
+              type="text"
+              class="form-control"
+              formControlName="administratorName"
+              [class.is-invalid]="
+                form.controls.administratorName.invalid && form.controls.administratorName.touched
+              "
+            />
+            @if (form.controls.administratorName.invalid && form.controls.administratorName.touched) {
+              <div class="invalid-feedback">
+                El nombre del administrador es obligatorio (máx. 200 caracteres).
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label" for="address">Dirección</label>
+          <input
+            id="address"
+            type="text"
+            class="form-control"
+            formControlName="address"
+            [class.is-invalid]="form.controls.address.invalid"
+          />
+          @if (form.controls.address.invalid) {
+            <div class="invalid-feedback">Máximo 300 caracteres.</div>
+          }
+        </div>
+
+        <div class="mb-3">
+          <!-- No `for`: the editor is a component, not a labelable control; each
+               inner input carries its own aria-label. -->
+          <span class="form-label required d-block">Horarios de atención</span>
+          <app-schedule-editor formControlName="schedules" [showErrors]="submitted()" />
+          @if (submitted() && form.controls.schedules.invalid) {
+            <div class="text-danger small mt-1">
+              @if (form.controls.schedules.errors?.['required']) {
+                Indica al menos un día con su horario de atención.
+              } @else if (form.controls.schedules.errors?.['overlappingRanges']) {
+                Hay franjas que se cruzan dentro de un mismo día.
+              } @else if (form.controls.schedules.errors?.['maxlength']) {
+                El horario es demasiado largo (máx. 1000 caracteres).
+              } @else {
+                Revisa las franjas marcadas: la hora de fin debe ser posterior a la de inicio.
+              }
+            </div>
+          }
+        </div>
+
+        <div class="mb-0">
+          <label class="form-label" for="additionalInfo">Información adicional</label>
+          <textarea
+            id="additionalInfo"
+            rows="4"
+            class="form-control"
+            formControlName="additionalInfo"
+            [class.is-invalid]="form.controls.additionalInfo.invalid"
+          ></textarea>
+          @if (form.controls.additionalInfo.invalid) {
+            <div class="invalid-feedback">Máximo 1000 caracteres.</div>
+          }
+          <small class="form-hint">Cualquier indicación extra que los residentes deban conocer.</small>
+        </div>
+      </div>
+
+      <div class="card-footer d-flex">
+        <button type="submit" class="btn btn-primary ms-auto" [disabled]="saving()">
+          @if (saving()) {
+            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+          } @else {
+            <tabler-icon name="device-floppy" class="me-1" />
+          }
+          Guardar cambios
+        </button>
+      </div>
+    </div>
+  </form>
+
+  <ng-template #confirmTpl let-modal>
+    <div class="modal-header">
+      <h5 class="modal-title">Guardar información del conjunto</h5>
+      <button type="button" class="btn-close" (click)="modal.dismiss()"></button>
+    </div>
+    <div class="modal-body">
+      Los datos de contacto quedarán actualizados para todos los residentes del conjunto.
+      ¿Deseas guardar los cambios?
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-link link-secondary" (click)="modal.dismiss()">Cancelar</button>
+      <button type="button" class="btn btn-primary" (click)="modal.close()">Guardar</button>
+    </div>
+  </ng-template>
+}

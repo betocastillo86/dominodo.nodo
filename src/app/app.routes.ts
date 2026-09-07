@@ -61,6 +61,12 @@ export const routes: Routes = [
             (m) => m.knowledgeResourcesRoutes,
           ),
       },
+      {
+        path: 'tenant-info',
+        canActivate: [permissionGuard('tenant.info')],
+        loadChildren: () =>
+          import('./features/tenant-info/tenant-info.routes').then((m) => m.tenantInfoRoutes),
+      },
       { path: '', pathMatch: 'full', redirectTo: 'requests' },
       { path: '**', redirectTo: 'requests' },
     ],

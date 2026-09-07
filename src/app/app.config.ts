@@ -8,12 +8,16 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 import { provideTablerIcons } from 'angular-tabler-icons';
 import {
+  IconAlertTriangle,
   IconArchive,
   IconArrowLeft,
   IconArrowRight,
   IconBook,
   IconBuilding,
   IconBuildingCommunity,
+  IconChevronDown,
+  IconChevronUp,
+  IconCopy,
   IconDeviceFloppy,
   IconDownload,
   IconEdit,
@@ -34,6 +38,7 @@ import {
   IconSearch,
   IconSend,
   IconSpeakerphone,
+  IconTrash,
   IconUserCircle,
   IconUserMinus,
   IconUserPlus,
@@ -96,6 +101,12 @@ export const appConfig: ApplicationConfig = {
       IconUserMinus,
       // Knowledge Resources module
       IconBook,
+      // Mi Conjunto — schedule editor
+      IconChevronDown,
+      IconChevronUp,
+      IconCopy,
+      IconTrash,
+      IconAlertTriangle,
       // New-version banner
       IconRefresh,
     }),

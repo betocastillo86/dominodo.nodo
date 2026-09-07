@@ -74,6 +74,14 @@ export class NavbarComponent {
       permission: 'knowledge.view',
       feature: 'KnowledgeResources',
     },
+    // `tenant.info` is a single permission covering both read and write of the
+    // conjunto's own contact info; no FeatureKey gates it.
+    {
+      label: 'Mi Conjunto',
+      path: '/tenant-info',
+      icon: 'building-community',
+      permission: 'tenant.info',
+    },
   ]);
 
   /** Items the current user + tenant are allowed to see. */
