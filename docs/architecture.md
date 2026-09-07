@@ -258,11 +258,13 @@ src/app/
 column via `shared/ui/schedule-editor`:
 
 ```json
-{"v":1,"d":{"mon":["08:00-12:00","14:00-18:00"],"tue":["08:00-17:00"]}}
+{"v":1,"d":{"mon":["08:00-12:00","14:00-18:00"],"tue":["08:00-17:00"],"hol":["09:00-13:00"]}}
 ```
 
-Only open days appear; an absent day is closed. Worst case (7 days × 6 ranges) serializes to ~660
-chars, inside the 1000 cap. Hours are entered as slots only; because the column is shared, a stored
+Keys are the seven weekdays plus `hol` (public holidays, always serialized last). Only open days
+appear; an absent day is closed. `hol` never joins a "Lunes a viernes" run in `formatSchedule()` —
+it reads as its own trailing clause. Worst case (8 rows × 6 ranges) serializes to ~750 chars, inside
+the 1000 cap. Hours are entered as slots only; because the column is shared, a stored
 value that is not this envelope is shown read-only in a warning banner so the admin sees what the
 save replaces (and the form stays invalid until real slots exist). `formatSchedule()` in
 `schedule-editor/schedule.model.ts` renders the envelope as the sentence a resident reads — reuse it

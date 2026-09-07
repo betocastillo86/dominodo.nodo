@@ -19,16 +19,17 @@ import { TablerIconComponent } from 'angular-tabler-icons';
 import {
   formatRanges,
   formatSchedule,
+  HOLIDAY_KEY,
   isRangeValid,
   MAX_RANGES_PER_DAY,
   MAX_SERIALIZED_LENGTH,
   overlappingIndexes,
   parseSchedule,
+  SCHEDULE_ENTRIES,
+  ScheduleEntry,
+  ScheduleKey,
   serializeSchedule,
   TimeRange,
-  Weekday,
-  WeekdayKey,
-  WEEKDAYS,
   WeeklySchedule,
 } from './schedule.model';
 
@@ -71,11 +72,13 @@ export class ScheduleEditorComponent implements ControlValueAccessor, Validator 
   /** Surfaces validation messages only once the parent form was submitted. */
   readonly showErrors = input(false);
 
-  readonly weekdays = WEEKDAYS;
+  /** The seven weekdays plus the holidays row, in render order. */
+  readonly entries = SCHEDULE_ENTRIES;
+  readonly holidayKey = HOLIDAY_KEY;
   readonly maxRangesPerDay = MAX_RANGES_PER_DAY;
 
   readonly schedule = signal<WeeklySchedule>({});
-  readonly expanded = signal<WeekdayKey | null>(null);
+  readonly expanded = signal<ScheduleKey | null>(null);
   readonly disabled = signal(false);
 
   /**
@@ -128,8 +131,8 @@ export class ScheduleEditorComponent implements ControlValueAccessor, Validator 
   validate(_control: AbstractControl): ValidationErrors | null {
     if (this.openDayCount() === 0) return { required: true };
 
-    for (const day of WEEKDAYS) {
-      const ranges = this.schedule()[day.key] ?? [];
+    for (const entry of SCHEDULE_ENTRIES) {
+      const ranges = this.schedule()[entry.key] ?? [];
       if (ranges.some((range) => !isRangeValid(range))) {
         return { invalidRange: true };
       }
@@ -147,19 +150,19 @@ export class ScheduleEditorComponent implements ControlValueAccessor, Validator 
 
   // --- Day rows -------------------------------------------------------------
 
-  isOpen(key: WeekdayKey): boolean {
+  isOpen(key: ScheduleKey): boolean {
     return (this.schedule()[key]?.length ?? 0) > 0;
   }
 
-  rangesFor(key: WeekdayKey): readonly TimeRange[] {
+  rangesFor(key: ScheduleKey): readonly TimeRange[] {
     return this.schedule()[key] ?? [];
   }
 
-  summaryFor(key: WeekdayKey): string {
+  summaryFor(key: ScheduleKey): string {
     return formatRanges(this.rangesFor(key));
   }
 
-  toggleDay(key: WeekdayKey): void {
+  toggleDay(key: ScheduleKey): void {
     if (this.disabled()) return;
 
     if (this.isOpen(key)) {
@@ -174,12 +177,12 @@ export class ScheduleEditorComponent implements ControlValueAccessor, Validator 
     this.onTouched();
   }
 
-  toggleExpanded(key: WeekdayKey): void {
+  toggleExpanded(key: ScheduleKey): void {
     if (!this.isOpen(key)) return;
     this.expanded.update((current) => (current === key ? null : key));
   }
 
-  addRange(key: WeekdayKey): void {
+  addRange(key: ScheduleKey): void {
     if (this.disabled()) return;
     const ranges = this.rangesFor(key);
     if (ranges.length >= MAX_RANGES_PER_DAY) return;
@@ -194,7 +197,7 @@ export class ScheduleEditorComponent implements ControlValueAccessor, Validator 
     this.onTouched();
   }
 
-  removeRange(key: WeekdayKey, index: number): void {
+  removeRange(key: ScheduleKey, index: number): void {
     if (this.disabled()) return;
     this.mutate((draft) => {
       const remaining = (draft[key] ?? []).filter((_, i) => i !== index);
@@ -208,7 +211,7 @@ export class ScheduleEditorComponent implements ControlValueAccessor, Validator 
     this.onTouched();
   }
 
-  updateRange(key: WeekdayKey, index: number, edge: 'from' | 'to', value: string): void {
+  updateRange(key: ScheduleKey, index: number, edge: 'from' | 'to', value: string): void {
     if (this.disabled()) return;
     this.mutate((draft) => {
       const ranges = [...(draft[key] ?? [])];
@@ -220,7 +223,7 @@ export class ScheduleEditorComponent implements ControlValueAccessor, Validator 
   }
 
   /** Replace `target`'s hours with `source`'s (the copy action in the day row). */
-  copyDayTo(source: WeekdayKey, target: WeekdayKey): void {
+  copyDayTo(source: ScheduleKey, target: ScheduleKey): void {
     if (this.disabled() || source === target) return;
     this.mutate((draft) => {
       draft[target] = (draft[source] ?? []).map((range) => ({ ...range }));
@@ -228,12 +231,12 @@ export class ScheduleEditorComponent implements ControlValueAccessor, Validator 
     this.onTouched();
   }
 
-  /** The other six days, used by the copy dropdown. */
-  otherDays(key: WeekdayKey): readonly Weekday[] {
-    return WEEKDAYS.filter((day) => day.key !== key);
+  /** Every other row (holidays included), used by the copy dropdown. */
+  otherEntries(key: ScheduleKey): readonly ScheduleEntry[] {
+    return SCHEDULE_ENTRIES.filter((entry) => entry.key !== key);
   }
 
-  isRangeInvalid(key: WeekdayKey, index: number): boolean {
+  isRangeInvalid(key: ScheduleKey, index: number): boolean {
     const range = this.rangesFor(key)[index];
     if (!range) return false;
     return !isRangeValid(range) || overlappingIndexes(this.rangesFor(key)).has(index);
@@ -248,7 +251,7 @@ export class ScheduleEditorComponent implements ControlValueAccessor, Validator 
   private mutate(change: (draft: WeeklySchedule) => void): void {
     const draft: WeeklySchedule = {};
     for (const [key, ranges] of Object.entries(this.schedule())) {
-      draft[key as WeekdayKey] = ranges ? [...ranges] : ranges;
+      draft[key as ScheduleKey] = ranges ? [...ranges] : ranges;
     }
     change(draft);
     this.schedule.set(draft);

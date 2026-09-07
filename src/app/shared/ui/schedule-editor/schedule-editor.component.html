@@ -10,7 +10,12 @@
   </div>
 }
 
-@for (day of weekdays; track day.key) {
+@for (day of entries; track day.key) {
+  @if (day.key === holidayKey) {
+    <!-- Holidays are not part of the week; the rule detaches them from it. -->
+    <hr class="my-3" />
+  }
+
   <div class="card mb-2" [class.card-active]="expanded() === day.key">
     <div class="card-body p-2 d-flex align-items-center gap-2">
       <label class="form-check form-check-single form-switch mb-0">
@@ -117,7 +122,7 @@
               Copiar a…
             </button>
             <div ngbDropdownMenu>
-              @for (target of otherDays(day.key); track target.key) {
+              @for (target of otherEntries(day.key); track target.key) {
                 <button type="button" ngbDropdownItem (click)="copyDayTo(day.key, target.key)">
                   {{ target.label }}
                 </button>

@@ -18,14 +18,21 @@
 
 export type WeekdayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
 
-export interface Weekday {
-  key: WeekdayKey;
+/** Public holidays. Not a weekday — it never joins a "Lunes a viernes" run. */
+export const HOLIDAY_KEY = 'hol';
+export type HolidayKey = typeof HOLIDAY_KEY;
+
+/** Anything the schedule can be keyed by. */
+export type ScheduleKey = WeekdayKey | HolidayKey;
+
+export interface ScheduleEntry {
+  key: ScheduleKey;
   /** Spanish label shown in the editor. */
   label: string;
 }
 
 /** Monday-first, matching how Spanish-speaking users read a week. */
-export const WEEKDAYS: readonly Weekday[] = [
+export const WEEKDAYS: readonly ScheduleEntry[] = [
   { key: 'mon', label: 'Lunes' },
   { key: 'tue', label: 'Martes' },
   { key: 'wed', label: 'Miércoles' },
@@ -35,6 +42,11 @@ export const WEEKDAYS: readonly Weekday[] = [
   { key: 'sun', label: 'Domingo' },
 ];
 
+export const HOLIDAY: ScheduleEntry = { key: HOLIDAY_KEY, label: 'Festivos' };
+
+/** Every row the editor renders, in order: the week, then holidays. */
+export const SCHEDULE_ENTRIES: readonly ScheduleEntry[] = [...WEEKDAYS, HOLIDAY];
+
 /** A single open interval within a day. Times are zero-padded `HH:mm` (24h). */
 export interface TimeRange {
   from: string;
@@ -42,19 +54,19 @@ export interface TimeRange {
 }
 
 /** Open ranges per day. A missing/empty key means the day is closed. */
-export type WeeklySchedule = Partial<Record<WeekdayKey, TimeRange[]>>;
+export type WeeklySchedule = Partial<Record<ScheduleKey, TimeRange[]>>;
 
 /** Guardrail so a pathological schedule can never exceed the API's 1000 chars. */
 export const MAX_RANGES_PER_DAY = 6;
 export const MAX_SERIALIZED_LENGTH = 1000;
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
-const VALID_KEYS = new Set<string>(WEEKDAYS.map((d) => d.key));
+const VALID_KEYS = new Set<string>(SCHEDULE_ENTRIES.map((entry) => entry.key));
 
 /** Envelope actually written to the API. */
 interface ScheduleEnvelope {
   v: 1;
-  d: Partial<Record<WeekdayKey, string[]>>;
+  d: Partial<Record<ScheduleKey, string[]>>;
 }
 
 /**
@@ -82,7 +94,7 @@ export function parseSchedule(raw: string | null | undefined): WeeklySchedule | 
       .filter((range): range is TimeRange => range !== null && isRangeValid(range));
 
     if (ranges.length > 0) {
-      schedule[key as WeekdayKey] = ranges.slice(0, MAX_RANGES_PER_DAY);
+      schedule[key as ScheduleKey] = ranges.slice(0, MAX_RANGES_PER_DAY);
     }
   }
 
@@ -92,12 +104,12 @@ export function parseSchedule(raw: string | null | undefined): WeeklySchedule | 
 
 /** Serialize to the wire envelope, dropping closed days. */
 export function serializeSchedule(schedule: WeeklySchedule): string {
-  const days: Partial<Record<WeekdayKey, string[]>> = {};
+  const days: Partial<Record<ScheduleKey, string[]>> = {};
 
-  for (const day of WEEKDAYS) {
-    const ranges = schedule[day.key];
+  for (const entry of SCHEDULE_ENTRIES) {
+    const ranges = schedule[entry.key];
     if (ranges?.length) {
-      days[day.key] = ranges.map((r) => `${r.from}-${r.to}`);
+      days[entry.key] = ranges.map((r) => `${r.from}-${r.to}`);
     }
   }
 
@@ -114,8 +126,9 @@ export function serializeSchedule(schedule: WeeklySchedule): string {
  * the stored JSON without re-implementing the grouping.
  */
 export function formatSchedule(schedule: WeeklySchedule): string {
-  const groups: { days: Weekday[]; ranges: TimeRange[] }[] = [];
+  const groups: { days: ScheduleEntry[]; ranges: TimeRange[] }[] = [];
 
+  // Only weekdays collapse into runs — "Viernes a festivos" would be nonsense.
   for (const day of WEEKDAYS) {
     const ranges = schedule[day.key];
     if (!ranges?.length) continue;
@@ -133,9 +146,17 @@ export function formatSchedule(schedule: WeeklySchedule): string {
     }
   }
 
-  return groups
-    .map((group) => `${labelForDays(group.days)}: ${formatRanges(group.ranges)}`)
-    .join(' · ');
+  const parts = groups.map(
+    (group) => `${labelForDays(group.days)}: ${formatRanges(group.ranges)}`,
+  );
+
+  // Holidays always read as their own trailing clause.
+  const holidays = schedule[HOLIDAY_KEY];
+  if (holidays?.length) {
+    parts.push(`${HOLIDAY.label}: ${formatRanges(holidays)}`);
+  }
+
+  return parts.join(' · ');
 }
 
 /** Compact "8:00 – 12:00, 14:00 – 18:00" used in the collapsed day row. */
@@ -191,7 +212,7 @@ function sameRanges(a: readonly TimeRange[], b: readonly TimeRange[]): boolean {
   return a.length === b.length && a.every((r, i) => r.from === b[i].from && r.to === b[i].to);
 }
 
-function labelForDays(days: readonly Weekday[]): string {
+function labelForDays(days: readonly ScheduleEntry[]): string {
   if (days.length === 1) return days[0].label;
   // Only the first day opens the phrase, so the rest stay lowercase in Spanish.
   if (days.length === 2) return `${days[0].label} y ${lower(days[1].label)}`;
