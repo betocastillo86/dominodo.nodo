@@ -8,6 +8,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 import { provideTablerIcons } from 'angular-tabler-icons';
 import {
+  IconAddressBook,
   IconAlertTriangle,
   IconArchive,
   IconArrowLeft,
@@ -15,6 +16,7 @@ import {
   IconBook,
   IconBuilding,
   IconBuildingCommunity,
+  IconCheck,
   IconChevronDown,
   IconChevronUp,
   IconCopy,
@@ -31,14 +33,17 @@ import {
   IconListDetails,
   IconLogout,
   IconMessage,
+  IconPalette,
   IconPaperclip,
   IconPhone,
+  IconPhoto,
   IconPlus,
   IconRefresh,
   IconSearch,
   IconSend,
   IconSpeakerphone,
   IconTrash,
+  IconUpload,
   IconUserCircle,
   IconUserMinus,
   IconUserPlus,
@@ -101,7 +106,12 @@ export const appConfig: ApplicationConfig = {
       IconUserMinus,
       // Knowledge Resources module
       IconBook,
-      // Mi Conjunto — schedule editor
+      // Mi Conjunto — tabs, schedule editor and branding
+      IconAddressBook,
+      IconPalette,
+      IconPhoto,
+      IconUpload,
+      IconCheck,
       IconChevronDown,
       IconChevronUp,
       IconCopy,

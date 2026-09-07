@@ -1,6 +1,7 @@
 import { inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { resolveTenantSlug } from './tenant-resolver';
+import { applyPrimaryColor, applyTenantTheme } from './tenant-theme';
 import { TenantProfile } from './tenant.models';
 import { TenantService } from './tenant.service';
 import { TenantStore } from './tenant.store';
@@ -47,12 +48,17 @@ export function tenantBootstrap(): () => Promise<void> {
   };
 }
 
-/** Apply tenant branding to the document: title, favicon, primary color. */
+/** Apply tenant branding to the document: title, favicon, theme palette. */
 function applyBranding(profile: TenantProfile): void {
   document.title = profile.name;
 
-  if (profile.branding.primaryColor) {
-    document.documentElement.style.setProperty('--tb-primary', profile.branding.primaryColor);
+  if (profile.branding.theme) {
+    applyTenantTheme(profile.branding.theme);
+  } else if (profile.branding.primaryColor) {
+    // Legacy path: no theme saved yet, only the fallback primary color. It goes
+    // through the same helper so the branded top bar still gets a readable
+    // foreground instead of Tabler's default white.
+    applyPrimaryColor(profile.branding.primaryColor);
   }
 
   if (profile.branding.logoUrl) {

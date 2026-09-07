@@ -12,8 +12,6 @@ import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { TablerIconComponent } from 'angular-tabler-icons';
 import { toMessage } from '../../../core/http/problem-details';
 import { NotificationService } from '../../../core/notifications/notification.service';
-import { TenantStore } from '../../../core/tenant/tenant.store';
-import { PageHeaderComponent } from '../../../shared/ui/page-header/page-header.component';
 import { ScheduleEditorComponent } from '../../../shared/ui/schedule-editor/schedule-editor.component';
 import { SpinnerComponent } from '../../../shared/ui/spinner/spinner.component';
 import { TenantContactInfoDto, UpdateTenantInfoRequest } from '../data-access/tenant-info.models';
@@ -25,7 +23,6 @@ import { TenantInfoService } from '../data-access/tenant-info.service';
   imports: [
     ReactiveFormsModule,
     TablerIconComponent,
-    PageHeaderComponent,
     ScheduleEditorComponent,
     SpinnerComponent,
   ],
@@ -37,7 +34,6 @@ export class TenantInfoFormComponent implements OnInit {
   private readonly service = inject(TenantInfoService);
   private readonly notifications = inject(NotificationService);
   private readonly modal = inject(NgbModal);
-  private readonly tenant = inject(TenantStore);
 
   readonly loading = signal(true);
   readonly loadError = signal<string | null>(null);
@@ -45,9 +41,6 @@ export class TenantInfoFormComponent implements OnInit {
   readonly formError = signal<string | null>(null);
   /** Gates the schedule editor's inline errors until the first save attempt. */
   readonly submitted = signal(false);
-
-  /** Shown as the page pretitle so the admin sees which conjunto they are editing. */
-  readonly tenantName = this.tenant.tenant()?.name ?? '';
 
   readonly form = this.fb.group({
     phone: this.fb.nonNullable.control('', [Validators.required, Validators.maxLength(50)]),

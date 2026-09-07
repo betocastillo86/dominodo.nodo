@@ -52,6 +52,7 @@ function normalize(response: TenantCurrentResponse, slug: string): TenantProfile
     // API does not return status yet → treat a successful read as an active tenant.
     status: response.status ?? 'Active',
     branding: {
+      theme: response.branding?.theme ?? null,
       logoUrl: response.branding?.logoUrl ?? null,
       primaryColor: response.branding?.primaryColor ?? DEFAULT_PRIMARY_COLOR,
       loginText: response.branding?.loginText ?? null,
@@ -68,6 +69,7 @@ function fallbackProfile(slug: string): TenantProfile {
     name: titleize(slug),
     status: 'Active',
     branding: {
+      theme: null,
       logoUrl: null,
       primaryColor: DEFAULT_PRIMARY_COLOR,
       loginText: null,

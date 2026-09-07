@@ -9,6 +9,9 @@ import { VersionCheckService } from '../../core/version/version-check.service';
 /**
  * Tabler horizontal header: tenant logo + name (from TenantStore) on the left,
  * user menu (from AuthStore) with logout on the right.
+ *
+ * The bar keeps Tabler's neutral surface — the theme color shows through the
+ * brand icon here and through the active nav underline in the menu below.
  */
 @Component({
   selector: 'app-header',

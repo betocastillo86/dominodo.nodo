@@ -246,7 +246,9 @@ src/app/
                             #    no FeatureKey.Apartments exists server-side, so no feature gate)
                             #    data-access/ (apartment.models, apartments.service signals,
                             #    residents-lookup.service) · apartment-list / -detail components
-    └── tenant-info/        # ✅ "Mi Conjunto": single-record contact-info form (GET/PUT /tenants/info)
+    └── tenant-info/        # ✅ "Mi Conjunto": tabs — contact info (GET/PUT /tenants/info) and
+                            #    branding: theme + logo (GET/PUT /tenants/branding, and
+                            #    POST /tenants/files/upload-url → direct-to-blob upload)
                             #    guarded by the `tenant.info` permission (read + write in one code);
                             #    saving goes through a confirmation modal · no feature gate
 ```

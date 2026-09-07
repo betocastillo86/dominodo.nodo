@@ -1,0 +1,154 @@
+@if (loading()) {
+  <app-spinner />
+} @else if (loadError()) {
+  <div class="alert alert-danger" role="alert">{{ loadError() }}</div>
+} @else {
+  <div class="card">
+    <div class="card-body">
+      @if (formError(); as message) {
+        <div class="alert alert-danger" role="alert">{{ message }}</div>
+      }
+
+      <p class="text-secondary">
+        El color y el logo se aplican en todo el portal del conjunto.
+      </p>
+
+      <!-- ── COLOR PRINCIPAL ──────────────────────────────────────────────── -->
+      <div class="mb-4">
+        <span class="form-label d-block">Color principal</span>
+        <div class="row g-2" role="radiogroup" aria-label="Color principal del conjunto">
+          @for (option of themes; track option.value) {
+            <div class="col-6 col-sm-4 col-lg-3">
+              <button
+                type="button"
+                role="radio"
+                class="btn w-100 d-flex align-items-center justify-content-start gap-2"
+                [class.btn-outline-secondary]="theme() !== option.value"
+                [class.btn-primary]="theme() === option.value"
+                [attr.aria-checked]="theme() === option.value"
+                [disabled]="saving()"
+                (click)="selectTheme(option.value)"
+              >
+                <span
+                  class="rounded-circle border flex-shrink-0"
+                  style="width: 1rem; height: 1rem"
+                  [style.background-color]="option.color"
+                ></span>
+                <span class="text-truncate">{{ option.label }}</span>
+                @if (theme() === option.value) {
+                  <tabler-icon name="check" class="ms-auto" />
+                }
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- ── LOGO ─────────────────────────────────────────────────────────── -->
+      <div class="mb-0">
+        <span class="form-label d-block">Logo del conjunto</span>
+
+        @if (logoKeyUnresolved()) {
+          <div class="alert alert-warning" role="alert">
+            <tabler-icon name="alert-triangle" class="me-1" />
+            No se pudo identificar el archivo del logo actual. Si guardas sin volver a subirlo, el
+            logo se eliminará.
+          </div>
+        }
+
+        <div class="d-flex flex-wrap align-items-center gap-3">
+          <span class="avatar avatar-xl rounded bg-muted-lt">
+            @if (logoUrl(); as url) {
+              <img [src]="url" alt="Logo del conjunto" class="w-100 h-100 object-fit-contain" />
+            } @else {
+              <tabler-icon name="photo" class="text-secondary" />
+            }
+          </span>
+
+          <div class="d-flex flex-column gap-2">
+            <div class="d-flex flex-wrap gap-2">
+              <label class="btn" [class.disabled]="uploading() || saving()">
+                @if (uploading()) {
+                  <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                } @else {
+                  <tabler-icon name="upload" class="me-1" />
+                }
+                {{ logoUrl() ? 'Cambiar logo' : 'Subir logo' }}
+                <input
+                  type="file"
+                  class="d-none"
+                  [accept]="acceptedTypes"
+                  [disabled]="uploading() || saving()"
+                  (change)="onLogoSelected($event)"
+                />
+              </label>
+
+              @if (logoUrl()) {
+                <button
+                  type="button"
+                  class="btn btn-ghost-danger"
+                  [disabled]="uploading() || saving()"
+                  (click)="removeLogo()"
+                >
+                  <tabler-icon name="trash" class="me-1" />
+                  Quitar logo
+                </button>
+              }
+            </div>
+            <small class="form-hint">
+              PNG, JPG o WEBP, máximo {{ maxBytesLabel }}. La imagen se ajusta automáticamente a un
+              cuadrado de 256×256 sin recortarse.
+            </small>
+          </div>
+        </div>
+
+        @if (logoError(); as message) {
+          <div class="text-danger small mt-2">{{ message }}</div>
+        }
+      </div>
+    </div>
+
+    <div class="card-footer d-flex align-items-center">
+      @if (dirty()) {
+        <span class="text-secondary small">Tienes cambios sin guardar.</span>
+      }
+      <button
+        type="button"
+        class="btn btn-primary ms-auto"
+        [disabled]="saving() || uploading() || !dirty()"
+        (click)="confirmSave(confirmTpl)"
+      >
+        @if (saving()) {
+          <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+        } @else {
+          <tabler-icon name="device-floppy" class="me-1" />
+        }
+        Guardar cambios
+      </button>
+    </div>
+  </div>
+
+  <ng-template #confirmTpl let-modal>
+    <div class="modal-header">
+      <h5 class="modal-title">Guardar tema del conjunto</h5>
+      <button type="button" class="btn-close" (click)="modal.dismiss()"></button>
+    </div>
+    <div class="modal-body">
+      <p class="mb-0">
+        El color y el logo cambiarán para todos los administradores del conjunto. ¿Deseas guardar
+        los cambios?
+      </p>
+      @if (logoKeyUnresolved()) {
+        <p class="text-danger mt-2 mb-0">
+          Ten en cuenta que el logo actual se eliminará porque no se pudo identificar su archivo.
+        </p>
+      }
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-link link-secondary" (click)="modal.dismiss()">
+        Cancelar
+      </button>
+      <button type="button" class="btn btn-primary" (click)="modal.close()">Guardar</button>
+    </div>
+  </ng-template>
+}

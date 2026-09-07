@@ -1,5 +1,5 @@
 import { computed, Injectable, signal } from '@angular/core';
-import { TenantProfile } from './tenant.models';
+import { TenantBranding, TenantProfile } from './tenant.models';
 
 /**
  * Root signal store for the resolved tenant. Written ONLY by the bootstrap step
@@ -20,6 +20,7 @@ export class TenantStore {
 
   readonly name = computed(() => this._tenant()?.name ?? null);
   readonly logoUrl = computed(() => this._tenant()?.branding.logoUrl ?? null);
+  readonly theme = computed(() => this._tenant()?.branding.theme ?? null);
   readonly loginText = computed(() => this._tenant()?.branding.loginText ?? null);
 
   /** True when the resolved tenant enables the given feature key. */
@@ -43,5 +44,16 @@ export class TenantStore {
 
   setError(error: boolean): void {
     this._error.set(error);
+  }
+
+  /**
+   * Refreshes branding after the "Mi Conjunto → Tema" tab saves it, so the
+   * header logo and the palette follow without a reload. The only write the
+   * bootstrap does not own — everything else about the tenant stays fixed.
+   */
+  setBranding(branding: TenantBranding): void {
+    const tenant = this._tenant();
+    if (!tenant) return;
+    this._tenant.set({ ...tenant, branding });
   }
 }
