@@ -83,6 +83,54 @@ literal request for `/index.html`.
 HTML — it does not cache it — and the hashed bundles change filename every release, so there is
 nothing to purge. No pipeline change, no cache-busting query strings, no edge rules.
 
+### `/reset-cache.html` — evicting the caches poisoned before the fix
+
+The `no-cache` above only protects browsers that ask. It does nothing for the ones that already
+stored `index.html` during the bad window (**2026-08-13 → 2026-08-28**, first deploy `f01070b` to
+`742edc4`): those entries carry `max-age=31536000`, stay *fresh* until August 2027, and a fresh entry
+is never revalidated. Measured on `dominodo.admin` — same hosting, same window — via Cloudflare's RUM
+beacon, on a cold load of `/`:
+
+```json
+{ "nt": "navigate", "dt": "cache", "timingsV2": { "transferSize": 0, "decodedBodySize": 28782 } }
+```
+
+`transferSize: 0` — not a 304, not a slow request. **No request.** The browser boots the August
+bundle without contacting the server, so no header, rewrite rule or redirect can reach it. Clearing
+the browser cache is also unreliable: Chrome's dialog defaults to a *Last hour* range, which leaves
+an August entry untouched.
+
+The only lever is a URL that cannot be in the cache, because it did not exist when the cache was
+poisoned. `public/reset-cache.html` is that URL:
+
+| Step | What happens |
+| --- | --- |
+| Something requests `/reset-cache.html` | Never cached → always a real network request |
+| IIS answers with `Clear-Site-Data: "cache"` | Browser **drops the entire origin cache**, poisoned `index.html` included |
+| The page redirects to `/` | Nothing left to reuse → clean fetch of the current build |
+
+Two ways in, and both are wanted:
+
+- **By hand** — send an affected user `https://<tenant>.nodo.dominodo.com/reset-cache.html`.
+- **Automatically** — `core/version/cache-heal.ts` fetches it once, ever, from `main.ts`, so anyone
+  who reaches a current build by any route is repaired silently.
+
+Notes:
+
+- **Per tenant.** `Clear-Site-Data` is scoped to the origin, so every tenant subdomain is its own
+  cache and repairs itself independently. A rescue link only fixes the host it points at.
+- Only `"cache"`. `"storage"` or `"*"` would also wipe `localStorage` and sign the user out of that
+  tenant.
+- The flag in `localStorage` is **not** keyed to the release. This repairs one historical mistake;
+  re-running it per deploy would discard every hashed bundle the user has cached, for nothing.
+- `reset-cache.html` needs its own `DisableCache` block — it is unhashed (the rule above), and a
+  cached copy would be served without ever delivering the header.
+- Safari does not support `Clear-Site-Data`; those users still need a hard reload.
+- Related hardening in the same commit: the SPA rewrite now excludes asset extensions, so a missing
+  bundle returns a real **404** instead of `index.html`. Previously a stale `index.html` pointing at a
+  deleted bundle pulled HTML into a `<script>` tag, and any legacy service worker on the origin could
+  never be unregistered (browsers drop a worker whose script 404s, but keep one answering 200 HTML).
+
 ### Version stamping and the "new version available" banner
 
 The `no-cache` on `index.html` only kicks in when the browser asks for it again — a reload, or
