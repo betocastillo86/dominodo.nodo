@@ -88,7 +88,9 @@
         [rowKey]="rowKey"
         actionIcon="eye"
         [actionLink]="detailLink"
+        [sort]="sort()"
         (pageChange)="onPageChange($event)"
+        (sortChange)="onSortChange($event)"
       />
     </div>
 

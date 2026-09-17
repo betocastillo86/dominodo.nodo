@@ -12,7 +12,11 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { TablerIconComponent } from 'angular-tabler-icons';
 import { map } from 'rxjs';
 import { PageHeaderComponent } from '../../../shared/ui/page-header/page-header.component';
-import { DataTableComponent, TableColumn } from '../../../shared/ui/data-table/data-table.component';
+import {
+  DataTableComponent,
+  TableColumn,
+  TableSort,
+} from '../../../shared/ui/data-table/data-table.component';
 import { SpinnerComponent } from '../../../shared/ui/spinner/spinner.component';
 import {
   SearchSelectComponent,
@@ -30,6 +34,8 @@ import {
   PRIORITY_LABEL,
   RequestDto,
   RequestPriority,
+  RequestSort,
+  RequestSortBy,
   RequestStatus,
   STATUS_BADGE,
   STATUS_COLOR,
@@ -112,6 +118,9 @@ export class RequestListComponent {
   // ── View mode ────────────────────────────────────────────────────────────
   readonly view = signal<ViewMode>('list');
 
+  /** List ordering (server-side); defaults to the API's own Date/Desc. */
+  readonly sort = signal<TableSort>({ key: 'Date', direction: 'desc' });
+
   /** Only holders of requests.edit may drag cards to change status. */
   readonly canEdit = computed(() => this.permissions.has('requests.edit'));
 
@@ -167,23 +176,29 @@ export class RequestListComponent {
       header: 'Prioridad',
       value: (r) => PRIORITY_LABEL[r.priority],
       badgeClass: (r) => PRIORITY_BADGE[r.priority],
+      sortKey: 'Priority',
     },
     {
+      // `Updates` counts every timeline entry (comment, progress, evidence,
+      // resolution) — the same number this column shows.
       header: 'Comentarios',
       value: (r) => r.updatesCount,
       icon: 'message',
       class: 'w-1 text-center text-secondary',
+      sortKey: 'Updates',
     },
     {
       header: 'Participantes',
       value: (r) => r.participantsCount,
       icon: 'users',
       class: 'w-1 text-center text-secondary',
+      sortKey: 'Participants',
     },
     {
       header: 'Fecha',
       value: (r) => this.formatDate(r.createdAtUtc),
       class: 'text-secondary text-nowrap',
+      sortKey: 'Date',
     },
   ];
 
@@ -242,6 +257,12 @@ export class RequestListComponent {
     this.reload(page);
   }
 
+  /** A header sort click: store the new state and reload from the first page. */
+  onSortChange(sort: TableSort): void {
+    this.sort.set(sort);
+    this.reload(1);
+  }
+
   /** Titles can run long; cap them so a row keeps a predictable height. */
   private truncate(text: string, max = 150): string {
     return text.length > max ? `${text.slice(0, max).trimEnd()}…` : text;
@@ -262,7 +283,21 @@ export class RequestListComponent {
     const search = this.searchControl.value;
     const apartmentId = this.apartmentControl.value;
     const participantUserId = this.residentControl.value;
-    this.service.list(page, this.pageSize, statuses, priority, search, apartmentId, participantUserId);
+    const sort = this.sort();
+    const ordering: RequestSort = {
+      sortBy: sort.key as RequestSortBy,
+      direction: sort.direction === 'asc' ? 'Asc' : 'Desc',
+    };
+    this.service.list(
+      page,
+      this.pageSize,
+      statuses,
+      priority,
+      search,
+      apartmentId,
+      participantUserId,
+      ordering,
+    );
   }
 
   // ── Board drag & drop ──────────────────────────────────────────────────────

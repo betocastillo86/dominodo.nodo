@@ -8,6 +8,17 @@ export type RequestType = 'Peticion' | 'Queja' | 'Reclamo' | 'Sugerencia' | 'Mai
 export type RequestPriority = 'Low' | 'Medium' | 'High';
 export type RequestVisibility = 'Private' | 'Public';
 
+/** Sort key accepted by `GET /requests` (`sortBy` query param). */
+export type RequestSortBy = 'Date' | 'Priority' | 'Status' | 'Updates' | 'Participants';
+/** Sort direction accepted by `GET /requests` (`direction` query param). */
+export type SortDirection = 'Asc' | 'Desc';
+
+/** Column sort state as the list view sends it to `GET /requests`. */
+export interface RequestSort {
+  sortBy: RequestSortBy;
+  direction: SortDirection;
+}
+
 /** Row shape returned by `GET /requests` (`RequestDto`). */
 export interface RequestDto {
   id: string;

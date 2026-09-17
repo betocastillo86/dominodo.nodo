@@ -12,6 +12,7 @@ import {
   RequestDetailDto,
   RequestDto,
   RequestPriority,
+  RequestSort,
   RequestStatus,
   UpdateRequestBody,
 } from './request.models';
@@ -61,7 +62,7 @@ export class RequestsService {
   readonly boardLoading = this._boardLoading.asReadonly();
   readonly boardError = this._boardError.asReadonly();
 
-  /** Load a page of requests with optional filters. Pushes state into signals. */
+  /** Load a page of requests with optional filters and ordering. Pushes state into signals. */
   list(
     page: number,
     pageSize: number,
@@ -70,11 +71,16 @@ export class RequestsService {
     search: string,
     apartmentId: string | null,
     participantUserId: string | null,
+    sort: RequestSort,
   ): void {
     this._loading.set(true);
     this._error.set(null);
 
-    let params = new HttpParams().set('page', page).set('pageSize', pageSize);
+    let params = new HttpParams()
+      .set('page', page)
+      .set('pageSize', pageSize)
+      .set('sortBy', sort.sortBy)
+      .set('direction', sort.direction);
     for (const status of statuses) {
       params = params.append('statuses', status);
     }
