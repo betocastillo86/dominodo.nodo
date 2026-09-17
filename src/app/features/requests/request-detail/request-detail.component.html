@@ -325,14 +325,16 @@
                         <dt class="col-5 text-secondary fw-normal">Actualizado</dt>
                         <dd class="col-7 mb-0">{{ formatDate(d.updatedAtUtc) }}</dd>
                       }
-                      @if (d.resolvedAtUtc) {
-                        <dt class="col-5 text-secondary fw-normal">Resuelto</dt>
-                        <dd class="col-7 mb-0">{{ formatDate(d.resolvedAtUtc) }}</dd>
-                      }
-                      @if (d.closedAtUtc) {
-                        <dt class="col-5 text-secondary fw-normal">Cerrado</dt>
-                        <dd class="col-7 mb-0">{{ formatDate(d.closedAtUtc) }}</dd>
-                      }
+                      <!-- Always shown: an em dash states the request is not yet
+                           resolved/closed, which is itself useful information. -->
+                      <dt class="col-5 text-secondary fw-normal">Resuelto</dt>
+                      <dd class="col-7 mb-0">
+                        {{ d.resolvedAtUtc ? formatDateTime(d.resolvedAtUtc) : '—' }}
+                      </dd>
+                      <dt class="col-5 text-secondary fw-normal">Cerrado</dt>
+                      <dd class="col-7 mb-0">
+                        {{ d.closedAtUtc ? formatDateTime(d.closedAtUtc) : '—' }}
+                      </dd>
                     </dl>
                   </div>
                 </div>

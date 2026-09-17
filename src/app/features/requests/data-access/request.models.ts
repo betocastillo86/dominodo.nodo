@@ -35,6 +35,10 @@ export interface RequestDto {
   createdByUserId: string;
   apartmentId: string | null;
   assignedToUserId: string | null;
+  /** Stamped when the request enters Resolved; cleared if it is reopened. */
+  resolvedAtUtc: string | null;
+  /** Stamped when the request enters Closed; cleared if it is reopened. */
+  closedAtUtc: string | null;
   createdAtUtc: string;
   updatedAtUtc: string | null;
   createdBy: string | null;
@@ -171,8 +175,6 @@ export interface RequestAttachmentDto {
 
 /** Full detail shape returned by `GET /requests/{id}`. */
 export interface RequestDetailDto extends RequestDto {
-  resolvedAtUtc: string | null;
-  closedAtUtc: string | null;
   metadata: string | null;
   participants: RequestParticipantDto[];
   updates: RequestUpdateDto[];

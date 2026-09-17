@@ -200,6 +200,13 @@ export class RequestListComponent {
       class: 'text-secondary text-nowrap',
       sortKey: 'Date',
     },
+    {
+      // Only stamped once the request reaches Resolved; the API clears it if the
+      // request is reopened, so an empty cell is the normal case for open PQRS.
+      header: 'Resuelto',
+      value: (r) => (r.resolvedAtUtc ? this.formatDate(r.resolvedAtUtc) : '—'),
+      class: 'text-secondary text-nowrap',
+    },
   ];
 
   readonly rowKey = (r: RequestDto): string => r.id;
