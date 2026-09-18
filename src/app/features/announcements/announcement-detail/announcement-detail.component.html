@@ -39,7 +39,7 @@
     <div class="card-header d-flex align-items-center">
       <span [class]="stateBadgeClass()">{{ stateLabel() }}</span>
       <span class="text-secondary ms-3">
-        Prioridad {{ a.priority }} · {{ audienceLabel() }}
+        Prioridad {{ priorityLabel(a.priority) }} · {{ audienceLabel() }}
         @if (a.audienceFilter) {
           <span> ({{ a.audienceFilter }})</span>
         }

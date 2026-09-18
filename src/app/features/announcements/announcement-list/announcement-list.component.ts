@@ -34,6 +34,7 @@ import {
 } from '../data-access/announcement-status.util';
 import { ANNOUNCEMENTS_CREATE } from '../data-access/announcement.permissions';
 import { RequestCategoriesService } from '../data-access/request-categories.service';
+import { priorityBadgeClass, priorityLabel } from '../shared/priority';
 import { formatDate } from '../shared/format-date';
 
 /**
@@ -89,7 +90,12 @@ export class AnnouncementListComponent implements OnInit {
         header: 'Categoría',
         value: (r) => (r.categoryId ? (catMap.get(r.categoryId) ?? '—') : '—'),
       },
-      { header: 'Prioridad', value: (r) => r.priority, class: 'w-1 text-center' },
+      {
+        header: 'Prioridad',
+        value: (r) => priorityLabel(r.priority),
+        badgeClass: (r) => priorityBadgeClass(r.priority),
+        class: 'w-1 text-center',
+      },
       {
         header: 'Estado',
         value: (r) => displayStateLabel(getDisplayState(r)),

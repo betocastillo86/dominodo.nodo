@@ -1,0 +1,41 @@
+<app-page-header title="Apartamentos" pretitle="Conjunto" />
+
+<div class="card">
+  <div class="card-header">
+    <div class="row g-2 w-100">
+      <div class="col-12 col-lg-6">
+        <div class="input-group">
+          <span class="input-group-text">
+            <tabler-icon name="search" />
+          </span>
+          <input
+            type="text"
+            class="form-control"
+            placeholder="Buscar por número de apartamento…"
+            [formControl]="searchControl"
+          />
+        </div>
+      </div>
+      <div class="col-12 col-lg-6">
+        <app-search-select
+          [search]="searchResidents"
+          [formControl]="residentControl"
+          placeholder="Filtrar por teléfono o nombre del residente…"
+          clearLabel="Quitar filtro de residente"
+        />
+      </div>
+    </div>
+  </div>
+
+  <app-data-table
+    [columns]="columns"
+    [rows]="items()"
+    [paging]="paging()"
+    [loading]="loading()"
+    [error]="error()"
+    [rowKey]="rowKey"
+    [actionLink]="detailLink"
+    actionIcon="eye"
+    (pageChange)="onPageChange($event)"
+  />
+</div>

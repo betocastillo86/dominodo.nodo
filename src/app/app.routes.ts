@@ -36,13 +36,39 @@ export const routes: Routes = [
         loadComponent: () => import('./features/home/home.component').then((m) => m.HomeComponent),
       },
       {
+        path: 'requests',
+        canActivate: [permissionGuard('requests.view')],
+        loadChildren: () =>
+          import('./features/requests/requests.routes').then((m) => m.requestsRoutes),
+      },
+      {
         path: 'announcements',
         canActivate: [permissionGuard('announcements.view')],
         loadChildren: () =>
           import('./features/announcements/announcements.routes').then((m) => m.announcementsRoutes),
       },
-      { path: '', pathMatch: 'full', redirectTo: 'home' },
-      { path: '**', redirectTo: 'home' },
+      {
+        path: 'apartments',
+        canActivate: [permissionGuard('apartments.view')],
+        loadChildren: () =>
+          import('./features/apartments/apartments.routes').then((m) => m.apartmentsRoutes),
+      },
+      {
+        path: 'knowledge-resources',
+        canActivate: [permissionGuard('knowledge.view')],
+        loadChildren: () =>
+          import('./features/knowledge-resources/knowledge-resources.routes').then(
+            (m) => m.knowledgeResourcesRoutes,
+          ),
+      },
+      {
+        path: 'tenant-info',
+        canActivate: [permissionGuard('tenant.info')],
+        loadChildren: () =>
+          import('./features/tenant-info/tenant-info.routes').then((m) => m.tenantInfoRoutes),
+      },
+      { path: '', pathMatch: 'full', redirectTo: 'requests' },
+      { path: '**', redirectTo: 'requests' },
     ],
   },
   { path: '**', redirectTo: '' },

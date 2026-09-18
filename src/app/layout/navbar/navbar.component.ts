@@ -43,14 +43,44 @@ export class NavbarComponent {
   private readonly permissions = inject(PermissionStore);
   private readonly tenant = inject(TenantStore);
 
-  /** Add the first module's entry here (see class doc). */
   private readonly navItems = signal<readonly NavItem[]>([
+    {
+      label: 'PQRS',
+      path: '/requests',
+      icon: 'list-details',
+      permission: 'requests.view',
+      feature: 'Requests',
+    },
     {
       label: 'Anuncios',
       path: '/announcements',
       icon: 'speakerphone',
       permission: 'announcements.view',
       feature: 'Announcements',
+    },
+    // No FeatureKey.Apartments exists server-side (the enum only has Requests,
+    // Deliveries, Visits, Announcements, WhatsApp), so this item is gated by
+    // permission alone.
+    {
+      label: 'Apartamentos',
+      path: '/apartments',
+      icon: 'building',
+      permission: 'apartments.view',
+    },
+    {
+      label: 'Base de conocimiento',
+      path: '/knowledge-resources',
+      icon: 'book',
+      permission: 'knowledge.view',
+      feature: 'KnowledgeResources',
+    },
+    // `tenant.info` is a single permission covering both read and write of the
+    // conjunto's own contact info; no FeatureKey gates it.
+    {
+      label: 'Mi Conjunto',
+      path: '/tenant-info',
+      icon: 'building-community',
+      permission: 'tenant.info',
     },
   ]);
 

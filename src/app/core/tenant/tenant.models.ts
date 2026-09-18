@@ -31,6 +31,11 @@ export interface TenantProfile {
 }
 
 export interface TenantBranding {
+  /**
+   * `TenantTheme` name as the API returns it ("Blue", "Teal", …) — the palette
+   * the whole app paints with. Null until the conjunto saves branding.
+   */
+  theme: string | null;
   logoUrl: string | null;
   primaryColor: string | null;
   loginText: string | null;

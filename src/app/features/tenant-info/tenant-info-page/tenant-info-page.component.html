@@ -1,0 +1,39 @@
+<app-page-header [title]="'Mi Conjunto'" [pretitle]="tenantName" />
+
+<ul class="nav nav-bordered mb-3" role="tablist">
+  <li class="nav-item" role="presentation">
+    <a
+      class="nav-link"
+      [class.active]="activeTab() === 'contact'"
+      href="javascript:void(0)"
+      role="tab"
+      [attr.aria-selected]="activeTab() === 'contact'"
+      (click)="activeTab.set('contact')"
+    >
+      <tabler-icon name="address-book" class="me-1" />
+      Información de contacto
+    </a>
+  </li>
+  <li class="nav-item" role="presentation">
+    <a
+      class="nav-link"
+      [class.active]="activeTab() === 'branding'"
+      href="javascript:void(0)"
+      role="tab"
+      [attr.aria-selected]="activeTab() === 'branding'"
+      (click)="activeTab.set('branding')"
+    >
+      <tabler-icon name="palette" class="me-1" />
+      Tema
+    </a>
+  </li>
+</ul>
+
+<!-- Both tabs stay in the DOM: hiding (not destroying) the inactive one keeps
+     unsaved edits alive while the admin jumps between them. -->
+<div [class.d-none]="activeTab() !== 'contact'">
+  <app-tenant-info-form />
+</div>
+<div [class.d-none]="activeTab() !== 'branding'">
+  <app-tenant-branding-form />
+</div>

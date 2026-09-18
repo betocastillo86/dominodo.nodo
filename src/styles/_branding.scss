@@ -1,0 +1,13 @@
+// Tenant branding applied to the chrome.
+//
+// The top bar keeps Tabler's neutral surface; the theme color reaches the header
+// through the brand icon, and elsewhere through buttons, links and the active
+// nav underline (all of which read `--tblr-primary`, rewritten at runtime by
+// `applyTenantTheme()` in core/tenant/tenant-theme.ts).
+//
+// The logo is a normalized square PNG with transparent padding: a hairline and
+// rounded corners give it an edge of its own instead of a hard cut.
+.navbar-brand-image {
+  border-radius: var(--tblr-border-radius);
+  border: 1px solid var(--tblr-border-color);
+}

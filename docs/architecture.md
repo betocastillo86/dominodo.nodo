@@ -211,9 +211,6 @@ feature separates `data-access` (services + models) from its presentation compon
 **lazy-loaded**. The **only structural differences** from `admin` are the added `core/tenant/` and a
 `core/authz/` (permission store), and a **top-navbar `layout/`** instead of a sidebar.
 
-The tree below reflects what the **foundation scaffold actually ships** (the `requests/`/`announcements/`
-feature folders are the planned next step, not yet present):
-
 ```
 src/app/
 ├── core/                # singletons & cross-cutting, no feature UI
@@ -227,21 +224,74 @@ src/app/
 ├── layout/              # portal chrome — HORIZONTAL top-navbar layout
 │   ├── shell/              # header + top navbar + <router-outlet>
 │   ├── header/             # tenant logo/name (from TenantStore) + user menu (AuthStore)
-│   └── navbar/             # horizontal menu; items filtered by PermissionStore + TenantStore.features (ships empty)
+│   └── navbar/             # horizontal menu; items filtered by PermissionStore + TenantStore.features
 ├── shared/ui/           # reusable presentational pieces
 │   ├── data-table/         # generic paged table (ported 1:1 from admin)
+│   ├── schedule-editor/    # weekly opening-hours control (CVA + Validator over a JSON string)
 │   ├── page-header/  spinner/  empty-state/
 │   └── notifications/      # toast host rendering NotificationService.items()
 └── features/            # lazy domains, each with data-access/ + components
     ├── auth/               # blank layout → login (branded from TenantStore)
-    ├── home/               # placeholder landing (shell default route) until modules arrive
+    ├── home/               # placeholder (no longer the default route — requests is)
     ├── tenant-error/       # standalone "conjunto no encontrado" page (no shell)
     ├── no-access/          # standalone "sin acceso a este conjunto" page
-    ├── requests/           # (planned) PQRS: list (filters) + detail/manage page
-    └── announcements/      # ✅ list (status/category filters) + detail + edit + publish/archive
-                            #    data-access/ (models, announcements.service signals, status util,
-                            #    permission codes) · announcement-list / -detail / -edit components
+    ├── requests/           # ✅ PQRS: list view (filters + pagination) + board/kanban view (4 status columns)
+    │                       #    data-access/ (request.models, requests.service: list + loadBoard + changeStatus/moveInBoard)
+    │                       #    request-list/ (dual-mode: list table + kanban with @angular/cdk drag-drop to
+    │                       #    change status — dragging gated by requests.edit; permission: requests.view)
+    ├── announcements/      # ✅ list (status/category filters) + detail + edit + publish/archive
+    │                       #    data-access/ (models, announcements.service signals, status util,
+    │                       #    permission codes) · announcement-list / -detail / -edit components
+    ├── apartments/         # ✅ READ-ONLY apartments + resident management (permission: apartments.view;
+                            #    no FeatureKey.Apartments exists server-side, so no feature gate)
+                            #    data-access/ (apartment.models, apartments.service signals,
+                            #    residents-lookup.service) · apartment-list / -detail components
+    └── tenant-info/        # ✅ "Mi Conjunto": tabs — contact info (GET/PUT /tenants/info) and
+                            #    branding: theme + logo (GET/PUT /tenants/branding, and
+                            #    POST /tenants/files/upload-url → direct-to-blob upload)
+                            #    guarded by the `tenant.info` permission (read + write in one code);
+                            #    saving goes through a confirmation modal · no feature gate
 ```
+
+### Opening hours (`schedules`)
+
+`TenantSettings.Schedules` is a free-text `string` (required, max 1000) on the API, and
+`dominodo.admin` still edits it as a plain textarea. Nodo writes a structured envelope into that same
+column via `shared/ui/schedule-editor`:
+
+```json
+{"v":1,"d":{"mon":["08:00-12:00","14:00-18:00"],"tue":["08:00-17:00"],"hol":["09:00-13:00"]}}
+```
+
+Keys are the seven weekdays plus `hol` (public holidays, always serialized last). Only open days
+appear; an absent day is closed. `hol` never joins a "Lunes a viernes" run in `formatSchedule()` —
+it reads as its own trailing clause. Worst case (8 rows × 6 ranges) serializes to ~750 chars, inside
+the 1000 cap. Hours are entered as slots only; because the column is shared, a stored
+value that is not this envelope is shown read-only in a warning banner so the admin sees what the
+save replaces (and the form stays invalid until real slots exist). `formatSchedule()` in
+`schedule-editor/schedule.model.ts` renders the envelope as the sentence a resident reads — reuse it
+instead of re-parsing. Nothing outside the Tenants module consumes `Schedules` today; any future
+consumer (resident app, WhatsApp bot) must handle both shapes.
+
+**Apartments — the two write paths.** Apartments themselves are never created, edited or deleted here;
+what the administrator manages is the resident list of `GET /apartments/{id}/residents`. Adding one
+branches on whether the person already belongs to the conjunto, because the API models membership and
+residency as separate rows in different modules:
+
+| Situation | Endpoint | Permission |
+|---|---|---|
+| Picked from the typeahead (already a member) | `POST /apartments/{id}/residents` | `apartments.edit` |
+| New phone → "registrar nueva persona" | `POST /memberships/invite` (`roleId` = Residente) | `memberships.manage` |
+| Remove | `PUT /apartments/{id}/residents/{residentId}/end` | `apartments.edit` |
+
+Inviting someone who already holds a membership returns `409 Membership.AlreadyExists`, which is why the
+first row exists. The invite path links the apartment **asynchronously** (via a domain event), so an
+immediate refetch may not show the new resident yet. Removal disables the **residency** only, keeping it
+as history — the membership is deliberately untouched; the API deactivates it on its own when warranted.
+
+The resident filter on the list resolves a phone to a `userId` through `GET /memberships?search=` before
+sending `residentUserId`, because `GET /apartments` has no phone filter and its `search` matches the
+apartment **number** only.
 
 - **`core/`**: single instances and cross-cutting concerns; no business UI. The tenant and authz stores
   live here because they are set once and read everywhere.
@@ -258,9 +308,8 @@ src/app/
 Everything is lazy. Login lives in a **blank** layout (no shell), branded from `TenantStore`. All other
 routes hang off the `ShellComponent` (top navbar) and are protected by `authGuard` + `tenantMemberGuard`;
 individual modules add a `permissionGuard('requests.view' | 'announcements.view' | …)`. The shell
-currently defaults to a **placeholder `home`** page; once PQRS ships, repoint the default child to the
-request list (the portal's primary job). The `400 Tenant.Unknown` bootstrap failure short-circuits routing
-entirely — `tenantResolvedGuard` sends it to `/conjunto-no-encontrado` (§4.3).
+defaults to `/requests` (the portal's primary job). The `400 Tenant.Unknown` bootstrap failure
+short-circuits routing entirely — `tenantResolvedGuard` sends it to `/conjunto-no-encontrado` (§4.3).
 
 ---
 

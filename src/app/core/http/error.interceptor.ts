@@ -2,6 +2,7 @@ import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, switchMap, throwError } from 'rxjs';
+import { environment } from '../../../environments/environment';
 import { AuthService } from '../auth/auth.service';
 import { AuthStore } from '../auth/auth.store';
 import { NotificationService } from '../notifications/notification.service';
@@ -23,6 +24,13 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const notifications = inject(NotificationService);
 
   const isAuthEndpoint = AUTH_ENDPOINTS.some((path) => req.url.includes(path));
+
+  // Non-API traffic (direct-to-storage uploads) carries neither our session nor
+  // ProblemDetails, so neither the refresh dance nor the toast applies: the
+  // caller handles the failure inline.
+  if (!req.url.startsWith(environment.apiBaseUrl)) {
+    return next(req);
+  }
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {

@@ -12,8 +12,21 @@ export interface TableColumn<T> {
   value: (row: T) => string | number;
   /** When it returns a non-empty class, the value is rendered as a badge. */
   badgeClass?: (row: T) => string;
-  /** Optional CSS class applied to the header and cells. */
+  /** Tabler icon rendered before the value (ignored when `badgeClass` matches). */
+  icon?: string;
+  /**
+   * Optional CSS class applied to the header and cells. Use `table-cell-wrap`
+   * to let a long value wrap within a bounded column.
+   */
   class?: string;
+  /** When set, the header becomes a Tabler sort button emitting this key. */
+  sortKey?: string;
+}
+
+/** Current sort state: which column key and in which direction. */
+export interface TableSort {
+  key: string;
+  direction: 'asc' | 'desc';
 }
 
 /**
@@ -26,6 +39,18 @@ export interface TableColumn<T> {
   imports: [SpinnerComponent, RouterLink, TablerIconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './data-table.component.html',
+  styles: [
+    `
+      /* Opt-in per column (\`class: 'table-cell-wrap'\`). The table is globally
+         \`text-nowrap\`, whose utility carries !important — hence the override.
+         The width bounds keep the column from stretching the whole table. */
+      .table-cell-wrap {
+        white-space: normal !important;
+        min-width: 14rem;
+        max-width: 24rem;
+      }
+    `,
+  ],
 })
 export class DataTableComponent<T> {
   readonly columns = input.required<readonly TableColumn<T>[]>();
@@ -41,8 +66,31 @@ export class DataTableComponent<T> {
   readonly actionIcon = input<string>('edit');
   /** Optional query params merged into each row's action link. */
   readonly actionQueryParams = input<((row: T) => Record<string, string>) | null>(null);
+  /** Current sort state (controlled); drives the asc/desc arrow on headers. */
+  readonly sort = input<TableSort | null>(null);
 
   readonly pageChange = output<number>();
+  readonly sortChange = output<TableSort>();
+
+  /**
+   * CSS class for a sortable header button: `asc`/`desc` when this column is the
+   * active sort, empty otherwise (Tabler renders the direction arrow from it).
+   */
+  sortClass(key: string): string {
+    const sort = this.sort();
+    return sort?.key === key ? sort.direction : '';
+  }
+
+  /**
+   * Toggle sorting for a column: flip direction if it is already the active
+   * sort, otherwise start it descending. Emits the new state for the parent.
+   */
+  toggleSort(key: string): void {
+    const sort = this.sort();
+    const direction: 'asc' | 'desc' =
+      sort?.key === key && sort.direction === 'desc' ? 'asc' : 'desc';
+    this.sortChange.emit({ key, direction });
+  }
 
   goTo(page: number): void {
     const paging = this.paging();
