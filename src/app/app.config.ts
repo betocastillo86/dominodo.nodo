@@ -18,6 +18,8 @@ import {
   IconBuildingCommunity,
   IconCheck,
   IconChevronDown,
+  IconChevronLeft,
+  IconChevronRight,
   IconChevronUp,
   IconCopy,
   IconDeviceFloppy,
@@ -100,6 +102,8 @@ export const appConfig: ApplicationConfig = {
       IconPhone,
       IconHistory,
       IconArrowRight,
+      IconChevronLeft,
+      IconChevronRight,
       // Apartments module
       IconBuilding,
       IconUserPlus,

@@ -37,22 +37,6 @@
           <li class="nav-item" role="presentation">
             <a
               class="nav-link"
-              [class.active]="activeTab() === 'comments'"
-              href="javascript:void(0)"
-              role="tab"
-              [attr.aria-selected]="activeTab() === 'comments'"
-              (click)="activeTab.set('comments')"
-            >
-              <tabler-icon name="message" class="me-1" />
-              Comentarios
-              @if (d.updates.length > 0) {
-                <span class="badge bg-blue-lt ms-2">{{ d.updates.length }}</span>
-              }
-            </a>
-          </li>
-          <li class="nav-item" role="presentation">
-            <a
-              class="nav-link"
               [class.active]="activeTab() === 'history'"
               href="javascript:void(0)"
               role="tab"
@@ -218,146 +202,15 @@
                   </div>
                 }
 
-              </div>
+                <hr class="my-4" />
 
-              <!-- ── Columna lateral ───────────────────────────────────────────── -->
-              <div class="col-12 col-lg-4">
-
-                <!-- Participantes -->
-                <div class="card card-sm">
-                  <div class="card-header">
-                    <h4 class="card-title">
-                      <tabler-icon name="users" class="me-1 icon-sm" />
-                      Participantes
-                    </h4>
-                    <div class="card-actions">
-                      <span class="badge bg-secondary-lt text-secondary">{{ d.participants.length }}</span>
-                    </div>
-                  </div>
-                  @if (d.participants.length === 0) {
-                    <div class="card-body text-center text-secondary py-4 small">
-                      Sin participantes registrados.
-                    </div>
-                  } @else {
-                    <div class="list-group list-group-flush">
-                      @for (p of d.participants; track p.id) {
-                        <div class="list-group-item py-3">
-                          <div class="d-flex align-items-start gap-2">
-                            <span
-                              class="avatar avatar-sm rounded-circle bg-secondary-lt text-secondary fw-bold flex-shrink-0"
-                              style="font-size: 0.7rem"
-                            >
-                              {{ initials(p.user.fullName) }}
-                            </span>
-                            <div class="flex-grow-1 overflow-hidden">
-                              <div class="fw-medium text-truncate">{{ p.user.fullName }}</div>
-                              <div class="text-secondary small d-flex align-items-center gap-1">
-                                <tabler-icon name="phone" class="icon-sm" />
-                                {{ p.user.phone || '—' }}
-                              </div>
-                              <div class="text-secondary small d-flex align-items-center gap-1">
-                                <tabler-icon name="building" class="icon-sm" />
-                                @if (p.apartment) {
-                                  {{ apartmentLabel(p.apartment) }}
-                                } @else {
-                                  Sin apartamento
-                                }
-                              </div>
-                              <span class="badge bg-secondary-lt text-secondary mt-1" style="font-size: 0.7rem">
-                                {{ participantTypeLabel[p.participantType] }}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      }
-                    </div>
+                <!-- Comentarios -->
+                <h3 class="card-title mb-3">
+                  Historial de comentarios
+                  @if (d.updates.length > 0) {
+                    <span class="badge bg-blue-lt ms-2">{{ d.updates.length }}</span>
                   }
-                </div>
-
-                <!-- Adjuntos -->
-                <div class="card card-sm mt-3">
-                  <div class="card-header">
-                    <h4 class="card-title">
-                      <tabler-icon name="paperclip" class="me-1 icon-sm" />
-                      Adjuntos
-                    </h4>
-                    <div class="card-actions">
-                      <span class="badge bg-secondary-lt text-secondary">{{ d.attachments.length }}</span>
-                    </div>
-                  </div>
-                  @if (d.attachments.length === 0) {
-                    <div class="card-body text-center text-secondary py-4 small">Sin adjuntos</div>
-                  } @else {
-                    <div class="list-group list-group-flush">
-                      @for (att of d.attachments; track att.id) {
-                        <div class="list-group-item d-flex align-items-center gap-2 py-2">
-                          <tabler-icon name="file" class="text-secondary flex-shrink-0" />
-                          <div class="flex-grow-1 overflow-hidden">
-                            <div class="text-truncate small fw-medium" [title]="att.fileName">{{ att.fileName }}</div>
-                            <div class="text-secondary" style="font-size: 0.75rem">{{ formatDate(att.createdAtUtc) }}</div>
-                          </div>
-                          <button
-                            type="button"
-                            class="btn btn-icon btn-sm btn-ghost-secondary flex-shrink-0"
-                            title="Descargar"
-                            [disabled]="downloadingId() === att.id"
-                            (click)="downloadAttachment(att.id)"
-                          >
-                            @if (downloadingId() === att.id) {
-                              <span class="spinner-border spinner-border-sm"></span>
-                            } @else {
-                              <tabler-icon name="download" />
-                            }
-                          </button>
-                        </div>
-                      }
-                    </div>
-                  }
-                </div>
-
-                <!-- Metadatos -->
-                <div class="card card-sm mt-3">
-                  <div class="card-body py-3">
-                    <dl class="row small mb-0 g-1">
-                      <dt class="col-5 text-secondary fw-normal">Creado</dt>
-                      <dd class="col-7 mb-0">{{ formatDate(d.createdAtUtc) }}</dd>
-                      @if (d.updatedAtUtc) {
-                        <dt class="col-5 text-secondary fw-normal">Actualizado</dt>
-                        <dd class="col-7 mb-0">{{ formatDate(d.updatedAtUtc) }}</dd>
-                      }
-                      <!-- Always shown: an em dash states the request is not yet
-                           resolved/closed, which is itself useful information. -->
-                      <dt class="col-5 text-secondary fw-normal">Resuelto</dt>
-                      <dd class="col-7 mb-0">
-                        {{ d.resolvedAtUtc ? formatDateTime(d.resolvedAtUtc) : '—' }}
-                      </dd>
-                      <dt class="col-5 text-secondary fw-normal">Cerrado</dt>
-                      <dd class="col-7 mb-0">
-                        {{ d.closedAtUtc ? formatDateTime(d.closedAtUtc) : '—' }}
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-          </div>
-
-          <!-- ══════════════════════════════════════════════════════════════════
-               TAB-PANE: COMENTARIOS
-               ══════════════════════════════════════════════════════════════════ -->
-          <div
-            class="tab-pane"
-            [class.active]="activeTab() === 'comments'"
-            [class.show]="activeTab() === 'comments'"
-            role="tabpanel"
-          >
-            <div class="row justify-content-center">
-
-              <!-- ── Conversación + formulario ─────────────────────────────────── -->
-              <div class="col-12 col-lg-9">
-
-                <h3 class="card-title mb-3">Historial de comentarios</h3>
+                </h3>
 
                 @if (d.updates.length === 0) {
                   <div class="text-center text-secondary py-5 small">
@@ -443,8 +296,158 @@
 
               </div>
 
+              <!-- ── Columna lateral ───────────────────────────────────────────── -->
+              <div class="col-12 col-lg-4">
+
+                <!-- Participantes -->
+                <div class="card card-sm">
+                  <div class="card-header">
+                    <h4 class="card-title">
+                      <tabler-icon name="users" class="me-1 icon-sm" />
+                      Participantes
+                    </h4>
+                    <div class="card-actions">
+                      <span class="badge bg-secondary-lt text-secondary">{{ d.participants.length }}</span>
+                    </div>
+                  </div>
+                  @if (d.participants.length === 0) {
+                    <div class="card-body text-center text-secondary py-4 small">
+                      Sin participantes registrados.
+                    </div>
+                  } @else {
+                    <div class="list-group list-group-flush">
+                      @for (p of d.participants; track p.id) {
+                        <div class="list-group-item py-3">
+                          <div class="d-flex align-items-start gap-2">
+                            <span
+                              class="avatar avatar-sm rounded-circle bg-secondary-lt text-secondary fw-bold flex-shrink-0"
+                              style="font-size: 0.7rem"
+                            >
+                              {{ initials(p.user.fullName) }}
+                            </span>
+                            <div class="flex-grow-1 overflow-hidden">
+                              <div class="fw-medium text-truncate">{{ p.user.fullName }}</div>
+                              <div class="text-secondary small d-flex align-items-center gap-1">
+                                <tabler-icon name="phone" class="icon-sm" />
+                                {{ p.user.phone || '—' }}
+                              </div>
+                              <div class="text-secondary small d-flex align-items-center gap-1">
+                                <tabler-icon name="building" class="icon-sm" />
+                                @if (p.apartment) {
+                                  {{ apartmentLabel(p.apartment) }}
+                                } @else {
+                                  Sin apartamento
+                                }
+                              </div>
+                              <span class="badge bg-secondary-lt text-secondary mt-1" style="font-size: 0.7rem">
+                                {{ participantTypeLabel[p.participantType] }}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+
+                <!-- Adjuntos -->
+                <div class="card card-sm mt-3">
+                  <div class="card-header">
+                    <h4 class="card-title">
+                      <tabler-icon name="paperclip" class="me-1 icon-sm" />
+                      Adjuntos
+                    </h4>
+                    <div class="card-actions">
+                      <span class="badge bg-secondary-lt text-secondary">{{ d.attachments.length }}</span>
+                    </div>
+                  </div>
+                  @if (d.attachments.length === 0) {
+                    <div class="card-body text-center text-secondary py-4 small">Sin adjuntos</div>
+                  } @else {
+                    <div class="list-group list-group-flush">
+                      @for (att of d.attachments; track att.id) {
+                        <div class="list-group-item d-flex align-items-center gap-2 py-2">
+                          <!-- Image attachments show a thumbnail that opens the
+                               lightbox; anything else keeps the generic icon. -->
+                          @if (isImage(att)) {
+                            @if (previewUrl(att.id); as url) {
+                              @if (isBrokenPreview(att.id)) {
+                                <span class="attachment-preview attachment-preview--empty">
+                                  <tabler-icon name="photo" />
+                                </span>
+                              } @else {
+                                <img
+                                  class="attachment-preview"
+                                  [src]="url"
+                                  [alt]="att.fileName"
+                                  [title]="'Ver ' + att.fileName"
+                                  (click)="openViewer(att, viewerTpl)"
+                                  (error)="onPreviewError(att.id)"
+                                />
+                              }
+                            } @else {
+                              <span class="attachment-preview attachment-preview--empty">
+                                @if (previewsLoading()) {
+                                  <span class="spinner-border spinner-border-sm"></span>
+                                } @else {
+                                  <tabler-icon name="photo" />
+                                }
+                              </span>
+                            }
+                          } @else {
+                            <tabler-icon name="file" class="text-secondary flex-shrink-0" />
+                          }
+                          <div class="flex-grow-1 overflow-hidden">
+                            <div class="text-truncate small fw-medium" [title]="att.fileName">{{ att.fileName }}</div>
+                            <div class="text-secondary" style="font-size: 0.75rem">{{ formatDate(att.createdAtUtc) }}</div>
+                          </div>
+                          <button
+                            type="button"
+                            class="btn btn-icon btn-sm btn-ghost-secondary flex-shrink-0"
+                            title="Descargar"
+                            [disabled]="downloadingId() === att.id"
+                            (click)="downloadAttachment(att.id)"
+                          >
+                            @if (downloadingId() === att.id) {
+                              <span class="spinner-border spinner-border-sm"></span>
+                            } @else {
+                              <tabler-icon name="download" />
+                            }
+                          </button>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+
+                <!-- Metadatos -->
+                <div class="card card-sm mt-3">
+                  <div class="card-body py-3">
+                    <dl class="row small mb-0 g-1">
+                      <dt class="col-5 text-secondary fw-normal">Creado</dt>
+                      <dd class="col-7 mb-0">{{ formatDate(d.createdAtUtc) }}</dd>
+                      @if (d.updatedAtUtc) {
+                        <dt class="col-5 text-secondary fw-normal">Actualizado</dt>
+                        <dd class="col-7 mb-0">{{ formatDate(d.updatedAtUtc) }}</dd>
+                      }
+                      <!-- Always shown: an em dash states the request is not yet
+                           resolved/closed, which is itself useful information. -->
+                      <dt class="col-5 text-secondary fw-normal">Resuelto</dt>
+                      <dd class="col-7 mb-0">
+                        {{ d.resolvedAtUtc ? formatDateTime(d.resolvedAtUtc) : '—' }}
+                      </dd>
+                      <dt class="col-5 text-secondary fw-normal">Cerrado</dt>
+                      <dd class="col-7 mb-0">
+                        {{ d.closedAtUtc ? formatDateTime(d.closedAtUtc) : '—' }}
+                      </dd>
+                    </dl>
+                  </div>
+                </div>
+
+              </div>
             </div>
           </div>
+
 
           <!-- ══════════════════════════════════════════════════════════════════
                TAB-PANE: HISTÓRICO
@@ -537,5 +540,108 @@
   <div class="modal-footer">
     <button type="button" class="btn btn-link link-secondary" (click)="modal.dismiss()">Cancelar</button>
     <button type="button" class="btn btn-primary" (click)="modal.close()">Confirmar cambio</button>
+  </div>
+</ng-template>
+
+<!-- ── MODAL: visor de imágenes adjuntas ──────────────────────────────────── -->
+<ng-template #viewerTpl let-modal>
+  <div class="modal-header">
+    <div class="me-auto overflow-hidden">
+      <h5 class="modal-title text-truncate">{{ viewerAttachment()?.fileName }}</h5>
+      @if (imageAttachments().length > 1) {
+        <div class="text-secondary small">
+          Imagen {{ viewerIndex() + 1 }} de {{ imageAttachments().length }}
+        </div>
+      }
+    </div>
+    @if (viewerAttachment(); as current) {
+      <button
+        type="button"
+        class="btn btn-sm btn-outline-secondary me-2"
+        [disabled]="downloadingId() === current.id"
+        (click)="downloadAttachment(current.id)"
+      >
+        @if (downloadingId() === current.id) {
+          <span class="spinner-border spinner-border-sm me-1"></span>
+        } @else {
+          <tabler-icon name="download" class="me-1" />
+        }
+        Descargar
+      </button>
+    }
+    <button type="button" class="btn-close" (click)="modal.dismiss()"></button>
+  </div>
+
+  <div class="modal-body p-0">
+    <div class="lightbox-stage">
+      @if (imageAttachments().length > 1) {
+        <button
+          type="button"
+          class="btn btn-icon btn-dark lightbox-nav lightbox-nav--prev"
+          title="Anterior"
+          (click)="viewerPrev()"
+        >
+          <tabler-icon name="chevron-left" />
+        </button>
+      }
+
+      @if (viewerAttachment(); as current) {
+        @if (previewUrl(current.id); as url) {
+          @if (isBrokenPreview(current.id)) {
+            <div class="text-center text-secondary p-5 small">
+              <tabler-icon name="photo" class="mb-2" />
+              <div>No se pudo mostrar esta imagen. Descárgala para verla.</div>
+            </div>
+          } @else {
+            <img
+              class="lightbox-image"
+              [src]="url"
+              [alt]="current.fileName"
+              (error)="onPreviewError(current.id)"
+            />
+          }
+        } @else {
+          <app-spinner />
+        }
+      }
+
+      @if (imageAttachments().length > 1) {
+        <button
+          type="button"
+          class="btn btn-icon btn-dark lightbox-nav lightbox-nav--next"
+          title="Siguiente"
+          (click)="viewerNext()"
+        >
+          <tabler-icon name="chevron-right" />
+        </button>
+      }
+    </div>
+
+    <!-- Tira de miniaturas para saltar directo a una imagen -->
+    @if (imageAttachments().length > 1) {
+      <div class="d-flex gap-2 p-2 overflow-auto bg-dark">
+        @for (img of imageAttachments(); track img.id; let i = $index) {
+          @if (isBrokenPreview(img.id)) {
+            <span class="lightbox-thumb d-inline-flex align-items-center justify-content-center text-secondary">
+              <tabler-icon name="photo" />
+            </span>
+          } @else if (previewUrl(img.id); as url) {
+            <img
+              class="lightbox-thumb"
+              [class.active]="i === viewerIndex()"
+              [src]="url"
+              [alt]="img.fileName"
+              [title]="img.fileName"
+              (click)="viewerGoTo(i)"
+              (error)="onPreviewError(img.id)"
+            />
+          } @else {
+            <span class="lightbox-thumb d-inline-flex align-items-center justify-content-center text-secondary">
+              <tabler-icon name="photo" />
+            </span>
+          }
+        }
+      </div>
+    }
   </div>
 </ng-template>
