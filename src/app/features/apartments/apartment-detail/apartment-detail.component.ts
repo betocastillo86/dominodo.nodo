@@ -11,7 +11,7 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
 import { TablerIconComponent } from 'angular-tabler-icons';
-import { map, Observable } from 'rxjs';
+import { concatMap, from, last, map, Observable, takeWhile, timer } from 'rxjs';
 import { PermissionStore } from '../../../core/authz/permission.store';
 import { toMessage } from '../../../core/http/problem-details';
 import { NotificationService } from '../../../core/notifications/notification.service';
@@ -46,6 +46,13 @@ import { ResidentsLookupService } from '../data-access/residents-lookup.service'
 
 /** E.164, matching the API's `InviteMemberCommandValidator`. */
 const E164 = /^\+[1-9]\d{6,14}$/;
+
+/**
+ * Delays (ms) between the refetches that wait for an invited resident to show
+ * up. `POST /memberships/invite` writes the apartment link asynchronously, so
+ * the first read right after the 201 usually still returns the old list.
+ */
+const RESIDENT_LINK_POLL_DELAYS_MS = [0, 1000, 2000, 3000];
 
 /**
  * Apartment detail. The apartment itself is read-only; what the administrator
@@ -235,13 +242,10 @@ export class ApartmentDetailComponent {
         this.saving.set(false);
         this.addModal?.close();
         this.notifications.success('Residente agregado.');
-        this.fetchResidents();
-        // A brand-new person is linked to the apartment asynchronously by the
-        // API, so the refetch above can land before the link exists.
         if (this.registerNew()) {
-          this.notifications.info(
-            'El residente puede tardar unos segundos en aparecer en la lista.',
-          );
+          this.fetchResidentsUntilLinked(this.activeResidents().length);
+        } else {
+          this.fetchResidents();
         }
       },
       error: (error: HttpErrorResponse) => {
@@ -357,6 +361,44 @@ export class ApartmentDetailComponent {
         this.residentsLoading.set(false);
       },
     });
+  }
+
+  /**
+   * Refetch the residents until the newly invited one appears, instead of
+   * leaving the administrator to reload the page: the API creates the
+   * membership synchronously but links the apartment through a domain event,
+   * so the read right after the 201 can still miss it. Stops at the first list
+   * that grew, or after the last attempt — in which case the list is still
+   * refreshed and the wait is only announced then.
+   */
+  private fetchResidentsUntilLinked(previousActive: number): void {
+    this.residentsLoading.set(true);
+    this.residentsError.set(null);
+
+    from(RESIDENT_LINK_POLL_DELAYS_MS)
+      .pipe(
+        concatMap((delay) =>
+          timer(delay).pipe(concatMap(() => this.service.listResidents(this.id))),
+        ),
+        takeWhile((list) => list.filter((r) => r.isActive).length <= previousActive, true),
+        last(),
+      )
+      .subscribe({
+        next: (list) => {
+          this.residents.set(list);
+          this.residentsLoading.set(false);
+          if (list.filter((r) => r.isActive).length <= previousActive) {
+            this.notifications.info(
+              'El residente puede tardar unos segundos en aparecer en la lista.',
+            );
+          }
+        },
+        error: (error: HttpErrorResponse) => {
+          this.residents.set([]);
+          this.residentsError.set(toMessage(error));
+          this.residentsLoading.set(false);
+        },
+      });
   }
 
   private resetAddForm(): void {
