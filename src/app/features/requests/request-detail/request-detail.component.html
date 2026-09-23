@@ -109,9 +109,17 @@
                   <div class="text-secondary small mb-1">Título</div>
                   <div class="fw-medium">{{ d.title }}</div>
                 </div>
-                <div class="mb-3">
-                  <div class="text-secondary small mb-1">Descripción</div>
-                  <div style="white-space: pre-wrap">{{ d.description }}</div>
+                <div class="row g-3 mb-3">
+                  <div class="col-12" [class.col-md-6]="!!d.originalDescription">
+                    <div class="text-secondary small mb-1">Descripción</div>
+                    <div style="white-space: pre-wrap">{{ d.description }}</div>
+                  </div>
+                  @if (d.originalDescription; as originalDescription) {
+                    <div class="col-12 col-md-6">
+                      <div class="text-secondary small mb-1">Descripción original:</div>
+                      <div style="white-space: pre-wrap">{{ originalDescription }}</div>
+                    </div>
+                  }
                 </div>
                 @if (d.location) {
                   <div class="mb-3">

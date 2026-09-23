@@ -176,6 +176,8 @@ export interface RequestAttachmentDto {
 /** Full detail shape returned by `GET /requests/{id}`. */
 export interface RequestDetailDto extends RequestDto {
   metadata: string | null;
+  /** Text the resident originally reported, kept verbatim when the description is rewritten. */
+  originalDescription: string | null;
   participants: RequestParticipantDto[];
   updates: RequestUpdateDto[];
   statusHistory: RequestStatusHistoryDto[];
