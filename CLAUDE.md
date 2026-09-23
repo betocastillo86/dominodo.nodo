@@ -40,7 +40,8 @@ resolved from the **domain**. Full design: `docs/architecture.md`.
 ## Multi-tenancy (read this before touching HTTP or bootstrap)
 - The tenant is resolved **once at bootstrap** from the domain and never chosen in the UI:
   - **dev:** `environment.defaultTenantSlug` forces a fixed tenant on `localhost`.
-  - **prod:** first subdomain label minus `baseDomain` (e.g. `los-almendros.nodo.dominodo.com` → `los-almendros`).
+  - **prod:** first subdomain label minus `baseDomain` (e.g. `los-almendros.dominodo.com` → `los-almendros`).
+    `admin` and `api` live at that same level, so they are in `ignoredHosts`.
 - `tenantInterceptor` sends `X-Tenant: <slug>` on **every** API request (including `/auth/*`).
 - `provideAppInitializer` runs the tenant bootstrap: resolve slug → `GET /tenant/current` → store profile
   in `TenantStore` → apply branding (title/favicon/primary color/logo) + feature gating.
