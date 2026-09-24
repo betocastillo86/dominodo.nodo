@@ -1,8 +1,10 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { TablerIconComponent } from 'angular-tabler-icons';
 import { debounceTime, distinctUntilChanged, map } from 'rxjs';
+import { PermissionStore } from '../../../core/authz/permission.store';
 import { DataTableComponent, TableColumn } from '../../../shared/ui/data-table/data-table.component';
 import { PageHeaderComponent } from '../../../shared/ui/page-header/page-header.component';
 import {
@@ -15,12 +17,17 @@ import {
   APARTMENT_TYPE_LABEL,
   ApartmentDto,
 } from '../data-access/apartment.models';
+import { APARTMENT_IMPORT_PERMISSIONS } from '../data-access/apartment.permissions';
 import { ApartmentsService } from '../data-access/apartments.service';
 import { ResidentsLookupService } from '../data-access/residents-lookup.service';
 
 /**
- * Apartment list. Apartments are read-only in this portal — there is no create
- * action; the row action opens the detail, where residents are managed.
+ * Apartment list. Apartments are read-only one by one in this portal — there is
+ * no create action; the row action opens the detail, where residents are
+ * managed.
+ *
+ * The single write path is the BULK IMPORT, which is how a conjunto is populated
+ * on day one (API ADR-0012).
  */
 @Component({
   selector: 'app-apartment-list',
@@ -31,6 +38,7 @@ import { ResidentsLookupService } from '../data-access/residents-lookup.service'
     SearchSelectComponent,
     ReactiveFormsModule,
     TablerIconComponent,
+    RouterLink,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './apartment-list.component.html',
@@ -38,6 +46,18 @@ import { ResidentsLookupService } from '../data-access/residents-lookup.service'
 export class ApartmentListComponent {
   private readonly service = inject(ApartmentsService);
   private readonly residentsLookup = inject(ResidentsLookupService);
+  private readonly permissions = inject(PermissionStore);
+
+  /**
+   * The import needs apartments.create AND memberships.manage — the same pair
+   * the API demands. Permissive only while the snapshot is still loading, as
+   * everywhere else in the portal.
+   */
+  readonly canImport = computed(
+    () =>
+      !this.permissions.loaded() ||
+      APARTMENT_IMPORT_PERMISSIONS.every((code) => this.permissions.has(code)),
+  );
 
   readonly items = this.service.items;
   readonly paging = this.service.paging;

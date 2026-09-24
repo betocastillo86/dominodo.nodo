@@ -21,28 +21,6 @@ export interface UpdateTenantBrandingRequest {
   logoKey: string | null;
 }
 
-/** The only file purpose the Tenants module publishes today. */
-export type TenantFilePurpose = 'BrandingLogo';
-
-/** Body of `POST /tenants/files/upload-url`. */
-export interface CreateTenantFileUploadUrlRequest {
-  purpose: TenantFilePurpose;
-  fileName: string;
-  contentType: string;
-}
-
-/**
- * Response of `POST /tenants/files/upload-url`. `uploadUrl` is the short-lived
- * pre-signed PUT target (the API never sees the bytes), `key` is what the
- * branding save adopts, and `url` is the servable URL of that key — already
- * usable as a preview before saving.
- */
-export interface TenantFileUploadTicketDto {
-  uploadUrl: string;
-  key: string;
-  url: string | null;
-}
-
 /** What the logo upload accepts, mirroring the server's per-purpose policy. */
 export const LOGO_CONTENT_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 export const LOGO_MAX_BYTES = 5 * 1024 * 1024;

@@ -1,4 +1,13 @@
-<app-page-header title="Apartamentos" pretitle="Conjunto" />
+<app-page-header title="Apartamentos" pretitle="Conjunto">
+  @if (canImport()) {
+    <div actions>
+      <a routerLink="/apartments/import" class="btn btn-primary">
+        <tabler-icon name="upload" class="me-1" />
+        Carga masiva
+      </a>
+    </div>
+  }
+</app-page-header>
 
 <div class="card">
   <div class="card-header">

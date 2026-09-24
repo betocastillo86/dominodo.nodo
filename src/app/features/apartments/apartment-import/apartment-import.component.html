@@ -1,0 +1,563 @@
+<app-page-header title="Carga masiva" pretitle="Apartamentos">
+  <a actions routerLink="/apartments" class="btn btn-link link-secondary">
+    <tabler-icon name="arrow-left" class="me-1" />
+    Volver al listado
+  </a>
+</app-page-header>
+
+<!-- ── PASOS ───────────────────────────────────────────────────────────────── -->
+<div class="card mb-3">
+  <div class="card-body py-3">
+    <ul class="steps steps-counter my-1">
+      <li class="step-item" [class.active]="step() >= 1">Prepara el archivo</li>
+      <li class="step-item" [class.active]="step() >= 2">Validación</li>
+      <li class="step-item" [class.active]="step() >= 3">Aplicar</li>
+    </ul>
+  </div>
+</div>
+
+@if (loadError(); as message) {
+  <div class="alert alert-danger" role="alert">
+    <div class="d-flex align-items-center justify-content-between gap-3">
+      <span>{{ message }}</span>
+      <div class="d-flex gap-2">
+        <button type="button" class="btn btn-sm" (click)="retry()">
+          <tabler-icon name="refresh" class="me-1" />
+          Reintentar
+        </button>
+        <button type="button" class="btn btn-sm" (click)="startOver()">Empezar de nuevo</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ── PASO 1 · PREPARA EL ARCHIVO ─────────────────────────────────────────── -->
+@if (step() === 1) {
+  <div class="row row-cards">
+    <div class="col-12 col-xl-7">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Cómo se hace la carga</h3>
+        </div>
+        <div class="card-body">
+          <p>
+            Sube un archivo <strong>CSV</strong> con una <strong>fila por residente</strong>: una
+            fila por cada residente de cada unidad. Si una unidad se repite en varias filas, es
+            porque tiene varios residentes — eso es correcto y esperado.
+          </p>
+          <p class="mb-3">
+            Para cargar <strong>solo unidades</strong>, deja vacías las columnas de la persona
+            (<code>telefono</code>, <code>nombre</code>, <code>relacion</code>…).
+          </p>
+
+          <div class="alert alert-info" role="alert">
+            <div class="d-flex">
+              <tabler-icon name="info-circle" class="me-2 flex-shrink-0" />
+              <div>
+                <h4 class="alert-title">Antes de subirlo, ten en cuenta</h4>
+                <ul class="mb-0 ps-3">
+                  <li>
+                    El archivo se revisa primero y verás un informe. <strong>Nada se guarda</strong>
+                    hasta que confirmes la carga.
+                  </li>
+                  <li>
+                    Si una unidad ya existe en el conjunto, <strong>se reutiliza</strong> y se le
+                    suman los residentes; no se duplica ni se modifica.
+                  </li>
+                  <li>
+                    Si un teléfono ya pertenece a un usuario de la plataforma, se reutiliza su
+                    cuenta y el nombre del archivo se ignora.
+                  </li>
+                  <li>
+                    La carga masiva <strong>no envía mensajes de bienvenida</strong> a los
+                    residentes.
+                  </li>
+                  <li>El informe de validación caduca a las 24 horas.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <h4>Columnas del archivo</h4>
+          <p class="text-secondary">
+            La primera fila debe ser el encabezado, con los nombres tal como aparecen aquí. El orden
+            de las columnas no importa, y las mayúsculas y las tildes tampoco: <code>Número</code> y
+            <code>NUMERO</code> se leen igual.
+          </p>
+          <div class="table-responsive">
+            <table class="table table-sm table-vcenter">
+              <thead>
+                <tr>
+                  <th>Columna</th>
+                  <th class="w-1 text-nowrap">Obligatoria</th>
+                  <th>Regla</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (column of columns; track column.name) {
+                  <tr>
+                    <td class="text-nowrap">
+                      <code>{{ column.name }}</code>
+                    </td>
+                    <td class="text-nowrap text-secondary">{{ column.required }}</td>
+                    <td>{{ column.rule }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-xl-5">
+      <div class="card mb-3">
+        <div class="card-header">
+          <h3 class="card-title">Plantilla de ejemplo</h3>
+        </div>
+        <div class="card-body">
+          <p class="text-secondary">
+            Tres filas de ejemplo: una unidad con su propietario, un segundo residente en esa misma
+            unidad y una unidad sin residentes.
+          </p>
+          <button type="button" class="btn btn-outline-primary w-100" (click)="downloadTemplate()">
+            <tabler-icon name="download" class="me-1" />
+            Descargar plantilla .csv
+          </button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Sube tu archivo</h3>
+        </div>
+        <div class="card-body">
+          @if (fileError(); as message) {
+            <div class="alert alert-danger" role="alert">{{ message }}</div>
+          }
+
+          @if (file(); as picked) {
+            <div class="d-flex align-items-center gap-2 border rounded p-2 mb-3">
+              <tabler-icon name="file" class="text-secondary flex-shrink-0" />
+              <div class="flex-fill text-truncate">
+                <div class="text-truncate">{{ picked.name }}</div>
+                <div class="text-secondary small">{{ formatBytes(picked.size) }}</div>
+              </div>
+              <button
+                type="button"
+                class="btn btn-ghost-secondary btn-icon"
+                aria-label="Quitar archivo"
+                [disabled]="starting()"
+                (click)="clearFile()"
+              >
+                <tabler-icon name="x" />
+              </button>
+            </div>
+          }
+
+          <div class="d-flex flex-wrap gap-2">
+            <label class="btn" [class.disabled]="starting()">
+              <tabler-icon name="upload" class="me-1" />
+              {{ file() ? 'Cambiar archivo' : 'Seleccionar archivo' }}
+              <input
+                type="file"
+                class="d-none"
+                accept=".csv,text/csv"
+                [disabled]="starting()"
+                (change)="onFileSelected($event)"
+              />
+            </label>
+
+            <button
+              type="button"
+              class="btn btn-primary"
+              [disabled]="!file() || starting()"
+              (click)="validate()"
+            >
+              @if (starting()) {
+                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+              } @else {
+                <tabler-icon name="check" class="me-1" />
+              }
+              Validar archivo
+            </button>
+          </div>
+
+          <p class="text-secondary small mt-3 mb-0">
+            Formato CSV, máximo {{ maxBytesLabel }}. Validar no guarda nada todavía.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ── PASO 2 · VALIDACIÓN ─────────────────────────────────────────────────── -->
+@if (step() === 2) {
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">Validación del archivo</h3>
+      @if (status(); as current) {
+        <div class="card-actions">
+          <span [class]="statusBadge[current]">{{ statusLabel[current] }}</span>
+        </div>
+      }
+    </div>
+
+    <div class="card-body">
+      @if (!importState()) {
+        <app-spinner label="Cargando la validación…" />
+      }
+      @switch (status()) {
+        @case ('Validating') {
+          <p class="text-secondary">
+            Estamos revisando el archivo fila por fila. No cierres esta pantalla.
+          </p>
+          @if (progressPercent() !== null) {
+            <div class="progress mb-2">
+              <div
+                class="progress-bar"
+                role="progressbar"
+                [style.width.%]="progressPercent()"
+                [attr.aria-valuenow]="progressPercent()"
+                aria-valuemin="0"
+                aria-valuemax="100"
+              ></div>
+            </div>
+            <div class="text-secondary small">
+              {{ importState()?.progress?.rowsProcessed }} de
+              {{ importState()?.progress?.rowsTotal }} filas ({{ progressPercent() }}%)
+            </div>
+          } @else {
+            <div class="progress progress-sm mb-2">
+              <div class="progress-bar progress-bar-indeterminate"></div>
+            </div>
+            <div class="text-secondary small">
+              {{ importState()?.progress?.rowsProcessed ?? 0 }} filas leídas…
+            </div>
+          }
+        }
+
+        @case ('Validated') {
+          @if (hasRowErrors()) {
+            <div class="alert alert-warning" role="alert">
+              <div class="d-flex">
+                <tabler-icon name="alert-triangle" class="me-2 flex-shrink-0" />
+                <div>
+                  <h4 class="alert-title">Corrige las filas con error antes de aplicar</h4>
+                  <div class="text-secondary">
+                    La carga se aplica completa o no se aplica: mientras haya filas con error no se
+                    puede confirmar. Corrígelas en el archivo y súbelo de nuevo. No se guardó nada.
+                  </div>
+                </div>
+              </div>
+            </div>
+          } @else {
+            <div class="alert alert-success" role="alert">
+              <div class="d-flex">
+                <tabler-icon name="check" class="me-2 flex-shrink-0" />
+                <div>
+                  <h4 class="alert-title">El archivo está listo para aplicarse</h4>
+                  <div class="text-secondary">
+                    Revisa el resumen y confirma. Hasta ahora no se ha guardado nada.
+                  </div>
+                </div>
+              </div>
+            </div>
+          }
+          <ng-container [ngTemplateOutlet]="reportView"></ng-container>
+        }
+
+        @case ('Rejected') {
+          <div class="alert alert-danger" role="alert">
+            <div class="d-flex">
+              <tabler-icon name="alert-triangle" class="me-2 flex-shrink-0" />
+              <div>
+                <h4 class="alert-title">El archivo no se puede cargar</h4>
+                <div class="text-secondary">
+                  Corrige lo que aparece abajo y vuelve a subirlo. No se guardó nada.
+                </div>
+              </div>
+            </div>
+          </div>
+          <ng-container [ngTemplateOutlet]="reportView"></ng-container>
+        }
+
+        @case ('Expired') {
+          <div class="alert alert-warning" role="alert">
+            <div class="d-flex">
+              <tabler-icon name="alert-triangle" class="me-2 flex-shrink-0" />
+              <div>
+                <h4 class="alert-title">La validación caducó</h4>
+                <div class="text-secondary">
+                  Pasaron más de 24 horas desde la revisión y el conjunto pudo haber cambiado. Sube
+                  el archivo otra vez para volver a revisarlo.
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+      }
+    </div>
+
+    @if (importState()) {
+      <div class="card-footer d-flex flex-wrap gap-2 justify-content-end">
+        <button type="button" class="btn" (click)="startOver()">
+          <tabler-icon name="upload" class="me-1" />
+          Subir otro archivo
+        </button>
+        @if (status() === 'Validated') {
+          <!-- Tabler gives a disabled .btn `pointer-events: none`, so the tooltip has to
+               live on a wrapper — the button itself would never see the hover. -->
+          <span
+            class="d-inline-block"
+            ngbTooltip="Corrige las filas con error en el archivo y súbelo de nuevo: la carga se aplica completa o no se aplica."
+            [disableTooltip]="!hasRowErrors()"
+            [tabindex]="hasRowErrors() ? 0 : -1"
+          >
+            <button
+              type="button"
+              class="btn btn-primary"
+              [disabled]="!canConfirm()"
+              (click)="confirm(confirmTpl)"
+            >
+              @if (confirming()) {
+                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+              } @else {
+                <tabler-icon name="check" class="me-1" />
+              }
+              Confirmar y aplicar
+            </button>
+          </span>
+        }
+      </div>
+    }
+  </div>
+}
+
+<!-- ── PASO 3 · APLICACIÓN ─────────────────────────────────────────────────── -->
+@if (step() === 3) {
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">Resultado de la carga</h3>
+      @if (status(); as current) {
+        <div class="card-actions">
+          <span [class]="statusBadge[current]">{{ statusLabel[current] }}</span>
+        </div>
+      }
+    </div>
+
+    <div class="card-body">
+      @if (!importState()) {
+        <app-spinner label="Cargando el resultado…" />
+      }
+      @switch (status()) {
+        @case ('Applying') {
+          <div class="d-flex align-items-center gap-3">
+            <span class="spinner-border text-primary" role="status"></span>
+            <div>
+              <div class="fw-medium">Aplicando la carga…</div>
+              <div class="text-secondary">
+                Estamos creando las unidades y registrando a los residentes.
+              </div>
+            </div>
+          </div>
+        }
+
+        @case ('Applied') {
+          <div class="alert alert-success" role="alert">
+            <div class="d-flex">
+              <tabler-icon name="check" class="me-2 flex-shrink-0" />
+              <div>
+                <h4 class="alert-title">Carga aplicada</h4>
+                <div class="text-secondary">
+                  Las unidades ya están en el conjunto.
+                  @if (report()?.residentsEventuallyConsistent) {
+                    Los residentes se registran en segundo plano y pueden tardar unos segundos en
+                    aparecer en cada apartamento.
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+          <ng-container [ngTemplateOutlet]="reportView"></ng-container>
+        }
+
+        @case ('Rejected') {
+          <div class="alert alert-danger" role="alert">
+            <div class="d-flex">
+              <tabler-icon name="alert-triangle" class="me-2 flex-shrink-0" />
+              <div>
+                <h4 class="alert-title">La carga no se aplicó</h4>
+                <div class="text-secondary">
+                  Al aplicarla volvimos a revisar el archivo y algo dejó de ser válido. No se guardó
+                  nada; corrige el archivo y súbelo de nuevo.
+                </div>
+              </div>
+            </div>
+          </div>
+          <ng-container [ngTemplateOutlet]="reportView"></ng-container>
+        }
+
+        @case ('Expired') {
+          <div class="alert alert-warning" role="alert">
+            La validación de esta carga caducó. Sube el archivo otra vez.
+          </div>
+        }
+      }
+    </div>
+
+    <div class="card-footer d-flex flex-wrap gap-2 justify-content-end">
+      <button type="button" class="btn" (click)="startOver()">
+        <tabler-icon name="upload" class="me-1" />
+        Cargar otro archivo
+      </button>
+      <a routerLink="/apartments" class="btn btn-primary">
+        <tabler-icon name="building" class="me-1" />
+        Ver apartamentos
+      </a>
+    </div>
+  </div>
+}
+
+<!-- ── INFORME (compartido entre validación y resultado) ───────────────────── -->
+<ng-template #reportView>
+  @if (report(); as summary) {
+    <div class="row row-cards mb-3">
+      <div class="col-6 col-lg-3">
+        <div class="card card-sm">
+          <div class="card-body">
+            <div class="text-secondary small">Filas válidas</div>
+            <div class="h2 mb-0">{{ summary.rowsValid }} / {{ summary.rowsTotal }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="card card-sm">
+          <div class="card-body">
+            <div class="text-secondary small">Unidades nuevas</div>
+            <div class="h2 mb-0">{{ summary.unitsCreated }}</div>
+            <div class="text-secondary small">{{ summary.unitsReused }} ya existían</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="card card-sm">
+          <div class="card-body">
+            <div class="text-secondary small">Residentes</div>
+            <div class="h2 mb-0">{{ summary.residentsQueued }}</div>
+            <div class="text-secondary small">{{ summary.usersReused }} ya tenían cuenta</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="card card-sm">
+          <div class="card-body">
+            <div class="text-secondary small">Filas con error</div>
+            <div class="h2 mb-0" [class.text-danger]="summary.rowsWithError > 0">
+              {{ summary.rowsWithError }}
+            </div>
+            <div class="text-secondary small">{{ warnings().length }} advertencias</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    @if (fileErrors().length) {
+      <h4 class="text-danger">Problemas del archivo</h4>
+      <p class="text-secondary">
+        Estos problemas afectan a todo el archivo, así que la carga no puede aplicarse.
+      </p>
+      <ul class="list-unstyled mb-3">
+        @for (issue of fileErrors(); track $index) {
+          <li class="mb-2">
+            <tabler-icon name="alert-triangle" class="text-danger me-1" />
+            {{ issueText(issue.code, issue.description) }}
+            @if (issueDetail(issue.code, issue.description); as detail) {
+              <div class="text-secondary small ms-4">{{ detail }}</div>
+            }
+          </li>
+        }
+      </ul>
+    }
+
+    @if (rowErrors().length) {
+      <h4 class="text-danger">Filas con error ({{ rowErrors().length }})</h4>
+      <p class="text-secondary">
+        Estas filas no se cargan. El número corresponde a la línea del archivo, contando el
+        encabezado.
+      </p>
+      <div class="table-responsive mb-3" style="max-height: 20rem; overflow-y: auto">
+        <table class="table table-sm table-vcenter">
+          <thead>
+            <tr>
+              <th class="w-1">Fila</th>
+              <th>Motivo</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (issue of rowErrors(); track $index) {
+              <tr>
+                <td class="text-nowrap">{{ issue.rowNumber }}</td>
+                <td>{{ issueText(issue.code, issue.description) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    @if (warnings().length) {
+      <h4>Advertencias ({{ warnings().length }})</h4>
+      <p class="text-secondary">
+        Estas filas sí se cargan, pero hay algo que la carga no va a modificar.
+      </p>
+      <div class="table-responsive" style="max-height: 20rem; overflow-y: auto">
+        <table class="table table-sm table-vcenter">
+          <thead>
+            <tr>
+              <th class="w-1">Fila</th>
+              <th>Detalle</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (issue of warnings(); track $index) {
+              <tr>
+                <td class="text-nowrap">{{ issue.rowNumber }}</td>
+                <td>{{ issueText(issue.code, issue.description) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+</ng-template>
+
+<!-- ── CONFIRMACIÓN ────────────────────────────────────────────────────────── -->
+<ng-template #confirmTpl let-modal>
+  <div class="modal-header">
+    <h5 class="modal-title">Confirmar la carga</h5>
+    <button type="button" class="btn-close" aria-label="Cerrar" (click)="modal.dismiss()"></button>
+  </div>
+  <div class="modal-body">
+    @if (report(); as summary) {
+      <p>
+        Se crearán <strong>{{ summary.unitsCreated }}</strong> unidades nuevas y se registrarán
+        <strong>{{ summary.residentsQueued }}</strong> residentes.
+        @if (summary.unitsReused > 0) {
+          Otras <strong>{{ summary.unitsReused }}</strong> unidades ya existen y se reutilizarán.
+        }
+      </p>
+    }
+    <p class="mb-0 text-secondary">
+      Esta acción no se puede deshacer y los residentes no reciben ningún mensaje.
+    </p>
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-link link-secondary" (click)="modal.dismiss()">
+      Cancelar
+    </button>
+    <button type="button" class="btn btn-primary" (click)="modal.close()">Aplicar carga</button>
+  </div>
+</ng-template>
