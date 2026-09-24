@@ -15,8 +15,9 @@
  * `parseSchedule` returns `null` for anything that is not this exact envelope
  * and callers must preserve the original string instead of discarding it.
  *
- * Kept byte-for-byte in sync with `dominodo.admin`'s copy — the two panels write
- * the same column and there is no shared package between the repos.
+ * Kept in lockstep with the sibling copy in `dominodo.admin` — both panels write
+ * the same column and there is no shared package between the repos, so a change
+ * here has to land there too.
  */
 
 export type WeekdayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
