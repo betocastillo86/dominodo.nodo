@@ -8,10 +8,14 @@
 <!-- ── PASOS ───────────────────────────────────────────────────────────────── -->
 <div class="card mb-3">
   <div class="card-body py-3">
+    <!-- Tabler marks ONLY the current step: the ones before it are painted as done by
+         default, and `.step-item.active ~ .step-item` greys out the ones after. Marking
+         every step up to the current one makes that sibling rule grey out the current one
+         too, leaving the first step as the only highlighted one forever. -->
     <ul class="steps steps-counter my-1">
-      <li class="step-item" [class.active]="step() >= 1">Prepara el archivo</li>
-      <li class="step-item" [class.active]="step() >= 2">Validación</li>
-      <li class="step-item" [class.active]="step() >= 3">Aplicar</li>
+      <li class="step-item" [class.active]="step() === 1">Prepara el archivo</li>
+      <li class="step-item" [class.active]="step() === 2">Validación</li>
+      <li class="step-item" [class.active]="step() === 3">Aplicar</li>
     </ul>
   </div>
 </div>
