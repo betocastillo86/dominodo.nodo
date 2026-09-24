@@ -41,10 +41,10 @@ const DEFAULT_RANGE: TimeRange = { from: '08:00', to: '17:00' };
  * `schedule.model.ts` through `ControlValueAccessor`, so a parent form binds it
  * with a plain `formControlName` over a `string`.
  *
- * The same API column is a free-text textarea in `dominodo.admin`, so a stored
- * value that is not our envelope is surfaced read-only via `previousText` — the
- * admin sees what the save will replace instead of losing it silently. Hours can
- * only be entered as slots.
+ * Tenants created before this editor existed hold free-text hours in the same
+ * column, so a stored value that is not our envelope is surfaced read-only via
+ * `previousText` — the admin sees what the save will replace instead of losing
+ * it silently. Hours can only be entered as slots.
  *
  * Built from stock Tabler pieces: `form-check form-switch` per day,
  * `card`/`card-active` rows and `btn-icon btn-ghost-*` for the row actions.
