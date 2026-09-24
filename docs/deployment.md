@@ -33,16 +33,22 @@ resolve the tenant from the domain at bootstrap:
 - `baseDomain` — the base domain whose first subdomain label is the tenant slug
   (e.g. `los-almendros.<baseDomain>` → `los-almendros`).
 - `defaultTenantSlug` — `null` in stage/prod (resolve from the domain); only set on `localhost`/dev.
-- `ignoredHosts` — hosts that are not tenant subdomains (`www`, `localhost`).
+- `ignoredHosts` — hosts that are not tenant subdomains (`www`, `localhost`, and in prod also
+  `admin` and `api`, siblings of the tenant subdomains under `dominodo.com`).
 
 > ⚠️ Because the tenant is resolved from the subdomain, each environment must set the **correct
 > `baseDomain`**. A wrong `baseDomain` breaks tenant resolution even if `apiBaseUrl` is correct.
 
-### Placeholders to fill once the API is deployed
+### Per-environment values
 
-- `src/environments/environment.ts` → prod `apiBaseUrl` + prod `baseDomain`.
-- `src/environments/environment.stage.ts` → stage `apiBaseUrl` (`app-dominodo-api-stage.azurewebsites.net`)
-  + stage `baseDomain` (`nodo-stage.dominodo.com`).
+| | `apiBaseUrl` | `baseDomain` → tenant host |
+| --- | --- | --- |
+| prod (`environment.ts`) | `app-dominodo-api-prod.azurewebsites.net/api/v1` | `dominodo.com` → `<tenant>.dominodo.com` |
+| stage (`environment.stage.ts`) | `app-dominodo-api-stage.azurewebsites.net/api/v1` | `nodo-stage.dominodo.com` |
+
+The prod API runs on a Free (F1) App Service plan, which supports no custom domain — hence the
+`azurewebsites.net` host rather than `api.dominodo.com`. Prod needs a wildcard `*.dominodo.com` on the
+hosting (or one record per conjunto).
 
 ## IIS SPA fallback — `public/web.config`
 
@@ -111,7 +117,7 @@ poisoned. `public/reset-cache.html` is that URL:
 
 Two ways in, and both are wanted:
 
-- **By hand** — send an affected user `https://<tenant>.nodo.dominodo.com/reset-cache.html`.
+- **By hand** — send an affected user `https://<tenant>.dominodo.com/reset-cache.html`.
 - **Automatically** — `core/version/cache-heal.ts` fetches it once, ever, from `main.ts`, so anyone
   who reaches a current build by any route is repaired silently.
 
@@ -164,7 +170,7 @@ Notes:
 ### Verifying after a deploy
 
 ```bash
-HOST=https://<tenant>.nodo.dominodo.com
+HOST=https://<tenant>.dominodo.com
 curl -sSI "$HOST/"         | grep -i cache-control   # expect: no-cache
 curl -sSI "$HOST/requests" | grep -i cache-control   # expect: no-cache (SPA rewrite path)
 
@@ -211,6 +217,11 @@ change needed either way.
 
 ## Cross-repo prerequisite — CORS
 
-Before login works cross-origin, the API's `cors_allowed_origins` must include the stage/prod nodo
-front-end URLs (including tenant subdomains / a wildcard). This is a `dominodo.api` action, out of
-scope here, but a hard prerequisite for a green login.
+Cross-origin login needs every tenant host in the **API's** `Cors:AllowedOrigins`, which lives in
+`dominodo.api/src/Bootstrap/Dominodo.Api/appsettings.<Env>.json` — **not** in
+`infra/envs/*/*.tfvars`, whose `cors_allowed_origins` configures the storage account's blob CORS
+(direct SAS uploads/downloads), a different thing.
+
+Both environments allow `https://*.dominodo.com`, and the API's matcher takes that as a real
+wildcard over subdomains, so every `<tenant>.dominodo.com` and `<tenant>.nodo-stage.dominodo.com` is
+covered without listing conjuntos one by one.
