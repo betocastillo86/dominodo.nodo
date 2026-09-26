@@ -8,3 +8,47 @@
 @import '@tabler/core/scss/tabler';
 
 // Component-specific overrides go below (applied after Tabler's own rules).
+
+// `angular-tabler-icons` injects the raw outline SVGs, and those carry NO stroke
+// or fill of their own — Tabler's hand-written markup puts those attributes
+// inline on each `<svg>`, so its stylesheet never needed a rule for them.
+// Without this every outline icon paints as a black silhouette instead of a
+// stroke in the current colour, ignoring `text-warning`, the brand colour and
+// the rest of the cascade.
+//
+// The `:not([fill])` guard is what leaves the `*-filled` icons alone: those DO
+// ship `fill="currentColor"` on the root `<svg>` and are meant to be solid.
+tabler-icon > svg:not([fill]) {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+// Tabler's `.icon` sizing rules assume the class sits on the `<svg>` itself.
+// Here it lands on the `<tabler-icon>` WRAPPER instead, leaving the inner
+// `<svg>` an ordinary inline box that sits on the wrapper's baseline — which is
+// what pushed icons ~4px below the text beside them. Making the wrapper a flex
+// box takes the svg out of any line box, and stretching the svg to fill it is
+// what stops an unclassed `<tabler-icon>` from resolving `width: auto` against
+// its container and rendering hundreds of pixels wide.
+//
+// The width/height here are only a FALLBACK for the icons used without a
+// sizing class; `.icon` and `.btn .icon` outrank an element selector and keep
+// owning the size wherever they are present.
+tabler-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tblr-icon-size, 1.25rem);
+  height: var(--tblr-icon-size, 1.25rem);
+  flex-shrink: 0;
+  // Matches what Tabler's own `.icon` sets; measured as the best-centred of the
+  // four options for an unclassed icon inline in a paragraph.
+  vertical-align: bottom;
+}
+
+tabler-icon > svg {
+  width: 100%;
+  height: 100%;
+}
