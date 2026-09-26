@@ -1,0 +1,372 @@
+<app-page-header [title]="'Panel'" [pretitle]="tenant.name() ?? 'Dominodo'">
+  <div actions class="btn-list">
+    <button
+      type="button"
+      class="btn btn-icon"
+      [disabled]="loading()"
+      aria-label="Actualizar"
+      (click)="refresh()"
+    >
+      <tabler-icon name="refresh" class="icon" />
+    </button>
+  </div>
+</app-page-header>
+
+<div class="container-xl">
+  <div class="card mb-3">
+    <div class="card-body py-2">
+      <app-range-picker
+        [range]="range()"
+        [disabled]="loading()"
+        (rangeChange)="onRangeChange($event)"
+      />
+    </div>
+  </div>
+
+  @if (error(); as message) {
+    <div class="alert alert-danger" role="alert">
+      <div class="d-flex">
+        <div><tabler-icon name="alert-triangle" class="icon alert-icon" /></div>
+        <div>
+          <h4 class="alert-title">No se pudieron cargar las estadísticas</h4>
+          <div class="text-secondary">{{ message }}</div>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (report(); as report) {
+    <!-- ── Live status: a photo of now, deliberately independent of the range ── -->
+    <div class="row row-cards mb-3">
+      <div class="col-12">
+        <div class="d-flex flex-wrap align-items-baseline justify-content-between gap-2">
+          <h3 class="mb-0">Estado actual</h3>
+          <span class="text-secondary">
+            {{ formatNumber(openNow()) }} abiertas ahora mismo · no depende del rango
+          </span>
+        </div>
+      </div>
+
+      @if (todayOutsideRange()) {
+        <div class="col-12">
+          <div class="alert alert-warning mb-0" role="alert">
+            <div class="d-flex">
+              <div><tabler-icon name="alert-triangle" class="icon alert-icon" /></div>
+              <div>
+                Estas cifras son de hoy ({{ todayLabel }}), que queda fuera del rango elegido. No se
+                pueden recortar al rango: el reporte entrega un solo conteo por estado, sin desglose
+                por día.
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+
+      @for (tile of statusTiles(); track tile.status) {
+        <div class="col-6 col-lg-3">
+          <div class="card card-sm">
+            <div class="card-status-start" [class]="'bg-' + tile.color"></div>
+            <div class="card-body">
+              <div class="subheader">{{ tile.label }}</div>
+              <div class="h1 mb-0">{{ formatNumber(tile.count) }}</div>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- ── Everything below honours the selected range ── -->
+    <div class="d-flex flex-wrap align-items-baseline justify-content-between gap-2 mb-3">
+      <h3 class="mb-0">El período</h3>
+      @if (previousRange(); as previous) {
+        <span class="text-secondary">
+          {{ formatRange(range()) }} ({{ rangeLength() }} días) · comparado con
+          {{ formatRange(previous) }}
+        </span>
+      }
+    </div>
+
+    <div class="row row-cards row-deck mb-3">
+      <div class="col-6 col-lg-3">
+        <div class="card">
+          <div class="card-body">
+            <div class="subheader">Creadas</div>
+            <div class="d-flex align-items-baseline gap-2 my-1">
+              <div class="h1 mb-0">{{ formatNumber(created()) }}</div>
+              <span
+                class="d-inline-flex align-items-center lh-1"
+                [class]="deltaClass(createdDelta())"
+              >
+                {{ createdDelta().label }}
+                <tabler-icon [name]="deltaIcon(createdDelta())" class="icon icon-sm ms-1" />
+              </span>
+            </div>
+            <div class="text-secondary">antes {{ formatNumber(report.comparison.created) }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-6 col-lg-3">
+        <div class="card">
+          <div class="card-body">
+            <div class="subheader">Gestionadas</div>
+            <div class="d-flex align-items-baseline gap-2 my-1">
+              <div class="h1 mb-0">{{ formatNumber(managed()) }}</div>
+              <span
+                class="d-inline-flex align-items-center lh-1"
+                [class]="deltaClass(managedDelta())"
+              >
+                {{ managedDelta().label }}
+                <tabler-icon [name]="deltaIcon(managedDelta())" class="icon icon-sm ms-1" />
+              </span>
+            </div>
+            <div class="text-secondary">antes {{ formatNumber(report.comparison.managed) }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-6 col-lg-3">
+        <div class="card">
+          <div class="card-body">
+            <div class="subheader">Balance</div>
+            <div class="d-flex align-items-baseline gap-2 my-1">
+              <div class="h1 mb-0" [class.text-red]="netInRange() > 0">
+                {{ netInRange() > 0 ? '+' : '' }}{{ formatNumber(netInRange()) }}
+              </div>
+            </div>
+            <div class="text-secondary">{{ netCaption() }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-6 col-lg-3">
+        <div class="card">
+          <div class="card-body">
+            <div class="subheader">Mediana de resolución</div>
+            <div class="d-flex align-items-baseline gap-2 my-1">
+              <div class="h1 mb-0">{{ formatHours(report.durations.resolutionMedianHours) }}</div>
+              <span
+                class="d-inline-flex align-items-center lh-1"
+                [class]="deltaClass(resolutionDelta())"
+              >
+                {{ resolutionDelta().label }}
+                <tabler-icon [name]="deltaIcon(resolutionDelta())" class="icon icon-sm ms-1" />
+              </span>
+            </div>
+            <div class="text-secondary">
+              antes {{ formatHours(report.comparison.resolutionMedianHours) }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Durations ── -->
+    <div class="row row-cards row-deck mb-3">
+      <div class="col-12 col-lg-6">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Tiempo de resolución</h3>
+            <div class="card-actions text-secondary">
+              n = {{ formatNumber(report.durations.resolutionSampleSize) }}
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="row text-center">
+              <div class="col">
+                <div class="subheader">Mediana</div>
+                <div class="h1 mb-0">
+                  {{ formatHours(report.durations.resolutionMedianHours) }}
+                </div>
+              </div>
+              <div class="col border-start">
+                <div class="subheader">P90</div>
+                <div class="h1 mb-0">{{ formatHours(report.durations.resolutionP90Hours) }}</div>
+              </div>
+            </div>
+            <p class="text-secondary mt-3 mb-0">
+              Desde que se abre la solicitud hasta que se resuelve o se cierra, sobre las
+              gestionadas dentro del rango.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-lg-6">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Primera respuesta</h3>
+            <div class="card-actions text-secondary">
+              n = {{ formatNumber(report.durations.firstResponseSampleSize) }}
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="row text-center">
+              <div class="col">
+                <div class="subheader">Mediana</div>
+                <div class="h1 mb-0">
+                  {{ formatHours(report.durations.firstResponseMedianHours) }}
+                </div>
+              </div>
+              <div class="col border-start">
+                <div class="subheader">P90</div>
+                <div class="h1 mb-0">
+                  {{ formatHours(report.durations.firstResponseP90Hours) }}
+                </div>
+              </div>
+            </div>
+            <p class="text-secondary mt-3 mb-0">
+              Desde que se abre hasta que pasa a «En progreso» por primera vez. Un comentario del
+              equipo sobre una solicitud nueva también cuenta.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Series ── -->
+    <div class="row row-cards mb-3">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title">Flujo mensual</h3>
+              <p class="card-subtitle">Meses que toca el rango · {{ formatRange(range()) }}</p>
+            </div>
+          </div>
+          <div class="card-body">
+            @if (monthlyWindow(); as window) {
+              @if (window.missingBefore || window.missingAfter) {
+                <div class="alert alert-warning" role="alert">
+                  <div class="d-flex">
+                    <div><tabler-icon name="alert-triangle" class="icon alert-icon" /></div>
+                    <div>
+                      El rango se extiende más allá de los 24 meses que cubre esta serie. Solo se
+                      muestran los meses disponibles.
+                    </div>
+                  </div>
+                </div>
+              }
+              @if (window.partialEdges && hasMonthlyMonths()) {
+                <p class="text-warning d-flex align-items-start gap-2 mb-3">
+                  <tabler-icon name="alert-triangle" class="icon icon-sm flex-shrink-0" />
+                  <span>Los meses del rango se incluyen completos.</span>
+                </p>
+              }
+            }
+
+            @if (!hasMonthlyMonths()) {
+              <app-empty-state
+                icon="chart-bar"
+                title="El rango queda fuera de los últimos 24 meses"
+                subtitle="Esta serie solo cubre los 24 meses que terminan en el mes en curso."
+              />
+            } @else if (hasMonthlyFlow()) {
+              <div [appChart]="monthlyFlowOptions()"></div>
+            } @else {
+              <app-empty-state
+                icon="chart-bar"
+                title="Sin actividad en los meses del rango"
+                subtitle="Cuando se abran solicitudes aparecerán aquí mes a mes."
+              />
+            }
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title">Carga acumulada por día</h3>
+              <p class="card-subtitle">
+                @if (backlogCoverage(); as coverage) {
+                  {{ coverage.days }} días consolidados · {{ coverage.from }} — {{ coverage.to }} ·
+                  «Cerrado» está oculto, actívalo en la leyenda
+                } @else {
+                  Solo incluye días ya consolidados
+                }
+              </p>
+            </div>
+          </div>
+          <div class="card-body">
+            @if (hasBacklog()) {
+              <div [appChart]="backlogOptions()"></div>
+            } @else {
+              <app-empty-state
+                icon="chart-area"
+                title="Todavía no hay días consolidados en este rango"
+                subtitle="Esta curva la construye un proceso nocturno; el día en curso nunca aparece."
+              />
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Breakdowns: all scoped to requests CREATED inside the range ── -->
+    <div class="row row-cards row-deck">
+      <div class="col-12 col-lg-4">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title">Por tipo</h3>
+              <p class="card-subtitle">Creadas en el rango</p>
+            </div>
+          </div>
+          <div class="card-body">
+            @if (hasCreated()) {
+              <div [appChart]="byTypeOptions()"></div>
+            } @else {
+              <app-empty-state icon="chart-donut" title="Sin solicitudes en el rango" />
+            }
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-lg-4">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title">Por categoría</h3>
+              <p class="card-subtitle">
+                @if (hiddenCategories() > 0) {
+                  Top {{ topCategories().length }} · {{ hiddenCategories() }} más sin mostrar
+                } @else {
+                  Creadas en el rango
+                }
+              </p>
+            </div>
+          </div>
+          <div class="card-body">
+            @if (topCategories().length > 0) {
+              <div [appChart]="byCategoryOptions()"></div>
+            } @else {
+              <app-empty-state icon="category" title="Sin solicitudes en el rango" />
+            }
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-lg-4">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title">Por torre</h3>
+              <p class="card-subtitle">Creadas en el rango</p>
+            </div>
+          </div>
+          <div class="card-body">
+            @if (byTower().length > 0) {
+              <div [appChart]="byTowerOptions()"></div>
+            } @else {
+              <app-empty-state icon="building-skyscraper" title="Sin solicitudes en el rango" />
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  } @else if (loading()) {
+    <app-spinner label="Cargando las estadísticas…" />
+  }
+</div>

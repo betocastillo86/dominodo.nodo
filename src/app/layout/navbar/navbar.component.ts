@@ -44,6 +44,15 @@ export class NavbarComponent {
   private readonly tenant = inject(TenantStore);
 
   private readonly navItems = signal<readonly NavItem[]>([
+    // Same permission as "Mi Conjunto": `tenant.info` is what gates
+    // `GET /requests/report`, so it is also what decides whether the panel
+    // is reachable at all. No FeatureKey applies.
+    {
+      label: 'Panel',
+      path: '/dashboard',
+      icon: 'dashboard',
+      permission: 'tenant.info',
+    },
     {
       label: 'PQRS',
       path: '/requests',
