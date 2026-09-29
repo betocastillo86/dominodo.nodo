@@ -176,6 +176,8 @@ export interface RequestAttachmentDto {
 /** Full detail shape returned by `GET /requests/{id}`. */
 export interface RequestDetailDto extends RequestDto {
   metadata: string | null;
+  /** Text the resident originally reported, kept verbatim when the description is rewritten. */
+  originalDescription: string | null;
   participants: RequestParticipantDto[];
   updates: RequestUpdateDto[];
   statusHistory: RequestStatusHistoryDto[];
@@ -203,6 +205,22 @@ export interface AddRequestUpdateBody {
 
 export interface AttachmentDownloadUrlDto {
   url: string;
+  /** SAS expiry (~5 min after minting); a cached URL must be re-minted past it. */
+  expiresAtUtc: string;
+}
+
+/** Extensions treated as previewable when the stored contentType is generic. */
+const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.avif', '.svg'];
+
+/**
+ * Whether an attachment can be rendered as an image (thumbnail + lightbox).
+ * Uploads that lost their content type (`application/octet-stream`) still match
+ * by file extension.
+ */
+export function isImageAttachment(attachment: RequestAttachmentDto): boolean {
+  if (attachment.contentType?.toLowerCase().startsWith('image/')) return true;
+  const name = attachment.fileName.toLowerCase();
+  return IMAGE_EXTENSIONS.some((ext) => name.endsWith(ext));
 }
 
 // ── Label maps for detail view ────────────────────────────────────────────────

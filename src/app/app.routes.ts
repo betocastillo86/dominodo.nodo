@@ -3,6 +3,7 @@ import { authGuard } from './core/guards/auth.guard';
 import { permissionGuard } from './core/guards/permission.guard';
 import { tenantMemberGuard } from './core/guards/tenant-member.guard';
 import { tenantResolvedGuard } from './core/guards/tenant-resolved.guard';
+import { landingRedirect } from './core/guards/landing-redirect';
 
 export const routes: Routes = [
   // Standalone error pages (no shell, no tenant/auth gating).
@@ -32,8 +33,10 @@ export const routes: Routes = [
     loadComponent: () => import('./layout/shell/shell.component').then((m) => m.ShellComponent),
     children: [
       {
-        path: 'home',
-        loadComponent: () => import('./features/home/home.component').then((m) => m.HomeComponent),
+        path: 'dashboard',
+        canActivate: [permissionGuard('tenant.info')],
+        loadChildren: () =>
+          import('./features/dashboard/dashboard.routes').then((m) => m.dashboardRoutes),
       },
       {
         path: 'requests',
@@ -45,7 +48,9 @@ export const routes: Routes = [
         path: 'announcements',
         canActivate: [permissionGuard('announcements.view')],
         loadChildren: () =>
-          import('./features/announcements/announcements.routes').then((m) => m.announcementsRoutes),
+          import('./features/announcements/announcements.routes').then(
+            (m) => m.announcementsRoutes,
+          ),
       },
       {
         path: 'apartments',
@@ -67,8 +72,10 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./features/tenant-info/tenant-info.routes').then((m) => m.tenantInfoRoutes),
       },
-      { path: '', pathMatch: 'full', redirectTo: 'requests' },
-      { path: '**', redirectTo: 'requests' },
+      // The landing depends on what the user may see: the dashboard for whoever
+      // can read the report, PQRS for everyone else. See `landingRedirect`.
+      { path: '', pathMatch: 'full', redirectTo: landingRedirect },
+      { path: '**', redirectTo: '' },
     ],
   },
   { path: '**', redirectTo: '' },

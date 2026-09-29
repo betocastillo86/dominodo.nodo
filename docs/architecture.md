@@ -220,6 +220,7 @@ src/app/
 │   ├── http/               # tenant + auth + error interceptors (functional) + problem-details (+ toMessage)
 │   ├── guards/             # tenantResolvedGuard, authGuard, tenantMemberGuard, permissionGuard(perm)
 │   ├── models/             # shared contracts (PagedResult)
+│   ├── files/              # TenantFilesService: the module-wide two-step upload (ticket → PUT to blob)
 │   └── notifications/      # signal-based notification bus (NotificationService)
 ├── layout/              # portal chrome — HORIZONTAL top-navbar layout
 │   ├── shell/              # header + top navbar + <router-outlet>
@@ -245,7 +246,9 @@ src/app/
     ├── apartments/         # ✅ READ-ONLY apartments + resident management (permission: apartments.view;
                             #    no FeatureKey.Apartments exists server-side, so no feature gate)
                             #    data-access/ (apartment.models, apartments.service signals,
-                            #    residents-lookup.service) · apartment-list / -detail components
+                            #    residents-lookup.service, apartment-import.*, apartment.permissions)
+                            #    apartment-list / -detail components + apartment-import/ (bulk load
+                            #    wizard, apartments.create AND memberships.manage)
     └── tenant-info/        # ✅ "Mi Conjunto": tabs — contact info (GET/PUT /tenants/info) and
                             #    branding: theme + logo (GET/PUT /tenants/branding, and
                             #    POST /tenants/files/upload-url → direct-to-blob upload)
@@ -292,6 +295,37 @@ as history — the membership is deliberately untouched; the API deactivates it 
 The resident filter on the list resolves a phone to a `userId` through `GET /memberships?search=` before
 sending `residentUserId`, because `GET /apartments` has no phone filter and its `search` matches the
 apartment **number** only.
+
+**Apartments — the bulk import.** The one path that does create units is the CSV load
+(`features/apartments/apartment-import/`, API ADR-0012), reached from the list header and gated by
+`apartments.create` **AND** `memberships.manage` — two stacked `permissionGuard`s, the same AND the API
+applies with two `[HasPermission]` attributes. It is a three-step wizard over five calls:
+
+| Step | Call | Notes |
+|---|---|---|
+| 1 · Prepare | `POST /tenants/files/upload-url` (`purpose: ApartmentImport`) → `PUT <uploadUrl>` | `TenantFilesService`; content type pinned to `text/csv` because the browser reports `application/vnd.ms-excel` for a .csv |
+| 2 · Diagnose | `POST /apartments/imports {fileKey}` → 202, then poll `GET /apartments/imports/{id}` | `Validating → Validated \| Rejected` |
+| 3 · Apply | `POST /apartments/imports/{id}/confirm` → 202, keep polling | `Applying → Applied`, or `Rejected` if the re-validation fails |
+
+Three things shape the UI. The import is a **resource with a life cycle**, so the wizard's step is derived
+from the import (`confirmedAtUtc` splits step 2 from step 3) and the id lives in the URL
+(`/apartments/import/:importId`) — a reload resumes instead of restarting. Both POSTs answer **202**, so
+every outcome is reached by polling, which stops as soon as the import stops moving (`Validated` counts as
+stopped: it is waiting on the administrator). And the report is **three categories, not two** — file
+errors kill the load, row errors kill a row, warnings kill nothing but must still be shown, because
+"unit reused" and "user reused" are exactly what the administrator would otherwise assume was updated.
+
+The CSV itself is the one place where the platform speaks **Spanish**: columns are
+`torre,numero,tipo,telefono,nombre,apellido,correo,relacion,vive_aqui` and the values are
+`Apartamento|Casa|Local|Parqueadero|Depósito`, `Propietario|Arrendatario` and `si|no` — the API's
+`ApartmentImportVocabulary` translates them on the way in and everything past it stays English. Matching
+ignores case, accents and space/hyphen-for-underscore, and the original English names still load as
+aliases, so the downloadable template is the contract worth teaching, not the only one accepted.
+
+Report codes are translated in `apartment-import.models.ts`; the server's English `description` is the
+fallback for an unknown code, and is additionally shown for the two file-level codes whose wording names
+the offending unit or rows. Note the import **never sends the welcome message** — the copy says so,
+because it is not configurable.
 
 - **`core/`**: single instances and cross-cutting concerns; no business UI. The tenant and authz stores
   live here because they are set once and read everywhere.

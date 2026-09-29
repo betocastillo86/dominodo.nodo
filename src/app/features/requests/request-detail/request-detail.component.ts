@@ -9,8 +9,8 @@ import {
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
-import { forkJoin } from 'rxjs';
-import { finalize } from 'rxjs/operators';
+import { forkJoin, Observable, of } from 'rxjs';
+import { catchError, finalize, map, tap } from 'rxjs/operators';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { TablerIconComponent } from 'angular-tabler-icons';
 
@@ -25,9 +25,11 @@ import { CategoriesLookupService, RequestCategoryDto } from '../data-access/cate
 import {
   ALLOWED_TRANSITIONS,
   BOARD_STATUSES,
+  isImageAttachment,
   PARTICIPANT_TYPE_LABEL,
   PRIORITY_BADGE,
   PRIORITY_LABEL,
+  RequestAttachmentDto,
   RequestDetailDto,
   RequestParticipantApartmentDto,
   RequestPriority,
@@ -41,7 +43,19 @@ import {
   UPDATE_TYPE_LABEL,
 } from '../data-access/request.models';
 
-type DetailTab = 'info' | 'comments' | 'history';
+type DetailTab = 'info' | 'history';
+
+/** A minted SAS URL plus the epoch ms it stops working at. */
+interface SignedUrl {
+  url: string;
+  expiresAt: number;
+}
+
+/**
+ * Re-mint a cached SAS URL this long before it actually expires, so an image
+ * that starts loading right at the edge still completes.
+ */
+const URL_REFRESH_MARGIN_MS = 60_000;
 
 @Component({
   selector: 'app-request-detail',
@@ -66,6 +80,75 @@ type DetailTab = 'info' | 'comments' | 'history';
       }
       .steps .step-item.requests-step--clickable:hover {
         text-decoration: underline;
+      }
+
+      /* Attachment list: square thumbnail standing in for the file icon. */
+      .attachment-preview {
+        width: 2.5rem;
+        height: 2.5rem;
+        flex-shrink: 0;
+        border-radius: var(--tblr-border-radius);
+        object-fit: cover;
+        background-color: var(--tblr-bg-surface-tertiary);
+        cursor: pointer;
+      }
+      .attachment-preview:hover {
+        opacity: 0.8;
+      }
+      .attachment-preview--empty {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--tblr-secondary);
+        cursor: default;
+      }
+
+      /* Lightbox: dark stage, contained image, overlaid arrows. */
+      .lightbox-stage {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 60vh;
+        background-color: #000;
+      }
+      .lightbox-image {
+        max-width: 100%;
+        max-height: 70vh;
+        object-fit: contain;
+      }
+      .lightbox-nav {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 1;
+        opacity: 0.85;
+      }
+      .lightbox-nav:hover {
+        opacity: 1;
+      }
+      .lightbox-nav--prev {
+        left: 0.75rem;
+      }
+      .lightbox-nav--next {
+        right: 0.75rem;
+      }
+      .lightbox-thumb {
+        width: 3.25rem;
+        height: 3.25rem;
+        flex-shrink: 0;
+        border-radius: var(--tblr-border-radius);
+        object-fit: cover;
+        cursor: pointer;
+        opacity: 0.5;
+        border: 2px solid transparent;
+      }
+      .lightbox-thumb:hover {
+        opacity: 0.85;
+      }
+      .lightbox-thumb.active {
+        opacity: 1;
+        border-color: var(--tblr-primary);
       }
     `,
   ],
@@ -105,6 +188,23 @@ export class RequestDetailComponent {
   readonly downloadingId = signal<string | null>(null);
 
   readonly activeTab = signal<DetailTab>('info');
+
+  // ── Attachment previews & lightbox ────────────────────────────────────────
+  /** attachmentId → signed URL, shared by the list thumbnails and the lightbox. */
+  private readonly signedUrls = signal<Record<string, SignedUrl>>({});
+  /** Attachments whose <img> failed to render (format the browser can't decode). */
+  private readonly brokenPreviews = signal<Record<string, true>>({});
+  readonly previewsLoading = signal(false);
+  readonly viewerIndex = signal(0);
+
+  /** Image attachments in list order — the lightbox navigates over exactly these. */
+  readonly imageAttachments = computed(() =>
+    (this.detail()?.attachments ?? []).filter(isImageAttachment),
+  );
+
+  readonly viewerAttachment = computed<RequestAttachmentDto | null>(
+    () => this.imageAttachments()[this.viewerIndex()] ?? null,
+  );
 
   // ── Permissions ───────────────────────────────────────────────────────────
   readonly canEdit = computed(() => this.permissions.has('requests.edit'));
@@ -203,6 +303,7 @@ export class RequestDetailComponent {
       next: ({ detail, categories }) => {
         this.detail.set(detail);
         this.categories.set(categories);
+        this.loadPreviews(detail.attachments);
 
         this.infoForm.patchValue({
           type: detail.type,
@@ -324,6 +425,109 @@ export class RequestDetailComponent {
         next: (res) => window.open(res.url, '_blank'),
         error: (err: HttpErrorResponse) => this.notifications.error(toMessage(err)),
       });
+  }
+
+  // ── Attachment previews ───────────────────────────────────────────────────
+
+  isImage(attachment: RequestAttachmentDto): boolean {
+    return isImageAttachment(attachment);
+  }
+
+  /** Signed URL for an attachment, or null while it is still being minted. */
+  previewUrl(attachmentId: string): string | null {
+    return this.signedUrls()[attachmentId]?.url ?? null;
+  }
+
+  /** True once the browser failed to decode this attachment — fall back to the icon. */
+  isBrokenPreview(attachmentId: string): boolean {
+    return attachmentId in this.brokenPreviews();
+  }
+
+  onPreviewError(attachmentId: string): void {
+    this.brokenPreviews.update((prev) => ({ ...prev, [attachmentId]: true }));
+  }
+
+  /** Mint the URLs the given image attachments still need, without blocking the page. */
+  private loadPreviews(attachments: RequestAttachmentDto[]): void {
+    const images = attachments.filter(isImageAttachment);
+    if (images.length === 0) return;
+
+    this.previewsLoading.set(true);
+    this.refreshSignedUrls(images)
+      .pipe(finalize(() => this.previewsLoading.set(false)))
+      .subscribe();
+  }
+
+  private refreshSignedUrls(attachments: RequestAttachmentDto[]): Observable<unknown> {
+    const stale = attachments.filter((a) => !this.hasFreshUrl(a.id));
+    if (stale.length === 0) return of(null);
+    return forkJoin(stale.map((a) => this.mintUrl(a.id)));
+  }
+
+  private hasFreshUrl(attachmentId: string): boolean {
+    const entry = this.signedUrls()[attachmentId];
+    return !!entry && entry.expiresAt - Date.now() > URL_REFRESH_MARGIN_MS;
+  }
+
+  private mintUrl(attachmentId: string): Observable<SignedUrl | null> {
+    return this.service.getAttachmentDownloadUrl(this.requestId, attachmentId).pipe(
+      map((res) => {
+        const parsed = new Date(res.expiresAtUtc).getTime();
+        return {
+          url: res.url,
+          // An unparseable expiry would keep every read re-minting; assume the
+          // API's ~5 min TTL instead.
+          expiresAt: Number.isNaN(parsed) ? Date.now() + 5 * 60_000 : parsed,
+        };
+      }),
+      tap((entry) => {
+        this.signedUrls.update((prev) => ({ ...prev, [attachmentId]: entry }));
+        this.brokenPreviews.update((prev) => {
+          const { [attachmentId]: _removed, ...rest } = prev;
+          return rest;
+        });
+      }),
+      // One dead attachment must not sink the whole batch.
+      catchError(() => of(null)),
+    );
+  }
+
+  // ── Lightbox ──────────────────────────────────────────────────────────────
+
+  /** Open the gallery on the clicked image; arrow keys move through the rest. */
+  openViewer(attachment: RequestAttachmentDto, tpl: TemplateRef<unknown>): void {
+    const images = this.imageAttachments();
+    const index = images.findIndex((a) => a.id === attachment.id);
+    if (index < 0) return;
+
+    this.viewerIndex.set(index);
+    const ref = this.modal.open(tpl, { size: 'xl', centered: true });
+
+    // Esc is ng-bootstrap's; the arrows are ours. The listener lives only as
+    // long as the modal does.
+    const onKeydown = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowRight') this.viewerNext();
+      else if (event.key === 'ArrowLeft') this.viewerPrev();
+    };
+    document.addEventListener('keydown', onKeydown);
+    ref.hidden.subscribe(() => document.removeEventListener('keydown', onKeydown));
+
+    // Re-mint whatever lapsed while the page sat open (the SAS lives ~5 min).
+    this.loadPreviews(images);
+  }
+
+  viewerNext(): void {
+    const count = this.imageAttachments().length;
+    if (count > 0) this.viewerIndex.update((i) => (i + 1) % count);
+  }
+
+  viewerPrev(): void {
+    const count = this.imageAttachments().length;
+    if (count > 0) this.viewerIndex.update((i) => (i - 1 + count) % count);
+  }
+
+  viewerGoTo(index: number): void {
+    this.viewerIndex.set(index);
   }
 
   // ── Template helpers ──────────────────────────────────────────────────────

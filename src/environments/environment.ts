@@ -1,7 +1,11 @@
 export const environment = {
   production: true,
-  apiBaseUrl: 'https://api.dominodo.com/api/v1',
-  baseDomain: 'nodo.dominodo.com', // TODO: confirm prod baseDomain
+  // The prod API runs on a Free (F1) App Service plan, which supports no custom domain — hence the
+  // azurewebsites.net host rather than api.dominodo.com.
+  apiBaseUrl: 'https://app-dominodo-api-prod.azurewebsites.net/api/v1',
+  baseDomain: 'dominodo.com',
   defaultTenantSlug: null as string | null,
-  ignoredHosts: ['www', 'localhost'],
+  // `admin` and `api` are siblings of the tenant subdomains under this base domain, so they must be
+  // ignored here or the resolver would read them as tenant slugs.
+  ignoredHosts: ['www', 'localhost', 'admin', 'api'],
 };

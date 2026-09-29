@@ -1,5 +1,6 @@
 import { inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import { applyDocumentTitle, applyFavicon } from './tenant-branding';
 import { resolveTenantSlug } from './tenant-resolver';
 import { applyPrimaryColor, applyTenantTheme } from './tenant-theme';
 import { TenantProfile } from './tenant.models';
@@ -50,7 +51,7 @@ export function tenantBootstrap(): () => Promise<void> {
 
 /** Apply tenant branding to the document: title, favicon, theme palette. */
 function applyBranding(profile: TenantProfile): void {
-  document.title = profile.name;
+  applyDocumentTitle(profile.name);
 
   if (profile.branding.theme) {
     applyTenantTheme(profile.branding.theme);
@@ -61,17 +62,6 @@ function applyBranding(profile: TenantProfile): void {
     applyPrimaryColor(profile.branding.primaryColor);
   }
 
-  if (profile.branding.logoUrl) {
-    setFavicon(profile.branding.logoUrl);
-  }
-}
-
-function setFavicon(href: string): void {
-  let link = document.querySelector<HTMLLinkElement>("link[rel='icon']");
-  if (!link) {
-    link = document.createElement('link');
-    link.rel = 'icon';
-    document.head.appendChild(link);
-  }
-  link.href = href;
+  // No logo yet → Dominodo's own icon, already in place from index.html.
+  applyFavicon(profile.branding.logoUrl);
 }

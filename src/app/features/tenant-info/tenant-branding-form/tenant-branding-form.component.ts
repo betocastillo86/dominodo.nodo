@@ -13,6 +13,7 @@ import { TablerIconComponent } from 'angular-tabler-icons';
 import { map, switchMap } from 'rxjs';
 import { toMessage } from '../../../core/http/problem-details';
 import { NotificationService } from '../../../core/notifications/notification.service';
+import { applyFavicon } from '../../../core/tenant/tenant-branding';
 import { TenantStore } from '../../../core/tenant/tenant.store';
 import {
   applyTenantTheme,
@@ -194,8 +195,11 @@ export class TenantBrandingFormComponent implements OnInit, OnDestroy {
     });
   }
 
-  /** Keeps the header logo and the palette in sync with what was just saved. */
+  /** Keeps the header logo, the favicon and the palette in sync with what was just saved. */
   private syncStore(): void {
+    // Removing the logo hands the tab back to Dominodo's own icon.
+    applyFavicon(this.logoUrl());
+
     const current = this.tenant.tenant();
     if (!current) return;
 

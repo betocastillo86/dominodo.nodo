@@ -10,10 +10,14 @@
  * 7 days x 6 ranges serializes to ~650 chars, comfortably inside the cap
  * (`MAX_SERIALIZED_LENGTH` enforces it anyway).
  *
- * The column is free text for every other client (dominodo.admin edits it as a
- * plain textarea), so `parseSchedule` returns `null` for anything that is not
- * this exact envelope and callers must preserve the original string instead of
- * discarding it.
+ * The column is plain text as far as the API is concerned, and tenants created
+ * before this editor existed hold free-text hours ("Lun-Vie 8:00-18:00"), so
+ * `parseSchedule` returns `null` for anything that is not this exact envelope
+ * and callers must preserve the original string instead of discarding it.
+ *
+ * Kept in lockstep with the sibling copy in `dominodo.admin` — both panels write
+ * the same column and there is no shared package between the repos, so a change
+ * here has to land there too.
  */
 
 export type WeekdayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
