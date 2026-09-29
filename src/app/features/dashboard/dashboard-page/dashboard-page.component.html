@@ -224,8 +224,71 @@
       </div>
     </div>
 
+    <!-- ── Breakdowns: all scoped to requests CREATED inside the range ── -->
+    <div class="row row-cards row-deck mb-3">
+      <div class="col-12 col-lg-4">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title">Por tipo</h3>
+              <p class="card-subtitle">Creadas en el rango</p>
+            </div>
+          </div>
+          <div class="card-body">
+            @if (hasCreated()) {
+              <div [appChart]="byTypeOptions()"></div>
+            } @else {
+              <app-empty-state icon="chart-donut" title="Sin solicitudes en el rango" />
+            }
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-lg-4">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title">Por categoría</h3>
+              <p class="card-subtitle">
+                @if (hiddenCategories() > 0) {
+                  Top {{ topCategories().length }} · {{ hiddenCategories() }} más sin mostrar
+                } @else {
+                  Creadas en el rango
+                }
+              </p>
+            </div>
+          </div>
+          <div class="card-body">
+            @if (topCategories().length > 0) {
+              <div [appChart]="byCategoryOptions()"></div>
+            } @else {
+              <app-empty-state icon="category" title="Sin solicitudes en el rango" />
+            }
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-lg-4">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title">Por torre</h3>
+              <p class="card-subtitle">Creadas en el rango</p>
+            </div>
+          </div>
+          <div class="card-body">
+            @if (byTower().length > 0) {
+              <div [appChart]="byTowerOptions()"></div>
+            } @else {
+              <app-empty-state icon="building-skyscraper" title="Sin solicitudes en el rango" />
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ── Series ── -->
-    <div class="row row-cards mb-3">
+    <div class="row row-cards">
       <div class="col-12">
         <div class="card">
           <div class="card-header">
@@ -298,69 +361,6 @@
                 title="Todavía no hay días consolidados en este rango"
                 subtitle="Esta curva la construye un proceso nocturno; el día en curso nunca aparece."
               />
-            }
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── Breakdowns: all scoped to requests CREATED inside the range ── -->
-    <div class="row row-cards row-deck">
-      <div class="col-12 col-lg-4">
-        <div class="card">
-          <div class="card-header">
-            <div>
-              <h3 class="card-title">Por tipo</h3>
-              <p class="card-subtitle">Creadas en el rango</p>
-            </div>
-          </div>
-          <div class="card-body">
-            @if (hasCreated()) {
-              <div [appChart]="byTypeOptions()"></div>
-            } @else {
-              <app-empty-state icon="chart-donut" title="Sin solicitudes en el rango" />
-            }
-          </div>
-        </div>
-      </div>
-
-      <div class="col-12 col-lg-4">
-        <div class="card">
-          <div class="card-header">
-            <div>
-              <h3 class="card-title">Por categoría</h3>
-              <p class="card-subtitle">
-                @if (hiddenCategories() > 0) {
-                  Top {{ topCategories().length }} · {{ hiddenCategories() }} más sin mostrar
-                } @else {
-                  Creadas en el rango
-                }
-              </p>
-            </div>
-          </div>
-          <div class="card-body">
-            @if (topCategories().length > 0) {
-              <div [appChart]="byCategoryOptions()"></div>
-            } @else {
-              <app-empty-state icon="category" title="Sin solicitudes en el rango" />
-            }
-          </div>
-        </div>
-      </div>
-
-      <div class="col-12 col-lg-4">
-        <div class="card">
-          <div class="card-header">
-            <div>
-              <h3 class="card-title">Por torre</h3>
-              <p class="card-subtitle">Creadas en el rango</p>
-            </div>
-          </div>
-          <div class="card-body">
-            @if (byTower().length > 0) {
-              <div [appChart]="byTowerOptions()"></div>
-            } @else {
-              <app-empty-state icon="building-skyscraper" title="Sin solicitudes en el rango" />
             }
           </div>
         </div>
