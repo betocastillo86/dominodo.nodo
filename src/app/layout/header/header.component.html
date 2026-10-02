@@ -27,6 +27,11 @@
         </div>
       </a>
       <div ngbDropdownMenu class="dropdown-menu dropdown-menu-end" aria-labelledby="user-menu">
+        <a class="dropdown-item" routerLink="/mi-perfil">
+          <tabler-icon name="user" class="me-2"></tabler-icon>
+          Mi perfil
+        </a>
+        <div class="dropdown-divider"></div>
         <button type="button" class="dropdown-item" (click)="logout()">
           <tabler-icon name="logout" class="me-2"></tabler-icon>
           Cerrar sesión
