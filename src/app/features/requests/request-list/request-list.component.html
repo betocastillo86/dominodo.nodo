@@ -61,21 +61,35 @@
               <option value="Low">Baja</option>
             </select>
           </div>
-          <div class="col-12 col-sm-6">
+          <div class="col-12 col-sm-6 col-lg-5">
             <app-search-select
               [formControl]="apartmentControl"
               [search]="searchApartments"
+              [resolve]="resolveApartment"
               placeholder="Buscar por apartamento"
               clearLabel="Quitar filtro de apartamento"
             />
           </div>
-          <div class="col-12 col-sm-6">
+          <div class="col-12 col-sm-6 col-lg-5">
             <app-search-select
               [formControl]="residentControl"
               [search]="searchResidents"
+              [resolve]="resolveResident"
               placeholder="Buscar por residente"
               clearLabel="Quitar filtro de residente"
             />
+          </div>
+          <div class="col-12 col-lg-2 d-flex align-items-center">
+            <button
+              type="button"
+              class="btn btn-link px-0"
+              title="Quitar todos los filtros"
+              [disabled]="!hasFilters()"
+              (click)="clearFilters()"
+            >
+              <tabler-icon name="filter-off" class="me-1" />
+              Limpiar filtros
+            </button>
           </div>
         </div>
       </div>

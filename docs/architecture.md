@@ -249,11 +249,17 @@ src/app/
                             #    residents-lookup.service, apartment-import.*, apartment.permissions)
                             #    apartment-list / -detail components + apartment-import/ (bulk load
                             #    wizard, apartments.create AND memberships.manage)
-    └── tenant-info/        # ✅ "Mi Conjunto": tabs — contact info (GET/PUT /tenants/info) and
+    ├── tenant-info/        # ✅ "Mi Conjunto": tabs — contact info (GET/PUT /tenants/info) and
                             #    branding: theme + logo (GET/PUT /tenants/branding, and
                             #    POST /tenants/files/upload-url → direct-to-blob upload)
                             #    guarded by the `tenant.info` permission (read + write in one code);
                             #    saving goes through a confirmation modal · no feature gate
+    └── profile/            # ✅ "Mi perfil": the caller's own profile (GET /auth/current, read-only)
+                            #    plus "Cambiar clave" (PUT /auth/password, own-password change proving
+                            #    the current one). Reached from the header user menu, not the top
+                            #    navbar — no permission guard, every member may see their own data.
+                            #    A successful change revokes the caller's refresh tokens server-side,
+                            #    so the client logs out right after
 ```
 
 ### Opening hours (`schedules`)

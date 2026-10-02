@@ -21,6 +21,11 @@ export interface TableColumn<T> {
   class?: string;
   /** When set, the header becomes a Tabler sort button emitting this key. */
   sortKey?: string;
+  /**
+   * When set, the value renders as a link to this route — for the columns that
+   * identify the row (a code, a title), so they lead where the row action does.
+   */
+  link?: (row: T) => unknown[];
 }
 
 /** Current sort state: which column key and in which direction. */

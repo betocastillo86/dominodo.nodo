@@ -30,4 +30,22 @@ export class MembershipsLookupService {
       catchError(() => of<Membership[]>([])),
     );
   }
+
+  /**
+   * The Active membership of one user, to label a filter restored from the URL
+   * (which carries the `userId`, not the membership id). Resolves to `null`
+   * when there is none, so the filter bar degrades instead of breaking.
+   */
+  getByUserId(userId: string): Observable<Membership | null> {
+    const params = new HttpParams()
+      .set('page', 1)
+      .set('pageSize', 1)
+      .set('status', 'Active')
+      .set('userId', userId);
+
+    return this.http.get<PagedResult<Membership>>(this.base, { params }).pipe(
+      map((result) => result.items[0] ?? null),
+      catchError(() => of<Membership | null>(null)),
+    );
+  }
 }

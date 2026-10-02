@@ -33,12 +33,14 @@ import {
   IconEdit,
   IconEye,
   IconFile,
+  IconFilterOff,
   IconGripVertical,
   IconHistory,
   IconInfoCircle,
   IconLayoutColumns,
   IconList,
   IconListDetails,
+  IconLock,
   IconLogout,
   IconMessage,
   IconMinus,
@@ -55,6 +57,7 @@ import {
   IconTrendingDown,
   IconTrendingUp,
   IconUpload,
+  IconUser,
   IconUserCircle,
   IconUserMinus,
   IconUserPlus,
@@ -100,6 +103,7 @@ export const appConfig: ApplicationConfig = {
       IconList,
       IconLayoutColumns,
       IconSearch,
+      IconFilterOff,
       IconGripVertical,
       // Request detail
       IconInfoCircle,
@@ -142,6 +146,9 @@ export const appConfig: ApplicationConfig = {
       IconBuildingSkyscraper,
       // New-version banner
       IconRefresh,
+      // Mi perfil — header user menu + change-password action
+      IconUser,
+      IconLock,
     }),
   ],
 };

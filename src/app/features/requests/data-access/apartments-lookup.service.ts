@@ -31,4 +31,14 @@ export class ApartmentsLookupService {
       catchError(() => of<ApartmentDto[]>([])),
     );
   }
+
+  /**
+   * One apartment by id, to label a filter restored from the URL. Resolves to
+   * `null` when it no longer exists, so the filter bar degrades instead of breaking.
+   */
+  getById(id: string): Observable<ApartmentDto | null> {
+    return this.http
+      .get<ApartmentDto>(`${this.base}/${id}`)
+      .pipe(catchError(() => of<ApartmentDto | null>(null)));
+  }
 }

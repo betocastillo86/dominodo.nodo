@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, ParamMap, Params, Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   CdkDrag,
@@ -21,6 +21,7 @@ import { SpinnerComponent } from '../../../shared/ui/spinner/spinner.component';
 import {
   SearchSelectComponent,
   SearchSelectFn,
+  SearchSelectResolveFn,
 } from '../../../shared/ui/search-select/search-select.component';
 import { PermissionStore } from '../../../core/authz/permission.store';
 import { NotificationService } from '../../../core/notifications/notification.service';
@@ -44,6 +45,25 @@ import {
 } from '../data-access/request.models';
 
 type ViewMode = 'list' | 'board';
+
+/** The API's own ordering. Kept out of the URL so an unfiltered list has a clean one. */
+const DEFAULT_SORT_BY: RequestSortBy = 'Date';
+const DEFAULT_SORT_DIR: 'asc' | 'desc' = 'desc';
+
+/** Sort keys the table actually offers; anything else in the URL falls back to the default. */
+const SORT_KEYS: readonly RequestSortBy[] = ['Date', 'Priority', 'Updates', 'Participants'];
+
+/** Writes a value restored from the URL into a control without echoing it back. */
+function setSilently<T>(control: FormControl<T>, value: T): void {
+  if (control.value !== value) {
+    control.setValue(value, { emitEvent: false });
+  }
+}
+
+/** The URL is hand-editable: anything that is not a known key means "no filter". */
+function asKeyOf<K extends string>(value: string | null, known: Record<K, unknown>): K | '' {
+  return value && value in known ? (value as K) : '';
+}
 
 @Component({
   selector: 'app-request-list',
@@ -97,6 +117,8 @@ type ViewMode = 'list' | 'board';
   ],
 })
 export class RequestListComponent {
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly service = inject(RequestsService);
   private readonly permissions = inject(PermissionStore);
   private readonly notifications = inject(NotificationService);
@@ -119,7 +141,12 @@ export class RequestListComponent {
   readonly view = signal<ViewMode>('list');
 
   /** List ordering (server-side); defaults to the API's own Date/Desc. */
-  readonly sort = signal<TableSort>({ key: 'Date', direction: 'desc' });
+  readonly sort = signal<TableSort>({ key: DEFAULT_SORT_BY, direction: DEFAULT_SORT_DIR });
+
+  /** Filters currently applied, mirrored from the URL to drive "Limpiar filtros". */
+  private readonly appliedFilters = signal<Record<string, string | null>>({});
+
+  readonly hasFilters = computed(() => Object.values(this.appliedFilters()).some(Boolean));
 
   /** Only holders of requests.edit may drag cards to change status. */
   readonly canEdit = computed(() => this.permissions.has('requests.edit'));
@@ -155,17 +182,37 @@ export class RequestListComponent {
       ),
     );
 
+  /**
+   * Label lookups for the ids these two filters hold. Needed because a filter
+   * restored from the URL arrives as a bare id, which says nothing on screen.
+   */
+  readonly resolveApartment: SearchSelectResolveFn = (id) =>
+    this.apartmentsLookup
+      .getById(id)
+      .pipe(
+        map((a) =>
+          a ? { value: a.id, label: a.tower ? `${a.tower} · ${a.number}` : a.number } : null,
+        ),
+      );
+
+  readonly resolveResident: SearchSelectResolveFn = (userId) =>
+    this.membershipsLookup
+      .getByUserId(userId)
+      .pipe(map((m) => (m ? { value: m.userId, label: m.userName, sublabel: m.phone } : null)));
+
   // ── Table columns ────────────────────────────────────────────────────────
   readonly columns: readonly TableColumn<RequestDto>[] = [
     {
       header: 'Código',
       value: (r) => r.code,
-      class: 'w-1 text-nowrap text-secondary',
+      class: 'w-1 text-nowrap',
+      link: (r) => this.detailLink(r),
     },
     {
       header: 'Título',
       value: (r) => this.truncate(r.title),
       class: 'table-cell-wrap',
+      link: (r) => this.detailLink(r),
     },
     {
       header: 'Estado',
@@ -224,50 +271,61 @@ export class RequestListComponent {
   private readonly pageSize = 20;
 
   constructor() {
-    this.searchControl.valueChanges.pipe(
-      debounceTime(300),
-      distinctUntilChanged(),
-      takeUntilDestroyed(),
-    ).subscribe(() => this.reload(1));
+    // The URL is the single source of truth for what the list shows: every
+    // control writes to it and this subscription is what applies it and
+    // fetches. That makes the view shareable by link, and brings the filters
+    // back untouched when the user returns from a request's detail.
+    this.route.queryParamMap
+      .pipe(takeUntilDestroyed())
+      .subscribe((params) => this.applyParams(params));
 
-    this.statusControl.valueChanges.pipe(
-      distinctUntilChanged(),
-      takeUntilDestroyed(),
-    ).subscribe(() => this.reload(1));
+    this.searchControl.valueChanges
+      .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed())
+      .subscribe((value) => this.patchQuery({ search: value.trim() || null }));
 
-    this.priorityControl.valueChanges.pipe(
-      distinctUntilChanged(),
-      takeUntilDestroyed(),
-    ).subscribe(() => this.reload(1));
+    this.statusControl.valueChanges
+      .pipe(distinctUntilChanged(), takeUntilDestroyed())
+      .subscribe((value) => this.patchQuery({ status: value || null }));
 
-    this.apartmentControl.valueChanges.pipe(
-      distinctUntilChanged(),
-      takeUntilDestroyed(),
-    ).subscribe(() => this.reload(1));
+    this.priorityControl.valueChanges
+      .pipe(distinctUntilChanged(), takeUntilDestroyed())
+      .subscribe((value) => this.patchQuery({ priority: value || null }));
 
-    this.residentControl.valueChanges.pipe(
-      distinctUntilChanged(),
-      takeUntilDestroyed(),
-    ).subscribe(() => this.reload(1));
+    this.apartmentControl.valueChanges
+      .pipe(distinctUntilChanged(), takeUntilDestroyed())
+      .subscribe((value) => this.patchQuery({ apartmentId: value }));
 
-    this.reload(1);
+    this.residentControl.valueChanges
+      .pipe(distinctUntilChanged(), takeUntilDestroyed())
+      .subscribe((value) => this.patchQuery({ residentId: value }));
   }
 
   switchView(mode: ViewMode): void {
-    this.view.set(mode);
-    if (mode === 'board') {
-      this.service.loadBoard();
-    }
+    // The page belongs to the list view; keep it so coming back lands where it was.
+    this.patchQuery({ view: mode === 'board' ? 'board' : null }, { resetPage: false });
   }
 
   onPageChange(page: number): void {
-    this.reload(page);
+    this.patchQuery({ page: page > 1 ? page : null }, { resetPage: false });
   }
 
-  /** A header sort click: store the new state and reload from the first page. */
+  /** A header sort click: the URL change is what reorders and goes back to page 1. */
   onSortChange(sort: TableSort): void {
-    this.sort.set(sort);
-    this.reload(1);
+    this.patchQuery({
+      sortBy: sort.key === DEFAULT_SORT_BY ? null : sort.key,
+      dir: sort.direction === DEFAULT_SORT_DIR ? null : sort.direction,
+    });
+  }
+
+  /** Drops every filter; the ordering and the current view are left alone. */
+  clearFilters(): void {
+    this.patchQuery({
+      search: null,
+      status: null,
+      priority: null,
+      apartmentId: null,
+      residentId: null,
+    });
   }
 
   /** Titles can run long; cap them so a row keeps a predictable height. */
@@ -282,27 +340,70 @@ export class RequestListComponent {
     return `${dd}/${mm}/${d.getFullYear()}`;
   }
 
-  private reload(page: number): void {
-    const statuses: RequestStatus[] = this.statusControl.value
-      ? [this.statusControl.value as RequestStatus]
-      : [];
-    const priority = (this.priorityControl.value as RequestPriority) || null;
-    const search = this.searchControl.value;
-    const apartmentId = this.apartmentControl.value;
-    const participantUserId = this.residentControl.value;
-    const sort = this.sort();
+  /**
+   * Pushes a change into the query string; `applyParams` then does the work.
+   * It replaces the history entry instead of adding one, so a few keystrokes
+   * in the search box don't bury the list under a pile of back steps — the one
+   * entry left always carries the latest filters.
+   */
+  private patchQuery(changes: Params, options: { resetPage?: boolean } = {}): void {
+    const queryParams = options.resetPage === false ? changes : { ...changes, page: null };
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams,
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
+  /** URL → controls → fetch. Controls are written silently; only the URL reloads. */
+  private applyParams(params: ParamMap): void {
+    const search = params.get('search') ?? '';
+    const status = asKeyOf<RequestStatus>(params.get('status'), STATUS_LABEL);
+    const priority = asKeyOf<RequestPriority>(params.get('priority'), PRIORITY_LABEL);
+    const apartmentId = params.get('apartmentId');
+    const residentId = params.get('residentId');
+    const page = Math.max(1, Math.trunc(Number(params.get('page'))) || 1);
+    const sortBy = SORT_KEYS.find((key) => key === params.get('sortBy')) ?? DEFAULT_SORT_BY;
+    const direction = params.get('dir') === 'asc' ? 'asc' : 'desc';
+    const view: ViewMode = params.get('view') === 'board' ? 'board' : 'list';
+
+    // Compared trimmed: the URL carries the trimmed term, and rewriting the box
+    // while the user is still typing would move their cursor.
+    if (this.searchControl.value.trim() !== search) {
+      setSilently(this.searchControl, search);
+    }
+    setSilently(this.statusControl, status);
+    setSilently(this.priorityControl, priority);
+    setSilently(this.apartmentControl, apartmentId);
+    setSilently(this.residentControl, residentId);
+
+    this.sort.set({ key: sortBy, direction });
+    this.view.set(view);
+    this.appliedFilters.set({ search, status, priority, apartmentId, residentId });
+    // Replayed by the detail's "Volver" link; the browser's back button reads the URL itself.
+    this.service.setLastListQuery(
+      Object.fromEntries(params.keys.map((key) => [key, params.get(key)!])),
+    );
+
+    // The board shows every status in its own column, so it ignores the filters.
+    if (view === 'board') {
+      this.service.loadBoard();
+      return;
+    }
+
     const ordering: RequestSort = {
-      sortBy: sort.key as RequestSortBy,
-      direction: sort.direction === 'asc' ? 'Asc' : 'Desc',
+      sortBy,
+      direction: direction === 'asc' ? 'Asc' : 'Desc',
     };
     this.service.list(
       page,
       this.pageSize,
-      statuses,
-      priority,
+      status ? [status] : [],
+      priority || null,
       search,
       apartmentId,
-      participantUserId,
+      residentId,
       ordering,
     );
   }

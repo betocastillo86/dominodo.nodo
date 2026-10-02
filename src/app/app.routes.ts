@@ -72,6 +72,12 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./features/tenant-info/tenant-info.routes').then((m) => m.tenantInfoRoutes),
       },
+      // Reached from the header user menu, not the top navbar — no permission
+      // guard, since every member may see their own profile.
+      {
+        path: 'mi-perfil',
+        loadChildren: () => import('./features/profile/profile.routes').then((m) => m.profileRoutes),
+      },
       // The landing depends on what the user may see: the dashboard for whoever
       // can read the report, PQRS for everyone else. See `landingRedirect`.
       { path: '', pathMatch: 'full', redirectTo: landingRedirect },

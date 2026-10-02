@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { NgbDropdownModule } from '@ng-bootstrap/ng-bootstrap';
 import { TablerIconComponent } from 'angular-tabler-icons';
 import { AuthService } from '../../core/auth/auth.service';
@@ -16,7 +17,7 @@ import { VersionCheckService } from '../../core/version/version-check.service';
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [NgbDropdownModule, TablerIconComponent],
+  imports: [NgbDropdownModule, TablerIconComponent, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     class: 'navbar navbar-expand-md d-print-none',

@@ -62,6 +62,19 @@ export class RequestsService {
   readonly boardLoading = this._boardLoading.asReadonly();
   readonly boardError = this._boardError.asReadonly();
 
+  // ── Last list query ──────────────────────────────────────────────────────
+  /**
+   * Query string of the list the user last saw. The detail's "Volver" link
+   * replays it so filters, page and sort survive the round trip — the browser's
+   * own back button needs nothing, since the list writes them to the URL.
+   */
+  private readonly _lastListQuery = signal<Record<string, string>>({});
+  readonly lastListQuery = this._lastListQuery.asReadonly();
+
+  setLastListQuery(query: Record<string, string>): void {
+    this._lastListQuery.set(query);
+  }
+
   /** Load a page of requests with optional filters and ordering. Pushes state into signals. */
   list(
     page: number,
