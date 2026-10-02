@@ -33,6 +33,7 @@ import {
   IconEdit,
   IconEye,
   IconFile,
+  IconFilterOff,
   IconGripVertical,
   IconHistory,
   IconInfoCircle,
@@ -102,6 +103,7 @@ export const appConfig: ApplicationConfig = {
       IconList,
       IconLayoutColumns,
       IconSearch,
+      IconFilterOff,
       IconGripVertical,
       // Request detail
       IconInfoCircle,

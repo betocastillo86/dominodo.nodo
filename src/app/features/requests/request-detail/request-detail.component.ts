@@ -163,6 +163,13 @@ export class RequestDetailComponent {
 
   private readonly requestId = this.route.snapshot.paramMap.get('id')!;
 
+  /**
+   * Query of the list the user came from, so "Volver" lands on the same
+   * filters, page and view. Empty when the detail was opened cold (a shared
+   * link, a new tab) — then it just goes to the unfiltered list.
+   */
+  readonly backQuery = this.service.lastListQuery;
+
   // ── Page state ────────────────────────────────────────────────────────────
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);

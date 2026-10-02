@@ -1,10 +1,13 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   forwardRef,
+  inject,
   input,
   signal,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   ControlValueAccessor,
   FormControl,
@@ -33,6 +36,13 @@ export interface SearchSelectOption {
 
 /** Signature for the remote search callback the host wires in. */
 export type SearchSelectFn = (term: string) => Observable<SearchSelectOption[]>;
+
+/**
+ * Signature for the optional lookup that turns a value set from outside (a
+ * filter restored from the URL, say) back into the option to display.
+ * Resolves to `null` when the value no longer exists.
+ */
+export type SearchSelectResolveFn = (value: string) => Observable<SearchSelectOption | null>;
 
 /**
  * Tabler-styled remote single-select ("typeahead"): the user types in the input,
@@ -102,6 +112,12 @@ export type SearchSelectFn = (term: string) => Observable<SearchSelectOption[]>;
 export class SearchSelectComponent implements ControlValueAccessor {
   /** Remote lookup: called with the (trimmed) search term, returns matches. */
   readonly search = input.required<SearchSelectFn>();
+  /**
+   * Optional lookup for a value written into the control from outside, whose
+   * label the component cannot know. Without it such a value still applies,
+   * but the field renders empty instead of showing the selected tag.
+   */
+  readonly resolve = input<SearchSelectResolveFn | null>(null);
   /** Placeholder shown in the search input while nothing is selected. */
   readonly placeholder = input('Buscar…');
   /** Minimum characters before the lookup runs. */
@@ -116,6 +132,8 @@ export class SearchSelectComponent implements ControlValueAccessor {
   });
   protected readonly selected = signal<SearchSelectOption | null>(null);
   protected readonly isDisabled = signal(false);
+
+  private readonly destroyRef = inject(DestroyRef);
 
   private onChange: (value: string | null) => void = () => {};
   private onTouched: () => void = () => {};
@@ -154,13 +172,33 @@ export class SearchSelectComponent implements ControlValueAccessor {
   }
 
   writeValue(value: string | null): void {
-    // Cleared externally (e.g. form.reset). We can't resolve a label for an
-    // arbitrary incoming id, so only the "null" case is handled here — the
-    // selected label is set locally in `onSelect()` when the user picks.
+    // Cleared externally (e.g. form.reset).
     if (!value) {
       this.selected.set(null);
       this.query.setValue('', { emitEvent: false });
+      return;
     }
+
+    // Already on screen: the user just picked it, or the same value was written back.
+    if (this.selected()?.value === value) {
+      return;
+    }
+
+    // An id alone says nothing to the user, so without a `resolve` the field
+    // stays empty — the label is otherwise only known from `onSelect()`.
+    const resolve = this.resolve();
+    if (!resolve) {
+      return;
+    }
+
+    resolve(value)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((option) => {
+        // A newer value may have been written while the lookup was in flight.
+        if (option && option.value === value) {
+          this.selected.set(option);
+        }
+      });
   }
 
   registerOnChange(fn: (value: string | null) => void): void {

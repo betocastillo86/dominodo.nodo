@@ -40,6 +40,8 @@
                     <tabler-icon [name]="col.icon" class="icon-sm" />
                     {{ col.value(row) }}
                   </span>
+                } @else if (col.link; as link) {
+                  <a [routerLink]="link(row)">{{ col.value(row) }}</a>
                 } @else {
                   {{ col.value(row) }}
                 }

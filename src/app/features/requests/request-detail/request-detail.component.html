@@ -1,6 +1,6 @@
 <app-page-header [title]="headerTitle()">
   <div actions>
-    <a routerLink="/requests" class="btn btn-outline-secondary btn-sm">
+    <a routerLink="/requests" [queryParams]="backQuery()" class="btn btn-outline-secondary btn-sm">
       <tabler-icon name="arrow-left" class="me-1" />
       Volver
     </a>
