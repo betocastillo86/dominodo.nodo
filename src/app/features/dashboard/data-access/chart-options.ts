@@ -1,10 +1,12 @@
 import { ApexOptions } from 'apexcharts';
-import { RequestType, STATUS_LABEL, TYPE_LABEL } from '../../requests/data-access/request.models';
+import {
+  RequestStatus,
+  RequestType,
+  TYPE_LABEL,
+} from '../../requests/data-access/request.models';
 import {
   categoricalColors,
   cssVar,
-  STATUS_CHART_ORDER,
-  statusColors,
   tablerColor,
   withChartTheme,
 } from './chart-theme';
@@ -52,14 +54,23 @@ export function monthlyFlowChart(months: readonly ReportMonthDto[]): ApexOptions
   });
 }
 
+/** `Resolved` and `Closed` both mean "already dealt with"; the curve adds them up. */
+const HANDLED_STATUSES: readonly RequestStatus[] = ['Resolved', 'Closed'];
+
 /**
- * Requests per status at the close of each consolidated day.
+ * Requests opened against requests already dealt with, at the close of each
+ * consolidated day.
  *
- * NOT stacked. Stacking drew every series at the running total of the ones
- * below it, so `En progreso: 6` sat at 130 because `Nuevo` was 124 — the
- * tooltip and the curve disagreed and the chart read as broken. Unstacked,
- * each curve is that status' own count and can be read straight off the axis,
- * and `Total` carries the running count the stacked silhouette used to show.
+ * Two cumulative curves, and the DISTANCE between them is the whole point: it
+ * is the open backlog (`New` + `InProgress`) without ever drawing it. Curves
+ * that converge mean the conjunto is catching up; a widening band means it is
+ * falling behind.
+ *
+ * It used to draw one band per status, which no single axis could hold: on real
+ * data `Closed` ran at 1428 while the three statuses that represent live
+ * workload sat between 205 and 259, flattening them into a sliver at the foot
+ * of the chart. Folding `Closed` into `Resolved` and leaving the rest implicit
+ * puts both curves on the same order of magnitude.
  *
  * A DATETIME axis, not a category one: the snapshot job only covers days it has
  * already closed, so the series is legitimately sparse and evenly-spaced
@@ -69,33 +80,35 @@ export function backlogChart(curve: readonly ReportBacklogPointDto[]): ApexOptio
   return withChartTheme({
     chart: { type: 'area', height: 300, stacked: false },
     series: [
-      ...STATUS_CHART_ORDER.map((status) => ({
-        name: STATUS_LABEL[status],
+      {
+        name: 'Resueltas',
         data: curve.map((point) => ({
           x: dayToTimestamp(point.day),
-          // Within a day that WAS photographed, an absent bucket is a real zero.
-          y: point.byStatus.find((bucket) => bucket.key === status)?.count ?? 0,
+          y: countAtClose(point, HANDLED_STATUSES),
         })),
-      })),
+      },
       {
         name: 'Total',
-        // A line, not a fifth area: the four statuses are a partition and the
-        // total is of another kind. Filling it would read as another status.
+        // A bare line rather than a second area, and drawn last so it sits over
+        // the fill: what is left between the two is then visibly the pending
+        // work, instead of reading as another quantity piled on top.
         type: 'line',
         data: curve.map((point) => ({
           x: dayToTimestamp(point.day),
-          y: totalAtClose(point),
+          y: countAtClose(point),
         })),
       },
     ],
-    // Neutral and theme-aware, so the total reads as a reference envelope over
-    // the status bands rather than as a status of its own.
-    colors: [...statusColors(), cssVar('--tblr-body-color', '#1f2937')],
+    // Green for what is done, neutral and theme-aware for the ceiling.
+    colors: [tablerColor('green', '#2fb344'), cssVar('--tblr-body-color', '#1f2937')],
     stroke: { width: 2, curve: 'straight' },
-    // The areas overlap instead of tiling, so they have to be faint: the band
-    // under the smallest series carries every fill at once. The total is a bare
-    // line — index by index, so adding a status cannot shift the zero.
-    fill: { type: 'solid', opacity: [...STATUS_CHART_ORDER.map(() => 0.12), 0] },
+    // Index 0 is the resolved area's fill. Index 1 is the total's STROKE
+    // colour, and its 1 must not be "tidied" to 0: ApexCharts takes a
+    // `type: 'line'` series' stroke from `fill`, not from `stroke` (`Line.js`:
+    // `if (type === 'line') lineFill = fill.fillPath(...)`), so a 0 paints the
+    // line transparent and leaves only its markers behind. It also fills
+    // nothing — the area path is gated on `type === 'area'`.
+    fill: { type: 'solid', opacity: [0.15, 1] },
     xaxis: {
       type: 'datetime',
       // The days are civil dates at the reporting offset, already baked into the
@@ -108,16 +121,17 @@ export function backlogChart(curve: readonly ReportBacklogPointDto[]): ApexOptio
 }
 
 /**
- * Total requests at the close of a photographed day.
+ * Requests at the close of a photographed day, over every status or a subset.
  *
- * Summing the buckets is exact, not an approximation: the API's
+ * Summing buckets is exact rather than approximate: the API's
  * `ConsolidateDayAsync` counts every request created before the day's end and
- * folds a missing status history into `New`, so the four buckets are a complete
- * and exclusive partition. Summing `byStatus` rather than the four known keys
- * keeps that true if the API ever grows a fifth status before the client does.
+ * folds a missing status history into `New`, so the buckets of a day that WAS
+ * photographed are a complete and exclusive partition.
  */
-function totalAtClose(point: ReportBacklogPointDto): number {
-  return point.byStatus.reduce((total, bucket) => total + bucket.count, 0);
+function countAtClose(point: ReportBacklogPointDto, statuses?: readonly string[]): number {
+  return point.byStatus
+    .filter((bucket) => statuses === undefined || statuses.includes(bucket.key))
+    .reduce((total, bucket) => total + bucket.count, 0);
 }
 
 /** PQRS mix for the range, with the total in the donut's hole. */

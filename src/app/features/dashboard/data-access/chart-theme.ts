@@ -1,5 +1,5 @@
 import { ApexLocale, ApexOptions } from 'apexcharts';
-import { RequestStatus, STATUS_COLOR } from '../../requests/data-access/request.models';
+import { RequestStatus } from '../../requests/data-access/request.models';
 
 /**
  * Shared ApexCharts styling, derived from Tabler's own CSS variables rather
@@ -72,14 +72,6 @@ export const STATUS_CHART_ORDER: readonly RequestStatus[] = [
   'Resolved',
   'Closed',
 ];
-
-/**
- * Status colours, reusing the exact map the PQRS list and board already use —
- * a resolved request is the same green everywhere in the portal.
- */
-export function statusColors(): string[] {
-  return STATUS_CHART_ORDER.map((status) => tablerColor(STATUS_COLOR[status]));
-}
 
 /**
  * Categorical palette for breakdowns with no intrinsic colour (type, category,
