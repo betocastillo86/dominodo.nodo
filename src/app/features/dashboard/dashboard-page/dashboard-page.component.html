@@ -341,11 +341,12 @@
         <div class="card">
           <div class="card-header">
             <div>
-              <h3 class="card-title">Carga acumulada por día</h3>
+              <h3 class="card-title">Carga diaria por estado</h3>
               <p class="card-subtitle">
                 @if (backlogCoverage(); as coverage) {
-                  {{ coverage.days }} días consolidados · {{ coverage.from }} — {{ coverage.to }} ·
-                  «Cerrado» está oculto, actívalo en la leyenda
+                  Solicitudes en cada estado al cierre del día · {{ coverage.days }} días
+                  consolidados · {{ coverage.from }} — {{ coverage.to }} · «Cerrado» está oculto,
+                  actívalo en la leyenda
                 } @else {
                   Solo incluye días ya consolidados
                 }

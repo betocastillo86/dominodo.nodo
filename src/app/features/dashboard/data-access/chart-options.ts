@@ -55,18 +55,23 @@ export function monthlyFlowChart(months: readonly ReportMonthDto[]): ApexOptions
 /**
  * Requests per status at the close of each consolidated day.
  *
+ * NOT stacked. Stacking drew every series at the running total of the ones
+ * below it, so `En progreso: 6` sat at 130 because `Nuevo` was 124 — the
+ * tooltip and the curve disagreed and the chart read as broken. Unstacked,
+ * each curve is that status' own count and can be read straight off the axis.
+ *
  * A DATETIME axis, not a category one: the snapshot job only covers days it has
  * already closed, so the series is legitimately sparse and evenly-spaced
  * categories would lie about where the gaps are.
  */
 export function backlogChart(curve: readonly ReportBacklogPointDto[]): ApexOptions {
   return withChartTheme({
-    chart: { type: 'area', height: 300, stacked: true },
+    chart: { type: 'area', height: 300, stacked: false },
     series: STATUS_CHART_ORDER.map((status) => ({
       name: STATUS_LABEL[status],
-      // Closed only ever grows, so stacking it flattens the three statuses that
-      // represent actual workload into a sliver. It starts folded away and the
-      // legend brings it back for anyone who wants the lifetime total.
+      // Closed only ever grows, so it sits an order of magnitude above the three
+      // statuses that represent actual workload and flattens them against the
+      // axis. It starts folded away and the legend brings it back.
       hidden: status === 'Closed',
       data: curve.map((point) => ({
         x: dayToTimestamp(point.day),
@@ -76,7 +81,9 @@ export function backlogChart(curve: readonly ReportBacklogPointDto[]): ApexOptio
     })),
     colors: statusColors(),
     stroke: { width: 2, curve: 'straight' },
-    fill: { type: 'solid', opacity: 0.18 },
+    // The areas now overlap instead of tiling, so they have to be fainter: the
+    // band under the smallest series carries every fill at once.
+    fill: { type: 'solid', opacity: 0.12 },
     xaxis: {
       type: 'datetime',
       // The days are civil dates at the reporting offset, already baked into the
