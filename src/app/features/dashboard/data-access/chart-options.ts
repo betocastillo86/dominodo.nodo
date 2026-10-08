@@ -58,7 +58,8 @@ export function monthlyFlowChart(months: readonly ReportMonthDto[]): ApexOptions
  * NOT stacked. Stacking drew every series at the running total of the ones
  * below it, so `En progreso: 6` sat at 130 because `Nuevo` was 124 — the
  * tooltip and the curve disagreed and the chart read as broken. Unstacked,
- * each curve is that status' own count and can be read straight off the axis.
+ * each curve is that status' own count and can be read straight off the axis,
+ * and `Total` carries the running count the stacked silhouette used to show.
  *
  * A DATETIME axis, not a category one: the snapshot job only covers days it has
  * already closed, so the series is legitimately sparse and evenly-spaced
@@ -67,23 +68,34 @@ export function monthlyFlowChart(months: readonly ReportMonthDto[]): ApexOptions
 export function backlogChart(curve: readonly ReportBacklogPointDto[]): ApexOptions {
   return withChartTheme({
     chart: { type: 'area', height: 300, stacked: false },
-    series: STATUS_CHART_ORDER.map((status) => ({
-      name: STATUS_LABEL[status],
-      // Closed only ever grows, so it sits an order of magnitude above the three
-      // statuses that represent actual workload and flattens them against the
-      // axis. It starts folded away and the legend brings it back.
-      hidden: status === 'Closed',
-      data: curve.map((point) => ({
-        x: dayToTimestamp(point.day),
-        // Within a day that WAS photographed, an absent bucket is a real zero.
-        y: point.byStatus.find((bucket) => bucket.key === status)?.count ?? 0,
+    series: [
+      ...STATUS_CHART_ORDER.map((status) => ({
+        name: STATUS_LABEL[status],
+        data: curve.map((point) => ({
+          x: dayToTimestamp(point.day),
+          // Within a day that WAS photographed, an absent bucket is a real zero.
+          y: point.byStatus.find((bucket) => bucket.key === status)?.count ?? 0,
+        })),
       })),
-    })),
-    colors: statusColors(),
+      {
+        name: 'Total',
+        // A line, not a fifth area: the four statuses are a partition and the
+        // total is of another kind. Filling it would read as another status.
+        type: 'line',
+        data: curve.map((point) => ({
+          x: dayToTimestamp(point.day),
+          y: totalAtClose(point),
+        })),
+      },
+    ],
+    // Neutral and theme-aware, so the total reads as a reference envelope over
+    // the status bands rather than as a status of its own.
+    colors: [...statusColors(), cssVar('--tblr-body-color', '#1f2937')],
     stroke: { width: 2, curve: 'straight' },
-    // The areas now overlap instead of tiling, so they have to be fainter: the
-    // band under the smallest series carries every fill at once.
-    fill: { type: 'solid', opacity: 0.12 },
+    // The areas overlap instead of tiling, so they have to be faint: the band
+    // under the smallest series carries every fill at once. The total is a bare
+    // line — index by index, so adding a status cannot shift the zero.
+    fill: { type: 'solid', opacity: [...STATUS_CHART_ORDER.map(() => 0.12), 0] },
     xaxis: {
       type: 'datetime',
       // The days are civil dates at the reporting offset, already baked into the
@@ -93,6 +105,19 @@ export function backlogChart(curve: readonly ReportBacklogPointDto[]): ApexOptio
     yaxis: { forceNiceScale: true },
     tooltip: { x: { format: 'dd MMM yyyy' }, shared: true },
   });
+}
+
+/**
+ * Total requests at the close of a photographed day.
+ *
+ * Summing the buckets is exact, not an approximation: the API's
+ * `ConsolidateDayAsync` counts every request created before the day's end and
+ * folds a missing status history into `New`, so the four buckets are a complete
+ * and exclusive partition. Summing `byStatus` rather than the four known keys
+ * keeps that true if the API ever grows a fifth status before the client does.
+ */
+function totalAtClose(point: ReportBacklogPointDto): number {
+  return point.byStatus.reduce((total, bucket) => total + bucket.count, 0);
 }
 
 /** PQRS mix for the range, with the total in the donut's hole. */

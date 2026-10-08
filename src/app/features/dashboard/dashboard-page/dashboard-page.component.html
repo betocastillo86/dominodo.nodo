@@ -344,9 +344,8 @@
               <h3 class="card-title">Carga diaria por estado</h3>
               <p class="card-subtitle">
                 @if (backlogCoverage(); as coverage) {
-                  Solicitudes en cada estado al cierre del día · {{ coverage.days }} días
-                  consolidados · {{ coverage.from }} — {{ coverage.to }} · «Cerrado» está oculto,
-                  actívalo en la leyenda
+                  Solicitudes en cada estado al cierre del día, y el total acumulado ·
+                  {{ coverage.days }} días consolidados · {{ coverage.from }} — {{ coverage.to }}
                 } @else {
                   Solo incluye días ya consolidados
                 }
