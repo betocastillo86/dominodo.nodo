@@ -20,7 +20,7 @@ resolved from the **domain**. Full design: `docs/architecture.md`.
 ## Commands
 - `npm start` — dev server at `http://localhost:4201` (4201, not 4200, to avoid clashing with `admin`).
 - `npm run build` — production build (must pass with no type errors before any change is done).
-- `npm run build:prod` — prod bundle (`main` branch / prod env). `npm run build:stage` — stage bundle (`develop` branch / stage env).
+- `npm run build:prod` / `npm run build:stage` — the prod and stage bundles. These no longer map to branches: `main` is the only branch and **CI builds both bundles from the same commit** (prod is then deployed by a manual pipeline stage). See `docs/deployment.md`.
 - API base URL + tenant config live in `src/environments/` (`environment.ts` = prod, `environment.stage.ts` = stage, `environment.development.ts` = dev).
 - API Swagger: `http://localhost:5083/swagger/index.html`.
 - Deployment: Azure DevOps FTP pipeline (`pipelines/build-ftp-pipeline.yaml`) → Windows/IIS. See `docs/deployment.md`.

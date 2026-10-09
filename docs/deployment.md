@@ -1,19 +1,41 @@
 # Deployment — Dominodo Nodo (FTP to Windows/IIS)
 
 `dominodo.nodo` deploys the same way as `dominodo.admin`: an **Azure DevOps** pipeline builds the
-right Angular configuration per branch and uploads the static bundle over **FTP** to Windows/IIS
-hosting. There is no GitHub Actions workflow and no build-time URL string injection — the API URL and
-tenant config are selected purely by Angular `fileReplacements`.
+Angular bundles and uploads the static output over **FTP** to Windows/IIS hosting. There is no GitHub
+Actions workflow and no build-time URL string injection — the API URL and tenant config are selected
+purely by Angular `fileReplacements`.
 
 ## Environments
 
-| Environment | Branch    | Build config | Angular env file             | Variable group        |
-|-------------|-----------|--------------|------------------------------|-----------------------|
-| prod        | `main`    | `production` | `environment.ts`             | `dominodo-nodo-prod`  |
-| stage       | `develop` | `stage`      | `environment.stage.ts`       | `dominodo-nodo-stage` |
+| Environment | Deployed by              | Build config | Angular env file       | Variable group        |
+|-------------|--------------------------|--------------|------------------------|-----------------------|
+| prod        | **manual** (`Run stage`) | `production` | `environment.ts`       | `dominodo-nodo-prod`  |
+| stage       | every push to `main`     | `stage`      | `environment.stage.ts` | `dominodo-nodo-stage` |
 
-- **Branch → env mapping:** `main` → prod, `develop` → stage.
-- Push to `develop` deploys stage; push to `main` deploys prod. No manual build/upload.
+## Deploy model — one branch, two bundles, a manual prod gate
+
+`main` is the **only** branch (`dominodo.api` ADR-0015). There is no branch→environment mapping any
+more, because there is only one branch:
+
+- **One push → one run that builds BOTH configurations** from that single commit, published as two
+  pipeline artifacts, `web-stage` and `web-prod`.
+- **`DeployStage` is automatic** — it FTPs `web-stage` to the stage folder on every push.
+- **`DeployProd` is a manual stage** — it FTPs `web-prod`, and only when you open a run and hit
+  **Run stage**. Any run inside the 30-day retention window can be promoted, not just the newest, so
+  releasing a chosen version or rolling back is a click rather than a commit.
+
+### Why two bundles instead of promoting one artifact
+
+The bundle is **environment-specific**, and for Nodo that cuts deeper than for `admin`: the `stage`
+configuration swaps `environment.ts` for `environment.stage.ts`, so **both `apiBaseUrl` and
+`baseDomain` are compiled into the JavaScript**. `baseDomain` is what the tenant slug is resolved from
+at bootstrap, so a stage bundle uploaded to the prod folder would not merely talk to the wrong API —
+**it would fail to resolve the tenant at all**, because it would be looking for
+`<tenant>.nodo-stage.dominodo.com` while serving `<tenant>.dominodo.com`.
+
+That is why the `Build` stage fails if either bundle does not carry its own environment's API host, if
+the stage bundle does not carry `nodo-stage.dominodo.com`, if `web.config` is missing, or if
+`version.json` was not stamped.
 
 ## Build configurations
 
@@ -186,13 +208,45 @@ dimension from `architecture.md` §10).
 
 ## Pipeline — `pipelines/build-ftp-pipeline.yaml`
 
-Azure DevOps YAML:
+Azure DevOps YAML (definition `dominodo.nodo.ftp`, id 65 in `castillopradagabriel/Pollaya`), three
+stages:
 
-1. Resolves a **variable group** by branch (`dominodo-nodo-prod` for `main`,
-   `dominodo-nodo-stage` for `develop`) and sets `BUILD_CONFIG`.
-2. `NodeTool@0` (Node 20) → `npm ci` (respects `.npmrc legacy-peer-deps=true`).
-3. `npx ng build --configuration $(BUILD_CONFIG)`.
-4. `FtpUpload@2` from `dist/dominodo-nodo/browser` to `$(FTP_REMOTE_DIR)`.
+**`Build`** — runs on every push to `main`:
+
+1. `NodeTool@0` (Node 20) → `npm ci` (respects `.npmrc legacy-peer-deps=true`).
+2. Stamps `$(Build.BuildId)` **once** into `src/app/core/version/app-version.ts` and
+   `public/version.json`, so both bundles carry the same release id.
+3. `npx ng build --configuration stage --output-path dist/stage`.
+4. `npx ng build --configuration production --output-path dist/prod`
+   (the `application` builder appends `browser/` to whatever `--output-path` is given).
+5. Verifies both bundles (see *Why two bundles* above).
+6. Publishes artifacts `web-stage` and `web-prod`.
+
+**`DeployStage`** — automatic, `environment: dominodo-stage`. Scopes the `dominodo-nodo-stage`
+variable group to itself, downloads `web-stage`, `FtpUpload@2`s it to `$(FTP_REMOTE_DIR)`.
+
+**`DeployProd`** — `trigger: manual`, `environment: dominodo-prod`. Same shape with the
+`dominodo-nodo-prod` group and the `web-prod` artifact.
+
+Two details that are not obvious from the YAML:
+
+- **The variable groups are stage-scoped, not pipeline-scoped.** Both define the same four keys, so
+  they must never be in scope together. This replaces the old compile-time
+  `${{ if eq(Build.SourceBranchName, …) }}` selector, which had nothing left to select on once
+  `develop` was gone.
+- **`DeployProd` declares `dependsOn: []`, and it has to.** Azure DevOps rejects any manual stage
+  that declares a dependency (*"Manually triggered stages cannot have dependencies"*). So nothing in
+  the YAML enforces "prod only gets what stage got" — the run page showing `DeployStage`'s result
+  above the button is the practical guard.
+
+To promote from the command line (note `run`; `retry` answers `204` and does nothing on a stage that
+never executed):
+
+```bash
+curl -u ":$ADO_PAT" -X PATCH -H "Content-Type: application/json" \
+  "https://dev.azure.com/castillopradagabriel/Pollaya/_apis/build/builds/<buildId>/stages/DeployProd?api-version=7.1-preview.1" \
+  -d '{"state":"run"}'
+```
 
 ### Variable groups (Pipelines → Library — never in git)
 
@@ -213,7 +267,15 @@ change needed either way.
 1. Create the two variable groups above.
 2. Create the pipeline from the GitHub repo (`betocastillo86/dominodo.nodo`) pointing at
    `pipelines/build-ftp-pipeline.yaml` via a GitHub service connection.
-3. Ensure both `main` and `develop` branches are published (the trigger has no source otherwise).
+3. **Authorize the pipeline for the resources its deploy stages consume** — otherwise the first run
+   stops asking for permission:
+   - variable groups `dominodo-nodo-stage` **and** `dominodo-nodo-prod`
+     (Pipelines → Library → the group → *Pipeline permissions*);
+   - environments `dominodo-stage` **and** `dominodo-prod` (Pipelines → Environments → the
+     environment → *Security*). These are the same environments the API and Domi pipelines deploy
+     through, deliberately: one place shows what is live where.
+4. A pipeline definition reads its **trigger configuration from the YAML on its default branch**, so
+   the definition's default branch must be `main` (it is) and the file must exist there.
 
 ## Cross-repo prerequisite — CORS
 
