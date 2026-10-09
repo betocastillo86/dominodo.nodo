@@ -6,6 +6,7 @@ import { TablerIconComponent } from 'angular-tabler-icons';
 import { AuthService } from '../../../core/auth/auth.service';
 import { toMessage } from '../../../core/http/problem-details';
 import { TenantStore } from '../../../core/tenant/tenant.store';
+import { DEFAULT_DIAL_CODE, DIAL_CODES, toE164 } from '../../../shared/phone/dial-codes';
 
 /**
  * Branded sign-in screen. Reads tenant name/logo/loginText from TenantStore.
@@ -25,11 +26,13 @@ export class LoginComponent {
   private readonly router = inject(Router);
   readonly tenant = inject(TenantStore);
 
+  readonly dialCodes = DIAL_CODES;
   readonly pending = signal(false);
   readonly errorMessage = signal<string | null>(null);
 
   readonly form = this.fb.group({
-    phone: ['', [Validators.required]],
+    dialCode: [DEFAULT_DIAL_CODE, [Validators.required]],
+    phone: ['', [Validators.required, Validators.pattern(/^\+?[\d\s-]{6,20}$/)]],
     password: ['', [Validators.required]],
   });
 
@@ -42,7 +45,9 @@ export class LoginComponent {
     this.pending.set(true);
     this.errorMessage.set(null);
 
-    this.auth.login(this.form.getRawValue()).subscribe({
+    const { dialCode, phone, password } = this.form.getRawValue();
+
+    this.auth.login({ phone: toE164(dialCode, phone), password }).subscribe({
       next: () => {
         this.pending.set(false);
         void this.router.navigate(['/']);

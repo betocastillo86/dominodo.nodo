@@ -257,16 +257,28 @@
       } @else {
         <div class="mb-3">
           <label class="form-label required" for="add-phone">Teléfono</label>
-          <input
-            id="add-phone"
-            type="tel"
-            class="form-control"
-            placeholder="+573001234567"
-            formControlName="phone"
-            [class.is-invalid]="submitted() && addForm.controls.phone.invalid"
-          />
-          <div class="invalid-feedback">
-            Ingresa el teléfono en formato internacional, por ejemplo +573001234567.
+          <div class="input-group has-validation">
+            <select
+              class="form-select w-auto flex-grow-0"
+              formControlName="dialCode"
+              autocomplete="tel-country-code"
+              aria-label="Indicativo del país"
+            >
+              @for (option of dialCodes; track option.code) {
+                <option [value]="option.code">{{ option.label }}</option>
+              }
+            </select>
+            <input
+              id="add-phone"
+              type="tel"
+              inputmode="tel"
+              class="form-control"
+              placeholder="300 123 4567"
+              autocomplete="tel-national"
+              formControlName="phone"
+              [class.is-invalid]="submitted() && addForm.controls.phone.invalid"
+            />
+            <div class="invalid-feedback">Ingresa el número sin el indicativo, por ejemplo 3001234567.</div>
           </div>
         </div>
 

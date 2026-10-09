@@ -43,9 +43,14 @@ import {
 import { ApartmentRequestsService } from '../data-access/apartment-requests.service';
 import { ApartmentsService } from '../data-access/apartments.service';
 import { ResidentsLookupService } from '../data-access/residents-lookup.service';
+import { DEFAULT_DIAL_CODE, DIAL_CODES, toE164 } from '../../../shared/phone/dial-codes';
 
-/** E.164, matching the API's `InviteMemberCommandValidator`. */
-const E164 = /^\+[1-9]\d{6,14}$/;
+/**
+ * The national part of a phone number, as typed: digits with optional spacing,
+ * or a full international number pasted with its own `+` prefix. `toE164` turns
+ * either into the E.164 string the API's `InviteMemberCommandValidator` wants.
+ */
+const PHONE_INPUT = /^\+?[\d\s-]{6,20}$/;
 
 /**
  * Delays (ms) between the refetches that wait for an invited resident to show
@@ -118,6 +123,8 @@ export class ApartmentDetailComponent {
   /** True while the form collects a brand-new person instead of an existing member. */
   readonly registerNew = signal(false);
 
+  readonly dialCodes = DIAL_CODES;
+
   /** The residency the end-residency confirmation is currently about. */
   readonly targetResident = signal<ResidentDto | null>(null);
 
@@ -146,6 +153,7 @@ export class ApartmentDetailComponent {
   readonly addForm = new FormGroup({
     /** userId of an existing member, set by the typeahead. */
     userId: new FormControl<string | null>(null),
+    dialCode: new FormControl(DEFAULT_DIAL_CODE, { nonNullable: true }),
     phone: new FormControl('', { nonNullable: true }),
     firstName: new FormControl('', { nonNullable: true }),
     lastName: new FormControl('', { nonNullable: true }),
@@ -220,7 +228,7 @@ export class ApartmentDetailComponent {
     const value = this.addForm.getRawValue();
     const op: Observable<unknown> = this.registerNew()
       ? this.service.inviteResident({
-          phone: value.phone.trim(),
+          phone: toE164(value.dialCode, value.phone),
           roleId: RESIDENTE_ROLE_ID,
           email: value.email.trim() || null,
           firstName: value.firstName.trim(),
@@ -404,6 +412,7 @@ export class ApartmentDetailComponent {
   private resetAddForm(): void {
     this.addForm.reset({
       userId: null,
+      dialCode: DEFAULT_DIAL_CODE,
       phone: '',
       firstName: '',
       lastName: '',
@@ -424,7 +433,7 @@ export class ApartmentDetailComponent {
 
     if (this.registerNew()) {
       userId.clearValidators();
-      phone.setValidators([Validators.required, Validators.pattern(E164)]);
+      phone.setValidators([Validators.required, Validators.pattern(PHONE_INPUT)]);
       // The API rejects an unknown phone without a first name (Membership.FirstNameRequired).
       firstName.setValidators([Validators.required, Validators.maxLength(100)]);
       email.setValidators([Validators.email]);

@@ -25,18 +25,37 @@
 
         <div class="mb-3">
           <label class="form-label" for="phone">Teléfono</label>
-          <input
-            id="phone"
-            type="text"
-            class="form-control"
-            formControlName="phone"
-            placeholder="Teléfono"
-            autocomplete="username"
-            [class.is-invalid]="form.controls.phone.touched && form.controls.phone.invalid"
-          />
-          @if (form.controls.phone.touched && form.controls.phone.invalid) {
-            <div class="invalid-feedback">El teléfono es obligatorio.</div>
-          }
+          <div class="input-group has-validation">
+            <select
+              class="form-select w-auto flex-grow-0"
+              formControlName="dialCode"
+              autocomplete="tel-country-code"
+              aria-label="Indicativo del país"
+            >
+              @for (option of dialCodes; track option.code) {
+                <option [value]="option.code">{{ option.label }}</option>
+              }
+            </select>
+            <input
+              id="phone"
+              type="tel"
+              inputmode="tel"
+              class="form-control"
+              formControlName="phone"
+              placeholder="300 123 4567"
+              autocomplete="tel-national"
+              [class.is-invalid]="form.controls.phone.touched && form.controls.phone.invalid"
+            />
+            @if (form.controls.phone.touched && form.controls.phone.invalid) {
+              <div class="invalid-feedback">
+                @if (form.controls.phone.hasError('required')) {
+                  El teléfono es obligatorio.
+                } @else {
+                  Ingresa un número de teléfono válido, sin el indicativo.
+                }
+              </div>
+            }
+          </div>
         </div>
 
         <div class="mb-2">
