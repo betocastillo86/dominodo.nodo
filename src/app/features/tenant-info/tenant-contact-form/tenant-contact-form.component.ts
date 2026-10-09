@@ -14,22 +14,26 @@ import { toMessage } from '../../../core/http/problem-details';
 import { NotificationService } from '../../../core/notifications/notification.service';
 import { ScheduleEditorComponent } from '../../../shared/ui/schedule-editor/schedule-editor.component';
 import { SpinnerComponent } from '../../../shared/ui/spinner/spinner.component';
-import { TenantContactInfoDto, UpdateTenantInfoRequest } from '../data-access/tenant-info.models';
-import { TenantInfoService } from '../data-access/tenant-info.service';
+import {
+  TenantInfoDto,
+  UpdateTenantContactInfoRequest,
+} from '../../../core/tenant/tenant-info.models';
+import { TenantInfoService } from '../../../core/tenant/tenant-info.service';
 
+/**
+ * "Contacto" tab of Mi Conjunto: the details residents see when they need to
+ * reach the administration. Owns only the `contactInfo` block of
+ * `/tenants/info` — the PQRS block lives in the "Configuración" tab and is left
+ * untouched by this save.
+ */
 @Component({
-  selector: 'app-tenant-info-form',
+  selector: 'app-tenant-contact-form',
   standalone: true,
-  imports: [
-    ReactiveFormsModule,
-    TablerIconComponent,
-    ScheduleEditorComponent,
-    SpinnerComponent,
-  ],
+  imports: [ReactiveFormsModule, TablerIconComponent, ScheduleEditorComponent, SpinnerComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  templateUrl: './tenant-info-form.component.html',
+  templateUrl: './tenant-contact-form.component.html',
 })
-export class TenantInfoFormComponent implements OnInit {
+export class TenantContactFormComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly service = inject(TenantInfoService);
   private readonly notifications = inject(NotificationService);
@@ -78,11 +82,11 @@ export class TenantInfoFormComponent implements OnInit {
     this.saving.set(true);
     this.formError.set(null);
 
-    this.service.update(this.toRequest()).subscribe({
+    this.service.saveContactInfo(this.toRequest()).subscribe({
       next: () => {
         this.saving.set(false);
         this.form.markAsPristine();
-        this.notifications.success('Información del conjunto actualizada.');
+        this.notifications.success('Información de contacto actualizada.');
       },
       error: (error: HttpErrorResponse) => {
         this.saving.set(false);
@@ -91,7 +95,7 @@ export class TenantInfoFormComponent implements OnInit {
     });
   }
 
-  private toRequest(): UpdateTenantInfoRequest {
+  private toRequest(): UpdateTenantContactInfoRequest {
     const v = this.form.getRawValue();
     return {
       phone: v.phone.trim(),
@@ -106,14 +110,14 @@ export class TenantInfoFormComponent implements OnInit {
     this.loading.set(true);
     this.loadError.set(null);
 
-    this.service.get().subscribe({
-      next: (info: TenantContactInfoDto) => {
+    this.service.load().subscribe({
+      next: ({ contactInfo }: TenantInfoDto) => {
         this.form.patchValue({
-          phone: info.phone ?? '',
-          schedules: info.schedules ?? null,
-          address: info.address ?? '',
-          administratorName: info.administratorName ?? '',
-          additionalInfo: info.additionalInfo ?? '',
+          phone: contactInfo.phone ?? '',
+          schedules: contactInfo.schedules ?? null,
+          address: contactInfo.address ?? '',
+          administratorName: contactInfo.administratorName ?? '',
+          additionalInfo: contactInfo.additionalInfo ?? '',
         });
         this.form.markAsPristine();
         this.loading.set(false);

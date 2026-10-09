@@ -216,6 +216,10 @@ src/app/
 ├── core/                # singletons & cross-cutting, no feature UI
 │   ├── auth/               # service, store (signals), token storage, jwt util
 │   ├── tenant/             # ← Nodo-specific: tenant-resolver, TenantStore, tenant.bootstrap, tenant.service, tenant.models
+│   │                       #   + TenantInfoService: the single owner/cache of GET/PUT /tenants/info.
+│   │                       #   In core, not in the feature, because two features read it — Mi Conjunto
+│   │                       #   edits every block and the apartment list needs `apartments.towerList`
+│   │                       #   for its filter. One cache, so editing the towers is visible at once.
 │   ├── authz/              # ← PermissionStore (effective permissions) + PermissionService (loads /auth/current)
 │   ├── http/               # tenant + auth + error interceptors (functional) + problem-details (+ toMessage)
 │   ├── guards/             # tenantResolvedGuard, authGuard, tenantMemberGuard, permissionGuard(perm)
@@ -229,6 +233,8 @@ src/app/
 ├── shared/ui/           # reusable presentational pieces
 │   ├── data-table/         # generic paged table (ported 1:1 from admin)
 │   ├── schedule-editor/    # weekly opening-hours control (CVA + Validator over a JSON string)
+│   ├── tower-editor/       # add/remove the conjunto's towers (CVA over string[]; the caller joins
+│   │                       #   them into the comma-separated text /tenants/info stores)
 │   ├── page-header/  spinner/  empty-state/
 │   └── notifications/      # toast host rendering NotificationService.items()
 └── features/            # lazy domains, each with data-access/ + components
@@ -245,13 +251,27 @@ src/app/
     │                       #    permission codes) · announcement-list / -detail / -edit components
     ├── apartments/         # ✅ READ-ONLY apartments + resident management (permission: apartments.view;
                             #    no FeatureKey.Apartments exists server-side, so no feature gate)
+                            #    List filters: number (search), resident (typeahead → residentUserId)
+                            #    and tower (exact `tower`, options from TenantInfoService). The tower
+                            #    select hides when the conjunto declares none; towers sit behind
+                            #    `tenant.info`, so a role without it just does not get that filter.
                             #    data-access/ (apartment.models, apartments.service signals,
                             #    residents-lookup.service, apartment-import.*, apartment.permissions)
                             #    apartment-list / -detail components + apartment-import/ (bulk load
                             #    wizard, apartments.create AND memberships.manage)
-    ├── tenant-info/        # ✅ "Mi Conjunto": tabs — contact info (GET/PUT /tenants/info) and
-                            #    branding: theme + logo (GET/PUT /tenants/branding, and
-                            #    POST /tenants/files/upload-url → direct-to-blob upload)
+    ├── tenant-info/        # ✅ "Mi Conjunto": three tabs, one URL each (see §6) —
+                            #    Contacto (/tenant-info/contact): the contactInfo block of
+                            #      GET/PUT /tenants/info
+                            #    Tema (/tenant-info/theme): theme + logo (GET/PUT /tenants/branding, and
+                            #      POST /tenants/files/upload-url → direct-to-blob upload)
+                            #    Configuración (/tenant-info/settings): per-module settings —
+                            #      the tower list (apartments.towers, CSV on write / towerList on
+                            #      read) and the PQRS auto-close window (requests.autoCloseDays,
+                            #      0 = off; that section gated by the Requests feature)
+                            #    Contacto and Configuración share one endpoint, so TenantInfoService
+                            #    owns the single GET + snapshot: the PUT rewrites contactInfo
+                            #    wholesale, so Configuración resends the cached block (and blocks
+                            #    saving while phone/schedules are still empty)
                             #    guarded by the `tenant.info` permission (read + write in one code);
                             #    saving goes through a confirmation modal · no feature gate
     └── profile/            # ✅ "Mi perfil": the caller's own profile (GET /auth/current, read-only)
@@ -350,6 +370,13 @@ routes hang off the `ShellComponent` (top navbar) and are protected by `authGuar
 individual modules add a `permissionGuard('requests.view' | 'announcements.view' | …)`. The shell
 defaults to `/requests` (the portal's primary job). The `400 Tenant.Unknown` bootstrap failure
 short-circuits routing entirely — `tenantResolvedGuard` sends it to `/conjunto-no-encontrado` (§4.3).
+
+**Tabbed pages get a URL per tab.** "Mi Conjunto" is the reference: `/tenant-info/contact`,
+`/tenant-info/theme`, `/tenant-info/settings`, with `/tenant-info` redirecting to the first. The
+section is a **route param** (`:section`), not three sibling routes, because Angular reuses the
+component when only a param changes — the tabs stay mounted, so an unsaved draft survives a jump to
+another tab. A small `canActivate` rejects an unknown section instead of silently showing the
+default under a lying URL. Copy this shape for the next tabbed page.
 
 ---
 

@@ -43,18 +43,26 @@ export class ApartmentsService {
    * Load a page of apartments (`GET /apartments`, requires apartments.view).
    *
    * `search` matches the apartment NUMBER only (server-side `Number.Contains`)
-   * — it does not touch the tower or any resident field. Filtering by a
+   * — it does not touch the tower or any resident field. `tower` is an exact
+   * match against one of the conjunto's declared towers. Filtering by a
    * resident is done with `residentUserId`, which only matches ACTIVE
    * residencies; the caller resolves a phone → userId beforehand (see
    * `ResidentsLookupService`), because the API has no phone filter.
    */
-  list(page: number, pageSize: number, search: string, residentUserId: string | null): void {
+  list(
+    page: number,
+    pageSize: number,
+    search: string,
+    residentUserId: string | null,
+    tower: string | null,
+  ): void {
     this._loading.set(true);
     this._error.set(null);
 
     let params = new HttpParams().set('page', page).set('pageSize', pageSize);
     if (search.trim()) params = params.set('search', search.trim());
     if (residentUserId) params = params.set('residentUserId', residentUserId);
+    if (tower) params = params.set('tower', tower);
 
     this.http.get<PagedResult<ApartmentDto>>(this.base, { params }).subscribe({
       next: (result) => {
@@ -114,9 +122,6 @@ export class ApartmentsService {
     residentId: string,
     body: EndResidencyRequest,
   ): Observable<void> {
-    return this.http.put<void>(
-      `${this.base}/${apartmentId}/residents/${residentId}/end`,
-      body,
-    );
+    return this.http.put<void>(`${this.base}/${apartmentId}/residents/${residentId}/end`, body);
   }
 }

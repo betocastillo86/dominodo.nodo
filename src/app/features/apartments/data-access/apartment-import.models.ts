@@ -206,6 +206,8 @@ const ISSUE_TEXT: Record<string, string> = {
   'ApartmentImport.NumberRequired': 'Falta el número de la unidad.',
   'ApartmentImport.NumberTooLong': 'El número de la unidad supera los 50 caracteres.',
   'ApartmentImport.TowerTooLong': 'La torre supera los 50 caracteres.',
+  'ApartmentImport.TowerNotAllowed':
+    'La torre no está entre las que declara el conjunto. Revisa la lista en Mi Conjunto → Configuración.',
   'ApartmentImport.TypeInvalid':
     'Tipo de unidad no reconocido. Usa Apartamento, Casa, Local, Parqueadero o Depósito.',
   'ApartmentImport.LivesHereInvalid': 'El valor de vive_aqui no es válido. Usa si o no.',

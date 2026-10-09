@@ -30,7 +30,9 @@
           </div>
 
           <div class="col-12 col-md-6 mb-3">
-            <label class="form-label required" for="administratorName">Nombre del administrador</label>
+            <label class="form-label required" for="administratorName">
+              Nombre del administrador
+            </label>
             <input
               id="administratorName"
               type="text"
@@ -40,7 +42,9 @@
                 form.controls.administratorName.invalid && form.controls.administratorName.touched
               "
             />
-            @if (form.controls.administratorName.invalid && form.controls.administratorName.touched) {
+            @if (
+              form.controls.administratorName.invalid && form.controls.administratorName.touched
+            ) {
               <div class="invalid-feedback">
                 El nombre del administrador es obligatorio (máx. 200 caracteres).
               </div>
@@ -94,7 +98,9 @@
           @if (form.controls.additionalInfo.invalid) {
             <div class="invalid-feedback">Máximo 1000 caracteres.</div>
           }
-          <small class="form-hint">Cualquier indicación extra que los residentes deban conocer.</small>
+          <small class="form-hint">
+            Cualquier indicación extra que los residentes deban conocer.
+          </small>
         </div>
       </div>
 
@@ -113,15 +119,17 @@
 
   <ng-template #confirmTpl let-modal>
     <div class="modal-header">
-      <h5 class="modal-title">Guardar información del conjunto</h5>
+      <h5 class="modal-title">Guardar información de contacto</h5>
       <button type="button" class="btn-close" (click)="modal.dismiss()"></button>
     </div>
     <div class="modal-body">
-      Los datos de contacto quedarán actualizados para todos los residentes del conjunto.
-      ¿Deseas guardar los cambios?
+      Los datos de contacto quedarán actualizados para todos los residentes del conjunto. ¿Deseas
+      guardar los cambios?
     </div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-link link-secondary" (click)="modal.dismiss()">Cancelar</button>
+      <button type="button" class="btn btn-link link-secondary" (click)="modal.dismiss()">
+        Cancelar
+      </button>
       <button type="button" class="btn btn-primary" (click)="modal.close()">Guardar</button>
     </div>
   </ng-template>

@@ -5,7 +5,11 @@ import { RouterLink } from '@angular/router';
 import { TablerIconComponent } from 'angular-tabler-icons';
 import { debounceTime, distinctUntilChanged, map } from 'rxjs';
 import { PermissionStore } from '../../../core/authz/permission.store';
-import { DataTableComponent, TableColumn } from '../../../shared/ui/data-table/data-table.component';
+import { TenantInfoService } from '../../../core/tenant/tenant-info.service';
+import {
+  DataTableComponent,
+  TableColumn,
+} from '../../../shared/ui/data-table/data-table.component';
 import { PageHeaderComponent } from '../../../shared/ui/page-header/page-header.component';
 import {
   SearchSelectComponent,
@@ -47,6 +51,7 @@ export class ApartmentListComponent {
   private readonly service = inject(ApartmentsService);
   private readonly residentsLookup = inject(ResidentsLookupService);
   private readonly permissions = inject(PermissionStore);
+  private readonly tenantInfo = inject(TenantInfoService);
 
   /**
    * The import needs apartments.create AND memberships.manage — the same pair
@@ -68,6 +73,15 @@ export class ApartmentListComponent {
   readonly searchControl = new FormControl('', { nonNullable: true });
   /** Holds the picked resident's userId → sent as `residentUserId`. */
   readonly residentControl = new FormControl<string | null>(null);
+  /** Exact tower name → sent as `tower`. Empty string means "every tower". */
+  readonly towerControl = new FormControl('', { nonNullable: true });
+
+  /**
+   * The towers the conjunto declared, from `GET /tenants/info`. Empty when the
+   * conjunto declares none — and the filter then stays hidden, since there
+   * would be nothing to pick.
+   */
+  readonly towers = this.tenantInfo.towers;
 
   /**
    * Remote lookup for the resident filter. `GET /apartments` has no phone
@@ -114,6 +128,22 @@ export class ApartmentListComponent {
       .pipe(distinctUntilChanged(), takeUntilDestroyed())
       .subscribe(() => this.reload(1));
 
+    this.towerControl.valueChanges
+      .pipe(distinctUntilChanged(), takeUntilDestroyed())
+      .subscribe(() => this.reload(1));
+
+    // The towers live behind `tenant.info`, which an apartments-only role may
+    // not hold. Asking anyway would 403 on every visit, so the filter simply
+    // does not exist for them. Permissive while the snapshot is still loading,
+    // as everywhere else in the portal — a 403 costs one request, a false
+    // negative costs the filter for the whole visit.
+    if (!this.permissions.loaded() || this.permissions.has('tenant.info')) {
+      this.tenantInfo.load().subscribe({
+        // A failure costs the filter, not the list: swallow it deliberately.
+        error: () => undefined,
+      });
+    }
+
     this.reload(1);
   }
 
@@ -127,6 +157,7 @@ export class ApartmentListComponent {
       this.pageSize,
       this.searchControl.value,
       this.residentControl.value,
+      this.towerControl.value || null,
     );
   }
 }

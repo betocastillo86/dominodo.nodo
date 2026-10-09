@@ -52,6 +52,7 @@ import {
   IconRefresh,
   IconSearch,
   IconSend,
+  IconSettings,
   IconSpeakerphone,
   IconTrash,
   IconTrendingDown,
@@ -126,6 +127,7 @@ export const appConfig: ApplicationConfig = {
       // Mi Conjunto — tabs, schedule editor and branding
       IconAddressBook,
       IconPalette,
+      IconSettings,
       IconPhoto,
       IconUpload,
       IconCheck,

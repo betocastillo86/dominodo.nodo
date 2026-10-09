@@ -12,7 +12,19 @@
 <div class="card">
   <div class="card-header">
     <div class="row g-2 w-100">
-      <div class="col-12 col-lg-6">
+      <!-- Only when the conjunto declared towers: with none there is nothing to
+           pick, and a role without `tenant.info` never gets the list at all. -->
+      @if (towers().length) {
+        <div class="col-12 col-lg-3">
+          <select class="form-select" [formControl]="towerControl" aria-label="Filtrar por torre">
+            <option value="">Torre</option>
+            @for (tower of towers(); track tower) {
+              <option [value]="tower">{{ tower }}</option>
+            }
+          </select>
+        </div>
+      }
+      <div class="col-12 col-lg">
         <div class="input-group">
           <span class="input-group-text">
             <tabler-icon name="search" />
@@ -25,7 +37,7 @@
           />
         </div>
       </div>
-      <div class="col-12 col-lg-6">
+      <div class="col-12 col-lg">
         <app-search-select
           [search]="searchResidents"
           [formControl]="residentControl"

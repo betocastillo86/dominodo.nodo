@@ -1,0 +1,47 @@
+<div class="d-flex gap-2 align-items-start">
+  <input
+    type="text"
+    class="form-control"
+    [placeholder]="placeholder()"
+    [value]="draft()"
+    [disabled]="disabled()"
+    [attr.maxlength]="maxTowerLength"
+    aria-label="Nombre de la torre"
+    (input)="onDraftInput($any($event.target).value)"
+    (keydown.enter)="onDraftEnter($event)"
+  />
+  <button
+    type="button"
+    class="btn btn-outline-primary text-nowrap"
+    [disabled]="disabled() || !draft().trim()"
+    (click)="add()"
+  >
+    <tabler-icon name="plus" class="me-1" />
+    Agregar
+  </button>
+</div>
+
+@if (rejection(); as message) {
+  <div class="text-danger small mt-1">{{ message }}</div>
+}
+
+@if (towers().length) {
+  <div class="d-flex flex-wrap gap-2 mt-2">
+    @for (tower of towers(); track tower; let i = $index) {
+      <span class="badge bg-blue-lt d-inline-flex align-items-center gap-1">
+        {{ tower }}
+        <button
+          type="button"
+          class="btn-close"
+          [disabled]="disabled()"
+          [attr.aria-label]="'Quitar ' + tower"
+          (click)="remove(i)"
+        ></button>
+      </span>
+    }
+  </div>
+} @else {
+  <small class="form-hint mt-2 d-block">
+    Este conjunto no declara torres. Los apartamentos podrán guardarse sin torre.
+  </small>
+}

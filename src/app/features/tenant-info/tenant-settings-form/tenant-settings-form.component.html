@@ -1,0 +1,127 @@
+@if (loading()) {
+  <app-spinner />
+} @else if (loadError()) {
+  <div class="alert alert-danger" role="alert">{{ loadError() }}</div>
+} @else {
+  <form [formGroup]="form" (ngSubmit)="confirmSave(confirmTpl)">
+    @if (formError(); as message) {
+      <div class="alert alert-danger" role="alert">{{ message }}</div>
+    }
+
+    @if (contactMissing()) {
+      <div class="alert alert-warning" role="alert">
+        Antes de guardar la configuración, completa el teléfono y los horarios de atención en la
+        pestaña <strong>Contacto</strong>.
+      </div>
+    }
+
+    <div class="card mb-3">
+      <div class="card-header">
+        <h3 class="card-title">
+          <tabler-icon name="building" class="me-1 icon-sm" />
+          Torres
+        </h3>
+      </div>
+      <div class="card-body">
+        <p class="text-secondary">
+          Las torres o bloques en que se divide el conjunto. Se usan para filtrar los apartamentos y
+          para indicar a cuál pertenece cada uno.
+        </p>
+
+        <app-tower-editor formControlName="towers" />
+      </div>
+    </div>
+
+    @if (showRequests) {
+      <div class="card mb-3">
+        <div class="card-header">
+          <h3 class="card-title">
+            <tabler-icon name="list-details" class="me-1 icon-sm" />
+            PQRS
+          </h3>
+        </div>
+        <div class="card-body">
+          <p class="text-secondary">
+            Una PQRS marcada como resuelta sigue abierta un tiempo para que el residente pueda
+            reabrirla. Pasado ese plazo, se cierra sola.
+          </p>
+
+          <div class="row">
+            <div class="col-12 col-md-4 mb-0">
+              <label class="form-label required" for="autoCloseDays">
+                Días para el cierre automático
+              </label>
+              <input
+                id="autoCloseDays"
+                type="number"
+                inputmode="numeric"
+                step="1"
+                [min]="minAutoCloseDays"
+                [max]="maxAutoCloseDays"
+                class="form-control"
+                formControlName="autoCloseDays"
+                [class.is-invalid]="
+                  form.controls.autoCloseDays.invalid && form.controls.autoCloseDays.touched
+                "
+              />
+              @if (form.controls.autoCloseDays.invalid && form.controls.autoCloseDays.touched) {
+                <div class="invalid-feedback">
+                  Indica un número entero entre {{ minAutoCloseDays }} y {{ maxAutoCloseDays }}.
+                </div>
+              }
+              @if (autoCloseDisabled()) {
+                <small class="form-hint">
+                  Con 0 el cierre automático queda desactivado: las PQRS resueltas permanecen así
+                  hasta que alguien las cierre manualmente.
+                </small>
+              } @else {
+                <small class="form-hint">Escribe 0 para desactivar el cierre automático.</small>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+    <div class="d-flex mb-3">
+      <button
+        type="submit"
+        class="btn btn-primary ms-auto"
+        [disabled]="saving() || contactMissing()"
+      >
+        @if (saving()) {
+          <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+        } @else {
+          <tabler-icon name="device-floppy" class="me-1" />
+        }
+        Guardar cambios
+      </button>
+    </div>
+  </form>
+
+  <ng-template #confirmTpl let-modal>
+    <div class="modal-header">
+      <h5 class="modal-title">Guardar configuración</h5>
+      <button type="button" class="btn-close" (click)="modal.dismiss()"></button>
+    </div>
+    <div class="modal-body">
+      <p class="mb-0">¿Deseas guardar los cambios de configuración del conjunto?</p>
+      @if (showRequests) {
+        <p class="mb-0 mt-2 text-secondary">
+          @if (autoCloseDisabled()) {
+            Las PQRS resueltas no se cerrarán automáticamente.
+          } @else {
+            Las PQRS resueltas se cerrarán solas después de {{ autoCloseDays() }}
+            {{ autoCloseDays() === 1 ? 'día' : 'días' }}.
+          }
+        </p>
+      }
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-link link-secondary" (click)="modal.dismiss()">
+        Cancelar
+      </button>
+      <button type="button" class="btn btn-primary" (click)="modal.close()">Guardar</button>
+    </div>
+  </ng-template>
+}
