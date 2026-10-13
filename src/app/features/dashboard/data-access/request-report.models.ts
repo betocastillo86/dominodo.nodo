@@ -34,9 +34,9 @@ export interface ReportDurationsDto {
   resolutionMedianHours: number | null;
   resolutionP90Hours: number | null;
   /**
-   * Number of requests managed inside the range. It is also the period's
-   * "managed" total: the store builds this sample from exactly
-   * `(resolvedAtUtc ?? closedAtUtc) BETWEEN from AND to`.
+   * Size of the sample the two percentiles above were computed from. It equals
+   * `current.managed` by construction (same population), but it is a statistic's
+   * footnote, not a headline figure — read the total from `current`.
    */
   resolutionSampleSize: number;
   firstResponseMedianHours: number | null;
@@ -44,8 +44,13 @@ export interface ReportDurationsDto {
   firstResponseSampleSize: number;
 }
 
-/** Same totals for the immediately preceding period of equal length. */
-export interface ReportComparisonDto {
+/**
+ * Totals of one window, with its own bounds. The document carries two of these
+ * in the same shape — `current` (the requested range) and `comparison` (the
+ * window of equal length immediately before it) — so the comparison reads
+ * without the client deriving anything.
+ */
+export interface ReportPeriodDto {
   fromUtc: string;
   toUtc: string;
   created: number;
@@ -58,6 +63,12 @@ export interface ReportBacklogPointDto {
   day: string;
   /** SPARSE on purpose: a missing status means "not measured", not zero. */
   byStatus: ReportBucketDto[];
+  /**
+   * The day in progress, completed server-side from `statusToday` instead of
+   * read from the nightly snapshot. At most one point carries it, always the
+   * last, and only when today falls inside the range.
+   */
+  isLive: boolean;
 }
 
 /** Full document returned by `GET /requests/report`. */
@@ -70,7 +81,9 @@ export interface RequestReportDto {
   byType: ReportBucketDto[];
   byTower: ReportBucketDto[];
   durations: ReportDurationsDto;
-  comparison: ReportComparisonDto;
+  /** Totals of the requested range — the headline figures, straight from the API. */
+  current: ReportPeriodDto;
+  comparison: ReportPeriodDto;
   backlogCurve: ReportBacklogPointDto[];
 }
 
@@ -122,17 +135,3 @@ export function clipMonthlyFlow(
 /** The two by-tower buckets that are not a tower (keys fixed server-side). */
 export const COMMON_AREAS_KEY = 'common-areas';
 export const NO_TOWER_KEY = 'no-tower';
-
-/**
- * Requests created inside the range. The document has no such field: every
- * breakdown partitions the same `createdAtUtc BETWEEN from AND to` population,
- * so any of them sums to it. `byType` is the cheapest (5 buckets at most).
- */
-export function createdInRange(report: RequestReportDto): number {
-  return report.byType.reduce((total, bucket) => total + bucket.count, 0);
-}
-
-/** Requests managed inside the range — see `resolutionSampleSize`. */
-export function managedInRange(report: RequestReportDto): number {
-  return report.durations.resolutionSampleSize;
-}

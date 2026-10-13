@@ -67,7 +67,13 @@
           <div class="card card-sm">
             <div class="card-status-start" [class]="'bg-' + tile.color"></div>
             <div class="card-body">
-              <div class="subheader">{{ tile.label }}</div>
+              <div class="subheader d-flex align-items-center gap-2">
+                {{ tile.label }}
+                <app-help-hint
+                  [text]="statusHelp()[tile.status]"
+                  [label]="'Qué significa ' + tile.label"
+                />
+              </div>
               <div class="h1 mb-0">{{ formatNumber(tile.count) }}</div>
             </div>
           </div>
@@ -90,7 +96,10 @@
       <div class="col-6 col-lg-3">
         <div class="card">
           <div class="card-body">
-            <div class="subheader">Creadas</div>
+            <div class="subheader d-flex align-items-center gap-2">
+              Creadas
+              <app-help-hint [text]="help.created" label="Qué significa Creadas" />
+            </div>
             <div class="d-flex align-items-baseline gap-2 my-1">
               <div class="h1 mb-0">{{ formatNumber(created()) }}</div>
               <span
@@ -109,7 +118,10 @@
       <div class="col-6 col-lg-3">
         <div class="card">
           <div class="card-body">
-            <div class="subheader">Gestionadas</div>
+            <div class="subheader d-flex align-items-center gap-2">
+              Gestionadas
+              <app-help-hint [text]="help.managed" label="Qué significa Gestionadas" />
+            </div>
             <div class="d-flex align-items-baseline gap-2 my-1">
               <div class="h1 mb-0">{{ formatNumber(managed()) }}</div>
               <span
@@ -128,7 +140,10 @@
       <div class="col-6 col-lg-3">
         <div class="card">
           <div class="card-body">
-            <div class="subheader">Balance</div>
+            <div class="subheader d-flex align-items-center gap-2">
+              Balance
+              <app-help-hint [text]="help.balance" label="Qué significa Balance" />
+            </div>
             <div class="d-flex align-items-baseline gap-2 my-1">
               <div class="h1 mb-0" [class.text-red]="netInRange() > 0">
                 {{ netInRange() > 0 ? '+' : '' }}{{ formatNumber(netInRange()) }}
@@ -142,9 +157,15 @@
       <div class="col-6 col-lg-3">
         <div class="card">
           <div class="card-body">
-            <div class="subheader">Mediana de resolución</div>
+            <div class="subheader d-flex align-items-center gap-2">
+              Mediana de resolución
+              <app-help-hint
+                [text]="help.resolutionSummary"
+                label="Qué significa la mediana de resolución"
+              />
+            </div>
             <div class="d-flex align-items-baseline gap-2 my-1">
-              <div class="h1 mb-0">{{ formatHours(report.durations.resolutionMedianHours) }}</div>
+              <div class="h1 mb-0">{{ formatHours(report.current.resolutionMedianHours) }}</div>
               <span
                 class="d-inline-flex align-items-center lh-1"
                 [class]="deltaClass(resolutionDelta())"
@@ -167,25 +188,41 @@
         <div class="card">
           <div class="card-header">
             <h3 class="card-title">Tiempo de resolución</h3>
-            <div class="card-actions text-secondary">
+            <div class="card-actions text-secondary d-flex align-items-center gap-2">
               n = {{ formatNumber(report.durations.resolutionSampleSize) }}
+              <app-help-hint
+                [text]="help.resolutionSample"
+                label="Sobre cuántas PQRS se calculan estos tiempos"
+              />
             </div>
           </div>
           <div class="card-body">
             <div class="row text-center">
               <div class="col">
-                <div class="subheader">Mediana</div>
+                <div class="subheader d-flex align-items-center justify-content-center gap-2">
+                  Mediana
+                  <app-help-hint
+                    [text]="help.resolutionMedian"
+                    label="Qué significa la mediana del tiempo de resolución"
+                  />
+                </div>
                 <div class="h1 mb-0">
                   {{ formatHours(report.durations.resolutionMedianHours) }}
                 </div>
               </div>
               <div class="col border-start">
-                <div class="subheader">P90</div>
+                <div class="subheader d-flex align-items-center justify-content-center gap-2">
+                  P90
+                  <app-help-hint
+                    [text]="help.resolutionP90"
+                    label="Qué significa el P90 del tiempo de resolución"
+                  />
+                </div>
                 <div class="h1 mb-0">{{ formatHours(report.durations.resolutionP90Hours) }}</div>
               </div>
             </div>
             <p class="text-secondary mt-3 mb-0">
-              Desde que se abre la solicitud hasta que se resuelve o se cierra, sobre las
+              Desde que se abre la PQRS hasta que se resuelve o se cierra, sobre las
               gestionadas dentro del rango.
             </p>
           </div>
@@ -196,28 +233,44 @@
         <div class="card">
           <div class="card-header">
             <h3 class="card-title">Primera respuesta</h3>
-            <div class="card-actions text-secondary">
+            <div class="card-actions text-secondary d-flex align-items-center gap-2">
               n = {{ formatNumber(report.durations.firstResponseSampleSize) }}
+              <app-help-hint
+                [text]="help.firstResponseSample"
+                label="Sobre cuántas PQRS se calculan estos tiempos"
+              />
             </div>
           </div>
           <div class="card-body">
             <div class="row text-center">
               <div class="col">
-                <div class="subheader">Mediana</div>
+                <div class="subheader d-flex align-items-center justify-content-center gap-2">
+                  Mediana
+                  <app-help-hint
+                    [text]="help.firstResponseMedian"
+                    label="Qué significa la mediana de la primera respuesta"
+                  />
+                </div>
                 <div class="h1 mb-0">
                   {{ formatHours(report.durations.firstResponseMedianHours) }}
                 </div>
               </div>
               <div class="col border-start">
-                <div class="subheader">P90</div>
+                <div class="subheader d-flex align-items-center justify-content-center gap-2">
+                  P90
+                  <app-help-hint
+                    [text]="help.firstResponseP90"
+                    label="Qué significa el P90 de la primera respuesta"
+                  />
+                </div>
                 <div class="h1 mb-0">
                   {{ formatHours(report.durations.firstResponseP90Hours) }}
                 </div>
               </div>
             </div>
             <p class="text-secondary mt-3 mb-0">
-              Desde que se abre hasta que pasa a «En progreso» por primera vez. Un comentario del
-              equipo sobre una solicitud nueva también cuenta.
+              Desde que se abre hasta que pasa a «En progreso» por primera vez. Un comentario de
+              la administración sobre una PQRS nueva también cuenta.
             </p>
           </div>
         </div>
@@ -230,7 +283,10 @@
         <div class="card">
           <div class="card-header">
             <div>
-              <h3 class="card-title">Por tipo</h3>
+              <h3 class="card-title d-flex align-items-center gap-2">
+                Por tipo
+                <app-help-hint [text]="help.byType" label="Qué muestra Por tipo" />
+              </h3>
               <p class="card-subtitle">Creadas en el rango</p>
             </div>
           </div>
@@ -238,7 +294,7 @@
             @if (hasCreated()) {
               <div [appChart]="byTypeOptions()"></div>
             } @else {
-              <app-empty-state icon="chart-donut" title="Sin solicitudes en el rango" />
+              <app-empty-state icon="chart-donut" title="Sin PQRS en el rango" />
             }
           </div>
         </div>
@@ -248,7 +304,10 @@
         <div class="card">
           <div class="card-header">
             <div>
-              <h3 class="card-title">Por categoría</h3>
+              <h3 class="card-title d-flex align-items-center gap-2">
+                Por categoría
+                <app-help-hint [text]="help.byCategory" label="Qué muestra Por categoría" />
+              </h3>
               <p class="card-subtitle">
                 @if (hiddenCategories() > 0) {
                   Top {{ topCategories().length }} · {{ hiddenCategories() }} más sin mostrar
@@ -262,7 +321,7 @@
             @if (topCategories().length > 0) {
               <div [appChart]="byCategoryOptions()"></div>
             } @else {
-              <app-empty-state icon="category" title="Sin solicitudes en el rango" />
+              <app-empty-state icon="category" title="Sin PQRS en el rango" />
             }
           </div>
         </div>
@@ -272,7 +331,10 @@
         <div class="card">
           <div class="card-header">
             <div>
-              <h3 class="card-title">Por torre</h3>
+              <h3 class="card-title d-flex align-items-center gap-2">
+                Por torre
+                <app-help-hint [text]="help.byTower" label="Qué muestra Por torre" />
+              </h3>
               <p class="card-subtitle">Creadas en el rango</p>
             </div>
           </div>
@@ -280,7 +342,7 @@
             @if (byTower().length > 0) {
               <div [appChart]="byTowerOptions()"></div>
             } @else {
-              <app-empty-state icon="building-skyscraper" title="Sin solicitudes en el rango" />
+              <app-empty-state icon="building-skyscraper" title="Sin PQRS en el rango" />
             }
           </div>
         </div>
@@ -293,7 +355,10 @@
         <div class="card">
           <div class="card-header">
             <div>
-              <h3 class="card-title">Flujo mensual</h3>
+              <h3 class="card-title d-flex align-items-center gap-2">
+                Flujo mensual
+                <app-help-hint [text]="help.monthlyFlow" label="Qué muestra el flujo mensual" />
+              </h3>
               <p class="card-subtitle">Meses que toca el rango · {{ formatRange(range()) }}</p>
             </div>
           </div>
@@ -330,7 +395,7 @@
               <app-empty-state
                 icon="chart-bar"
                 title="Sin actividad en los meses del rango"
-                subtitle="Cuando se abran solicitudes aparecerán aquí mes a mes."
+                subtitle="Cuando se abran PQRS aparecerán aquí mes a mes."
               />
             }
           </div>
@@ -341,14 +406,21 @@
         <div class="card">
           <div class="card-header">
             <div>
-              <h3 class="card-title">Solicitudes acumuladas por día</h3>
+              <h3 class="card-title d-flex align-items-center gap-2">
+                PQRS acumuladas por día
+                <app-help-hint
+                  [text]="help.backlog"
+                  label="Qué muestra la curva de PQRS acumuladas"
+                />
+              </h3>
               <p class="card-subtitle">
                 @if (backlogCoverage(); as coverage) {
                   La franja entre las dos curvas es lo que sigue pendiente. «Resueltas» incluye
-                  las cerradas · {{ coverage.days }} días consolidados · {{ coverage.from }} —
-                  {{ coverage.to }}
+                  las cerradas · {{ coverage.days }} días consolidados@if (coverage.hasLive) {
+                    <span> + el día en curso, en vivo</span>
+                  } · {{ coverage.from }} — {{ coverage.to }}
                 } @else {
-                  Solo incluye días ya consolidados
+                  Solo incluye días ya consolidados y el día en curso
                 }
               </p>
             </div>
@@ -360,7 +432,7 @@
               <app-empty-state
                 icon="chart-area"
                 title="Todavía no hay días consolidados en este rango"
-                subtitle="Esta curva la construye un proceso nocturno; el día en curso nunca aparece."
+                subtitle="Esta curva la construye un proceso nocturno; solo el día en curso se calcula en vivo."
               />
             }
           </div>

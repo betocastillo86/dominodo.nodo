@@ -26,6 +26,11 @@ import {
  * state, and these can be exercised against a real chart without Angular.
  */
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Apex's own default tick budget; a longer range should not exceed it. */
+const MAX_BACKLOG_TICKS = 10;
+
 /** Breakdown bars get crowded past this; the rest is reported as a footnote. */
 export const TOP_BUCKETS = 8;
 
@@ -77,6 +82,9 @@ const HANDLED_STATUSES: readonly RequestStatus[] = ['Resolved', 'Closed'];
  * categories would lie about where the gaps are.
  */
 export function backlogChart(curve: readonly ReportBacklogPointDto[]): ApexOptions {
+  const resolvedColor = tablerColor('green', '#2fb344');
+  const totalColor = cssVar('--tblr-body-color', '#1f2937');
+
   return withChartTheme({
     chart: { type: 'area', height: 300, stacked: false },
     series: [
@@ -100,8 +108,16 @@ export function backlogChart(curve: readonly ReportBacklogPointDto[]): ApexOptio
       },
     ],
     // Green for what is done, neutral and theme-aware for the ceiling.
-    colors: [tablerColor('green', '#2fb344'), cssVar('--tblr-body-color', '#1f2937')],
+    colors: [resolvedColor, totalColor],
     stroke: { width: 2, curve: 'straight' },
+    // Bare lines, except on the day in progress: that point is computed live
+    // rather than read from the nightly snapshot, and a dot is what stops the
+    // last value from being read as consolidated like the rest of the curve.
+    markers: {
+      size: 0,
+      discrete: liveMarkers(curve, [resolvedColor, totalColor]),
+      hover: { size: 4 },
+    },
     // Index 0 is the resolved area's fill. Index 1 is the total's STROKE
     // colour, and its 1 must not be "tidied" to 0: ApexCharts takes a
     // `type: 'line'` series' stroke from `fill`, not from `stroke` (`Line.js`:
@@ -111,6 +127,13 @@ export function backlogChart(curve: readonly ReportBacklogPointDto[]): ApexOptio
     fill: { type: 'solid', opacity: [0.15, 1] },
     xaxis: {
       type: 'datetime',
+      // A day is the finest tick this axis may draw. ApexCharts picks the tick
+      // stride from `span / tickAmount` (TimeScale `pickInterval`), defaulting
+      // to 10 ticks: over a week that lands on a 12-HOUR stride, and since
+      // `format` below pins every label to a day, the axis then repeats each
+      // date twice ("07 oct · 07 oct · 08 oct …"). Asking for at most one tick
+      // per day keeps the stride on a whole day or coarser.
+      tickAmount: dayTickAmount(curve),
       // The days are civil dates at the reporting offset, already baked into the
       // timestamp — reading them back as UTC is what keeps them stable.
       labels: { datetimeUTC: true, format: 'dd MMM' },
@@ -231,6 +254,45 @@ function sum(buckets: readonly ReportBucketDto[]): number {
 
 function typeLabel(bucket: ReportBucketDto): string {
   return TYPE_LABEL[bucket.key as RequestType] ?? bucket.label;
+}
+
+/** ApexCharts does not export the marker type on its own; derive it. */
+type DiscreteMarker = NonNullable<NonNullable<ApexOptions['markers']>['discrete']>[number];
+
+/**
+ * One marker per series on each live point. ApexCharts addresses a discrete
+ * marker by (series, data point), so the two curves need one entry each.
+ */
+function liveMarkers(
+  curve: readonly ReportBacklogPointDto[],
+  colors: readonly string[],
+): DiscreteMarker[] {
+  return curve.flatMap((point, dataPointIndex) =>
+    point.isLive
+      ? colors.map((color, seriesIndex) => ({
+          seriesIndex,
+          dataPointIndex,
+          size: 4,
+          fillColor: color,
+          strokeColor: color,
+        }))
+      : [],
+  );
+}
+
+/**
+ * Tick budget for the backlog axis: never more than one tick per day covered,
+ * and never more than Apex's own default, so a long range does not turn into a
+ * picket fence of dates.
+ */
+function dayTickAmount(curve: readonly ReportBacklogPointDto[]): number {
+  if (curve.length < 2) return 1;
+
+  const spanDays = Math.round(
+    (dayToTimestamp(curve[curve.length - 1].day) - dayToTimestamp(curve[0].day)) / DAY_MS,
+  );
+
+  return Math.max(1, Math.min(spanDays, MAX_BACKLOG_TICKS));
 }
 
 /** `yyyy-MM-dd` → the UTC-midnight timestamp Apex plots it at. */

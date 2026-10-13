@@ -3,8 +3,10 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ApexOptions } from 'apexcharts';
 import { TablerIconComponent } from 'angular-tabler-icons';
+import { TenantInfoService } from '../../../core/tenant/tenant-info.service';
 import { TenantStore } from '../../../core/tenant/tenant.store';
 import { EmptyStateComponent } from '../../../shared/ui/empty-state/empty-state.component';
+import { HelpHintComponent } from '../../../shared/ui/help-hint/help-hint.component';
 import { PageHeaderComponent } from '../../../shared/ui/page-header/page-header.component';
 import { SpinnerComponent } from '../../../shared/ui/spinner/spinner.component';
 import { ChartDirective } from '../../../shared/ui/chart/chart.directive';
@@ -43,11 +45,8 @@ import {
   formatHours,
   formatNumber,
 } from '../data-access/format';
-import {
-  clipMonthlyFlow,
-  createdInRange,
-  managedInRange,
-} from '../data-access/request-report.models';
+import { DASHBOARD_HELP, statusHelp } from '../data-access/help-text';
+import { clipMonthlyFlow } from '../data-access/request-report.models';
 import { RequestReportService } from '../data-access/request-report.service';
 import { RangePickerComponent } from '../range-picker/range-picker.component';
 
@@ -77,6 +76,7 @@ interface StatusTile {
     EmptyStateComponent,
     ChartDirective,
     TablerIconComponent,
+    HelpHintComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './dashboard-page.component.html',
@@ -85,6 +85,7 @@ export class DashboardPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly service = inject(RequestReportService);
+  private readonly tenantInfo = inject(TenantInfoService);
   protected readonly tenant = inject(TenantStore);
 
   protected readonly report = this.service.report;
@@ -96,6 +97,18 @@ export class DashboardPageComponent {
   protected readonly formatRange = formatRange;
   protected readonly deltaClass = deltaClass;
   protected readonly deltaIcon = deltaIcon;
+  protected readonly help = DASHBOARD_HELP;
+
+  /**
+   * The grace window the conjunto configured, so the «Cerrado» tile can name it
+   * instead of hand-waving at "un plazo". Null until the settings land, which
+   * the copy handles rather than hiding the hint.
+   */
+  private readonly autoCloseDays = computed(
+    () => this.tenantInfo.info()?.requests.autoCloseDays ?? null,
+  );
+
+  protected readonly statusHelp = computed(() => statusHelp(this.autoCloseDays()));
 
   private readonly queryParams = toSignal(this.route.queryParamMap, {
     initialValue: this.route.snapshot.queryParamMap,
@@ -136,6 +149,11 @@ export class DashboardPageComponent {
 
   constructor() {
     effect(() => this.service.load(this.range()));
+
+    // Only the «Cerrado» hint needs this, and the route already demands
+    // `tenant.info` — the same permission the endpoint checks — so it can be
+    // asked for unconditionally. A failure costs one sentence, never the page.
+    this.tenantInfo.load().subscribe({ error: () => undefined });
   }
 
   protected onRangeChange(range: DateRange): void {
@@ -186,15 +204,9 @@ export class DashboardPageComponent {
       .reduce((total, tile) => total + tile.count, 0),
   );
 
-  protected readonly created = computed(() => {
-    const report = this.report();
-    return report ? createdInRange(report) : 0;
-  });
-
-  protected readonly managed = computed(() => {
-    const report = this.report();
-    return report ? managedInRange(report) : 0;
-  });
+  /** Headline totals of the range — `current`, not derived from the breakdowns. */
+  protected readonly created = computed(() => this.report()?.current.created ?? 0);
+  protected readonly managed = computed(() => this.report()?.current.managed ?? 0);
 
   protected readonly createdDelta = computed<Delta>(() => {
     const report = this.report();
@@ -210,7 +222,7 @@ export class DashboardPageComponent {
   protected readonly resolutionDelta = computed<Delta>(() => {
     const report = this.report();
     return computeDelta(
-      report?.durations.resolutionMedianHours ?? null,
+      report?.current.resolutionMedianHours ?? null,
       report?.comparison.resolutionMedianHours ?? null,
       true,
     );
@@ -281,11 +293,19 @@ export class DashboardPageComponent {
     this.monthlyWindow().months.some((month) => month.created > 0 || month.managed > 0),
   );
 
+  /**
+   * What the curve actually covers. The live day is counted apart: it is the
+   * only point the nightly job did not produce, so calling it "consolidated"
+   * would misdescribe the one value a reader is most likely to act on.
+   */
   protected readonly backlogCoverage = computed(() => {
     const curve = this.report()?.backlogCurve ?? [];
     if (curve.length === 0) return null;
+
+    const liveDays = curve.filter((point) => point.isLive).length;
     return {
-      days: curve.length,
+      days: curve.length - liveDays,
+      hasLive: liveDays > 0,
       from: formatDay(curve[0].day),
       to: formatDay(curve[curve.length - 1].day),
     };
