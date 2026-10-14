@@ -76,12 +76,14 @@ export class NavbarComponent {
       icon: 'building',
       permission: 'apartments.view',
     },
+    // No FeatureKey.KnowledgeResources exists server-side either (the enum is
+    // Requests, Deliveries, Visits, Announcements, Amenities), so this item is
+    // gated by permission alone — same as Apartamentos above.
     {
       label: 'Base de conocimiento',
       path: '/knowledge-resources',
       icon: 'book',
       permission: 'knowledge.view',
-      feature: 'KnowledgeResources',
     },
     // `tenant.info` is a single permission covering both read and write of the
     // conjunto's own contact info; no FeatureKey gates it.

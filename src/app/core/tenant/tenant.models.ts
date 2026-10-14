@@ -1,8 +1,7 @@
 /**
  * Raw response of `GET /tenant/current`, typed EXACTLY as the API returns it
- * (camelCase; do not rename). The endpoint currently returns a reduced shape;
- * `status`/`branding`/`features` are the proposed additions (docs/architecture.md
- * §3.1) and arrive as `undefined` until the API ships them.
+ * (camelCase; do not rename). `status` is still absent from the payload and is
+ * defaulted by `TenantService`.
  */
 export interface TenantCurrentResponse {
   tenantId: string;
@@ -11,7 +10,8 @@ export interface TenantCurrentResponse {
   tenantName: string;
   status?: string;
   branding?: Partial<TenantBranding> | null;
-  features?: string[] | null;
+  /** Enabled `FeatureKey` names. Note the API's own spelling — not `features`. */
+  enabledFeatures?: string[] | null;
 }
 
 /**

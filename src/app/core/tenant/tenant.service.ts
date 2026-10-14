@@ -6,8 +6,12 @@ import { TenantCurrentResponse, TenantProfile } from './tenant.models';
 
 /** Default primary color used when the API does not return branding yet (Tabler blue). */
 const DEFAULT_PRIMARY_COLOR = '#066fd1';
-/** Features assumed enabled until the API returns the `features` array. */
-const DEFAULT_FEATURES = ['Requests', 'Announcements', 'KnowledgeResources'];
+/**
+ * Only used when `GET /tenant/current` itself is unreachable: assume every
+ * `FeatureKey` is on rather than hiding the whole portal. Mirrors the API enum
+ * (`Dominodo.Tenants.Domain.Tenants.FeatureKey`).
+ */
+const DEFAULT_FEATURES = ['Requests', 'Deliveries', 'Visits', 'Announcements', 'Amenities'];
 
 @Injectable({ providedIn: 'root' })
 export class TenantService {
@@ -15,11 +19,11 @@ export class TenantService {
 
   /**
    * Loads the tenant via `GET /tenant/current` and normalizes it to a
-   * `TenantProfile`. The endpoint currently returns a reduced shape (no
-   * status/branding/features) — those are defaulted here until the API ships
-   * them (docs/architecture.md §3.1). If the endpoint is absent (404/network)
-   * a fallback profile keeps the app running. Genuine `400 Tenant.Unknown`
-   * propagates so the bootstrap can route to the not-found page.
+   * `TenantProfile`. The payload carries branding and `enabledFeatures`; only
+   * `status` is still missing and defaulted here. If the endpoint is absent
+   * (404/network) a fallback profile keeps the app running. Genuine
+   * `400 Tenant.Unknown` propagates so the bootstrap can route to the
+   * not-found page.
    */
   getCurrent(slug: string): Observable<TenantProfile> {
     return this.http
@@ -57,7 +61,7 @@ function normalize(response: TenantCurrentResponse, slug: string): TenantProfile
       primaryColor: response.branding?.primaryColor ?? DEFAULT_PRIMARY_COLOR,
       loginText: response.branding?.loginText ?? null,
     },
-    features: response.features ?? DEFAULT_FEATURES,
+    features: response.enabledFeatures ?? DEFAULT_FEATURES,
   };
 }
 
