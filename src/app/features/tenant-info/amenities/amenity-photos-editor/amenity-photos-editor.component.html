@@ -1,0 +1,170 @@
+<div class="d-flex flex-wrap gap-2">
+  @for (photo of items(); track photo.key; let i = $index; let first = $first; let last = $last) {
+    <div class="card amenity-photo-tile position-relative">
+      @if (isBrokenPreview(photo.key)) {
+        <span
+          class="amenity-photo-thumb d-inline-flex align-items-center justify-content-center text-secondary"
+        >
+          <tabler-icon name="photo" />
+        </span>
+      } @else {
+        <img
+          class="amenity-photo-thumb"
+          [src]="photo.url"
+          [alt]="'Foto ' + (i + 1)"
+          [title]="'Ver foto ' + (i + 1)"
+          (click)="openViewer(i, viewerTpl)"
+          (error)="onPreviewError(photo.key)"
+        />
+      }
+
+      @if (first) {
+        <span class="badge bg-primary amenity-photo-cover">Portada</span>
+      }
+
+      <div class="card-body p-1 d-flex justify-content-between align-items-center">
+        <div class="btn-group">
+          <button
+            type="button"
+            class="btn btn-icon btn-sm btn-ghost-secondary"
+            [disabled]="first"
+            title="Mover antes"
+            [attr.aria-label]="'Mover la foto ' + (i + 1) + ' antes'"
+            (click)="moveUp(i)"
+          >
+            <tabler-icon name="arrow-up" class="icon-sm" />
+          </button>
+          <button
+            type="button"
+            class="btn btn-icon btn-sm btn-ghost-secondary"
+            [disabled]="last"
+            title="Mover después"
+            [attr.aria-label]="'Mover la foto ' + (i + 1) + ' después'"
+            (click)="moveDown(i)"
+          >
+            <tabler-icon name="arrow-down" class="icon-sm" />
+          </button>
+        </div>
+        <button
+          type="button"
+          class="btn btn-icon btn-sm btn-ghost-danger"
+          title="Quitar foto"
+          [attr.aria-label]="'Quitar la foto ' + (i + 1)"
+          (click)="remove(i)"
+        >
+          <tabler-icon name="trash" class="icon-sm" />
+        </button>
+      </div>
+    </div>
+  }
+
+  @if (items().length < maxPhotos) {
+    <label
+      class="card amenity-photo-add d-flex align-items-center justify-content-center text-secondary"
+    >
+      @if (uploading()) {
+        <app-spinner label="Subiendo foto…" />
+      } @else {
+        <tabler-icon name="photo-plus" class="mb-1" />
+        <span class="small">Agregar foto</span>
+      }
+      <input
+        type="file"
+        class="d-none"
+        [accept]="acceptedTypes"
+        [disabled]="uploading()"
+        (change)="onFileSelected($event)"
+      />
+    </label>
+  }
+</div>
+
+@if (error(); as message) {
+  <div class="text-danger small mt-2">{{ message }}</div>
+}
+
+<small class="form-hint mt-2 d-block">
+  Entre {{ minPhotos }} y {{ maxPhotos }} fotos (PNG, JPG o WEBP). La primera es la portada; usa las
+  flechas para reordenarlas.
+</small>
+
+<ng-template #viewerTpl let-modal>
+  <div class="modal-header">
+    <div class="me-auto overflow-hidden">
+      <h5 class="modal-title text-truncate">Foto {{ viewerIndex() + 1 }}</h5>
+      @if (items().length > 1) {
+        <div class="text-secondary small">
+          Imagen {{ viewerIndex() + 1 }} de {{ items().length }}
+        </div>
+      }
+    </div>
+    <button type="button" class="btn-close" (click)="modal.dismiss()"></button>
+  </div>
+
+  <div class="modal-body p-0">
+    <div class="lightbox-stage">
+      @if (items().length > 1) {
+        <button
+          type="button"
+          class="btn btn-icon btn-dark lightbox-nav lightbox-nav--prev"
+          title="Anterior"
+          (click)="viewerPrev()"
+        >
+          <tabler-icon name="chevron-left" />
+        </button>
+      }
+
+      @if (viewerPhoto(); as current) {
+        @if (isBrokenPreview(current.key)) {
+          <div class="text-center text-secondary p-5 small">
+            <tabler-icon name="photo" class="mb-2" />
+            <div>No se pudo mostrar esta imagen.</div>
+          </div>
+        } @else {
+          <img
+            class="lightbox-image"
+            [src]="current.url"
+            [alt]="'Foto ' + (viewerIndex() + 1)"
+            (error)="onPreviewError(current.key)"
+          />
+        }
+      }
+
+      @if (items().length > 1) {
+        <button
+          type="button"
+          class="btn btn-icon btn-dark lightbox-nav lightbox-nav--next"
+          title="Siguiente"
+          (click)="viewerNext()"
+        >
+          <tabler-icon name="chevron-right" />
+        </button>
+      }
+    </div>
+
+    <!-- Tira de miniaturas para saltar directo a una imagen -->
+    @if (items().length > 1) {
+      <div class="d-flex gap-2 p-2 overflow-auto bg-dark">
+        @for (photo of items(); track photo.key; let i = $index) {
+          @if (isBrokenPreview(photo.key)) {
+            <span
+              class="lightbox-thumb d-inline-flex align-items-center justify-content-center text-secondary"
+            >
+              <tabler-icon name="photo" />
+            </span>
+          } @else {
+            <img
+              class="lightbox-thumb"
+              [class.active]="i === viewerIndex()"
+              [src]="photo.url"
+              [alt]="'Foto ' + (i + 1)"
+              [title]="'Foto ' + (i + 1)"
+              (click)="viewerGoTo(i)"
+              (error)="onPreviewError(photo.key)"
+            />
+          }
+        }
+      </div>
+    }
+  </div>
+</ng-template>

@@ -1,21 +1,6 @@
 <app-page-header [title]="'Mi Conjunto'" [pretitle]="tenantName" />
 
-<ul class="nav nav-bordered mb-3" role="tablist">
-  @for (tab of tabs; track tab.id) {
-    <li class="nav-item" role="presentation">
-      <a
-        class="nav-link"
-        [class.active]="activeTab() === tab.id"
-        [routerLink]="['/tenant-info', tab.id]"
-        role="tab"
-        [attr.aria-selected]="activeTab() === tab.id"
-      >
-        <tabler-icon [name]="tab.icon" class="me-1" />
-        {{ tab.label }}
-      </a>
-    </li>
-  }
-</ul>
+<app-tenant-info-nav />
 
 <!-- Every tab stays in the DOM: hiding (not destroying) the inactive ones keeps
      unsaved edits alive while the admin jumps between them. -->

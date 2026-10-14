@@ -30,6 +30,7 @@ import {
   ScheduleKey,
   serializeSchedule,
   TimeRange,
+  WEEKDAYS,
   WeeklySchedule,
 } from './schedule.model';
 
@@ -72,10 +73,26 @@ export class ScheduleEditorComponent implements ControlValueAccessor, Validator 
   /** Surfaces validation messages only once the parent form was submitted. */
   readonly showErrors = input(false);
 
-  /** The seven weekdays plus the holidays row, in render order. */
-  readonly entries = SCHEDULE_ENTRIES;
+  /**
+   * Whether the holidays row is offered. Off for callers whose storage has no
+   * place for it — `Amenity.OpeningHours` keys slots by `DayOfWeek`, so a
+   * holiday schedule would have nowhere to land.
+   */
+  readonly allowHolidays = input(true);
+
+  /**
+   * Whether an empty schedule is a validation error. Off for callers where
+   * "hours not decided yet" is a legitimate state (ADR-0016 §4).
+   */
+  readonly requireOpenDay = input(true);
+
   readonly holidayKey = HOLIDAY_KEY;
   readonly maxRangesPerDay = MAX_RANGES_PER_DAY;
+
+  /** Rows to render, in order: the week, then holidays when they are offered. */
+  readonly visibleEntries = computed<readonly ScheduleEntry[]>(() =>
+    this.allowHolidays() ? SCHEDULE_ENTRIES : WEEKDAYS,
+  );
 
   readonly schedule = signal<WeeklySchedule>({});
   readonly expanded = signal<ScheduleKey | null>(null);
@@ -129,9 +146,11 @@ export class ScheduleEditorComponent implements ControlValueAccessor, Validator 
   // --- Validator ------------------------------------------------------------
 
   validate(_control: AbstractControl): ValidationErrors | null {
-    if (this.openDayCount() === 0) return { required: true };
+    if (this.openDayCount() === 0) {
+      return this.requireOpenDay() ? { required: true } : null;
+    }
 
-    for (const entry of SCHEDULE_ENTRIES) {
+    for (const entry of this.visibleEntries()) {
       const ranges = this.schedule()[entry.key] ?? [];
       if (ranges.some((range) => !isRangeValid(range))) {
         return { invalidRange: true };
@@ -231,9 +250,9 @@ export class ScheduleEditorComponent implements ControlValueAccessor, Validator 
     this.onTouched();
   }
 
-  /** Every other row (holidays included), used by the copy dropdown. */
+  /** Every other visible row, used by the copy dropdown. */
   otherEntries(key: ScheduleKey): readonly ScheduleEntry[] {
-    return SCHEDULE_ENTRIES.filter((entry) => entry.key !== key);
+    return this.visibleEntries().filter((entry) => entry.key !== key);
   }
 
   isRangeInvalid(key: ScheduleKey, index: number): boolean {

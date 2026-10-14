@@ -1,5 +1,7 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router, Routes } from '@angular/router';
+import { permissionGuard } from '../../core/guards/permission.guard';
+import { AMENITIES_CREATE, AMENITIES_VIEW } from './amenities/data-access/amenity.permissions';
 import { DEFAULT_TENANT_INFO_TAB, isTenantInfoTab } from './tenant-info-tabs';
 
 /**
@@ -23,6 +25,41 @@ const knownSectionGuard: CanActivateFn = (route) =>
  */
 export const tenantInfoRoutes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: DEFAULT_TENANT_INFO_TAB },
+  // Áreas sociales: a routed CRUD sub-feature, not a `:section` form — see
+  // `TenantInfoAmenitiesPageComponent`'s doc comment for why it branches here
+  // instead of joining the param below.
+  {
+    path: 'amenities',
+    canActivate: [permissionGuard(AMENITIES_VIEW)],
+    loadComponent: () =>
+      import('./tenant-info-amenities-page/tenant-info-amenities-page.component').then(
+        (m) => m.TenantInfoAmenitiesPageComponent,
+      ),
+    children: [
+      {
+        path: '',
+        loadComponent: () =>
+          import('./amenities/amenity-list/amenity-list.component').then(
+            (m) => m.AmenityListComponent,
+          ),
+      },
+      {
+        path: 'new',
+        canActivate: [permissionGuard(AMENITIES_CREATE)],
+        loadComponent: () =>
+          import('./amenities/amenity-form/amenity-form.component').then(
+            (m) => m.AmenityFormComponent,
+          ),
+      },
+      {
+        path: ':id/edit',
+        loadComponent: () =>
+          import('./amenities/amenity-form/amenity-form.component').then(
+            (m) => m.AmenityFormComponent,
+          ),
+      },
+    ],
+  },
   {
     path: ':section',
     canActivate: [knownSectionGuard],

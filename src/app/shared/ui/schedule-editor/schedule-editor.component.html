@@ -10,7 +10,7 @@
   </div>
 }
 
-@for (day of entries; track day.key) {
+@for (day of visibleEntries(); track day.key) {
   @if (day.key === holidayKey) {
     <!-- Holidays are not part of the week; the rule detaches them from it. -->
     <hr class="my-3" />

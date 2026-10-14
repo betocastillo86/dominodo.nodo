@@ -1,0 +1,330 @@
+@if (loadingDetail()) {
+  <app-spinner />
+} @else if (loadError(); as err) {
+  <div class="alert alert-danger" role="alert">{{ err }}</div>
+} @else {
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h3 class="mb-0">{{ mode === 'create' ? 'Nueva área social' : 'Editar área social' }}</h3>
+
+    @if (mode === 'edit') {
+      <div class="d-flex align-items-center gap-2">
+        <span [class]="status() === 'Active' ? 'badge bg-success-lt' : 'badge bg-warning-lt'">
+          {{ status() === 'Active' ? 'Activa' : 'Fuera de servicio' }}
+        </span>
+        @if (status() === 'Active') {
+          <button
+            type="button"
+            class="btn btn-outline-warning btn-sm"
+            [disabled]="togglingStatus()"
+            (click)="confirmMarkOutOfService(outOfServiceTpl)"
+          >
+            <tabler-icon name="ban" class="me-1" />
+            Poner fuera de servicio
+          </button>
+        } @else {
+          <button
+            type="button"
+            class="btn btn-outline-success btn-sm"
+            [disabled]="togglingStatus()"
+            (click)="confirmActivate(activateTpl)"
+          >
+            <tabler-icon name="circle-check" class="me-1" />
+            Reactivar
+          </button>
+        }
+      </div>
+    }
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    @if (formError(); as message) {
+      <div class="alert alert-danger" role="alert">{{ message }}</div>
+    }
+
+    <div class="row g-3 mb-3">
+      <div class="col-12 col-lg-6">
+        <div class="card h-100">
+          <div class="card-header">
+            <h3 class="card-title">Datos del área</h3>
+          </div>
+          <div class="card-body">
+            <div class="mb-3">
+              <label class="form-label required" for="name">Nombre</label>
+              <input
+                id="name"
+                type="text"
+                class="form-control"
+                formControlName="name"
+                [maxlength]="nameMaxLength"
+                [class.is-invalid]="form.controls.name.invalid && form.controls.name.touched"
+              />
+              @if (form.controls.name.hasError('required') && form.controls.name.touched) {
+                <div class="invalid-feedback">El nombre es obligatorio.</div>
+              }
+              @if (form.controls.name.hasError('maxlength')) {
+                <div class="invalid-feedback d-block">
+                  No puede superar los {{ nameMaxLength }} caracteres.
+                </div>
+              }
+              @if (form.controls.name.hasError('server')) {
+                <div class="invalid-feedback d-block">
+                  {{ form.controls.name.getError('server') }}
+                </div>
+              }
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label required" for="maxOccupancy">Aforo máximo</label>
+              <input
+                id="maxOccupancy"
+                type="number"
+                min="1"
+                class="form-control"
+                formControlName="maxOccupancy"
+                [class.is-invalid]="
+                  form.controls.maxOccupancy.invalid && form.controls.maxOccupancy.touched
+                "
+              />
+              @if (form.controls.maxOccupancy.invalid && form.controls.maxOccupancy.touched) {
+                <div class="invalid-feedback">Ingresa un aforo mayor a cero.</div>
+              }
+              <small class="form-hint">Cuántas personas caben en el área al mismo tiempo.</small>
+            </div>
+
+            <div class="form-check form-switch">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                role="switch"
+                id="requiresApproval"
+                formControlName="requiresApproval"
+              />
+              <label class="form-check-label" for="requiresApproval">
+                Requiere aprobación para reservar
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-lg-6">
+        <div class="card h-100">
+          <div class="card-header">
+            <h3 class="card-title">Fotos</h3>
+          </div>
+          <div class="card-body">
+            <app-amenity-photos-editor
+              [photos]="initialPhotos()"
+              (keysChange)="onPhotoKeysChange($event)"
+            />
+            @if (missingPhotos()) {
+              <div class="text-danger small mt-2">Se requiere al menos {{ minPhotos }} foto.</div>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header">
+        <h3 class="card-title">Política de reserva</h3>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-6 col-md-4 mb-3">
+            <label class="form-label" for="minHours">Horas mínimas</label>
+            <input
+              id="minHours"
+              type="number"
+              min="1"
+              class="form-control"
+              formControlName="minHours"
+            />
+          </div>
+          <div class="col-6 col-md-4 mb-3">
+            <label class="form-label" for="maxHours">Horas máximas</label>
+            <input
+              id="maxHours"
+              type="number"
+              min="1"
+              class="form-control"
+              formControlName="maxHours"
+              [class.is-invalid]="form.hasError('hoursRange')"
+            />
+            @if (form.hasError('hoursRange')) {
+              <div class="invalid-feedback d-block">No puede ser menor que las horas mínimas.</div>
+            }
+          </div>
+          <div class="col-12 col-md-4 mb-3">
+            <label class="form-label" for="maxPerDayPerApartment">Cupo por apartamento/día</label>
+            <input
+              id="maxPerDayPerApartment"
+              type="number"
+              min="1"
+              class="form-control"
+              formControlName="maxPerDayPerApartment"
+            />
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label" for="usageRules">Reglas de uso</label>
+          <textarea
+            id="usageRules"
+            class="form-control"
+            rows="3"
+            formControlName="usageRules"
+            [maxlength]="textMaxLength"
+          ></textarea>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="additionalServices">Servicios adicionales</label>
+          <textarea
+            id="additionalServices"
+            class="form-control"
+            rows="2"
+            formControlName="additionalServices"
+            [maxlength]="textMaxLength"
+          ></textarea>
+        </div>
+
+        <hr class="my-3" />
+
+        <div class="form-check form-switch mb-2">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            role="switch"
+            id="allowsMultiplePerDay"
+            formControlName="allowsMultiplePerDay"
+          />
+          <label class="form-check-label" for="allowsMultiplePerDay">
+            Varios turnos el mismo día
+          </label>
+        </div>
+
+        <div class="form-check form-switch mb-3">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            role="switch"
+            id="requiresGoodStanding"
+            formControlName="requiresGoodStanding"
+          />
+          <label class="form-check-label" for="requiresGoodStanding">
+            No disponible para morosos
+          </label>
+        </div>
+
+        <!-- Payment last: the price only exists because of this switch, so it
+             sits beside it. Both the switch and the price label stay inline so
+             this row keeps the same left edge as the two switches above. -->
+        <div class="row g-3 align-items-center">
+          <div class="col-12 col-md-4">
+            <div class="form-check form-switch mb-0">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                role="switch"
+                id="paymentRequired"
+                formControlName="paymentRequired"
+              />
+              <label class="form-check-label" for="paymentRequired">Requiere pago</label>
+            </div>
+          </div>
+          @if (form.controls.paymentRequired.value) {
+            <div class="col-12 col-md-5">
+              <div class="d-flex align-items-center gap-2">
+                <label class="form-label required mb-0 text-nowrap" for="price">Precio</label>
+                <input
+                  id="price"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  class="form-control"
+                  formControlName="price"
+                  [class.is-invalid]="form.controls.price.invalid && form.controls.price.touched"
+                />
+              </div>
+              @if (form.controls.price.invalid && form.controls.price.touched) {
+                <div class="invalid-feedback d-block">Ingresa un precio mayor a cero.</div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header">
+        <h3 class="card-title">Horario</h3>
+      </div>
+      <div class="card-body">
+        <p class="text-secondary">
+          Las franjas en las que se podrá reservar el área. Puedes dejarlo sin definir y fijarlo
+          después.
+        </p>
+        <app-schedule-editor
+          formControlName="schedules"
+          [showErrors]="submitted()"
+          [allowHolidays]="false"
+          [requireOpenDay]="false"
+        />
+        @if (submitted() && form.controls.schedules.invalid) {
+          <div class="text-danger small mt-1">
+            @if (form.controls.schedules.errors?.['overlappingRanges']) {
+              Hay franjas que se cruzan dentro de un mismo día.
+            } @else {
+              Revisa las franjas marcadas: la hora de fin debe ser posterior a la de inicio.
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn btn-primary" [disabled]="saving()">
+        @if (saving()) {
+          <span class="spinner-border spinner-border-sm me-1"></span>
+        }
+        Guardar
+      </button>
+      <a routerLink="/tenant-info/amenities" class="btn btn-link">Cancelar</a>
+    </div>
+  </form>
+}
+
+<ng-template #activateTpl let-modal>
+  <div class="modal-header">
+    <h5 class="modal-title">Reactivar área</h5>
+    <button type="button" class="btn-close" (click)="modal.dismiss()"></button>
+  </div>
+  <div class="modal-body">
+    ¿Quieres volver a poner "{{ amenityName() }}" en circulación?
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-link link-secondary" (click)="modal.dismiss()">
+      Cancelar
+    </button>
+    <button type="button" class="btn btn-success" (click)="modal.close()">Reactivar</button>
+  </div>
+</ng-template>
+
+<ng-template #outOfServiceTpl let-modal>
+  <div class="modal-header">
+    <h5 class="modal-title">Poner fuera de servicio</h5>
+    <button type="button" class="btn-close" (click)="modal.dismiss()"></button>
+  </div>
+  <div class="modal-body">
+    ¿Quieres sacar "{{ amenityName() }}" de circulación? Los residentes no podrán reservarla
+    mientras tanto.
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-link link-secondary" (click)="modal.dismiss()">
+      Cancelar
+    </button>
+    <button type="button" class="btn btn-warning" (click)="modal.close()">
+      Poner fuera de servicio
+    </button>
+  </div>
+</ng-template>

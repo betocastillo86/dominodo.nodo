@@ -1,19 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, RouterLink } from '@angular/router';
-import { TablerIconComponent } from 'angular-tabler-icons';
+import { ActivatedRoute } from '@angular/router';
 import { TenantStore } from '../../../core/tenant/tenant.store';
 import { PageHeaderComponent } from '../../../shared/ui/page-header/page-header.component';
+import { TenantInfoNavComponent } from '../tenant-info-nav/tenant-info-nav.component';
 import { TenantBrandingFormComponent } from '../tenant-branding-form/tenant-branding-form.component';
 import { TenantContactFormComponent } from '../tenant-contact-form/tenant-contact-form.component';
 import { TenantSettingsFormComponent } from '../tenant-settings-form/tenant-settings-form.component';
 import { DEFAULT_TENANT_INFO_TAB, isTenantInfoTab, TenantInfoTab } from '../tenant-info-tabs';
-
-interface TenantInfoTabLink {
-  readonly id: TenantInfoTab;
-  readonly label: string;
-  readonly icon: string;
-}
 
 /**
  * "Mi Conjunto" shell: page header plus the self-service surfaces the API
@@ -32,9 +26,8 @@ interface TenantInfoTabLink {
   selector: 'app-tenant-info-page',
   standalone: true,
   imports: [
-    RouterLink,
-    TablerIconComponent,
     PageHeaderComponent,
+    TenantInfoNavComponent,
     TenantContactFormComponent,
     TenantBrandingFormComponent,
     TenantSettingsFormComponent,
@@ -48,12 +41,6 @@ export class TenantInfoPageComponent {
 
   /** Shown as the page pretitle so the admin sees which conjunto they are editing. */
   readonly tenantName = this.tenant.tenant()?.name ?? '';
-
-  readonly tabs: readonly TenantInfoTabLink[] = [
-    { id: 'contact', label: 'Contacto', icon: 'address-book' },
-    { id: 'theme', label: 'Tema', icon: 'palette' },
-    { id: 'settings', label: 'Configuración', icon: 'settings' },
-  ];
 
   private readonly params = toSignal(this.route.paramMap, {
     initialValue: this.route.snapshot.paramMap,

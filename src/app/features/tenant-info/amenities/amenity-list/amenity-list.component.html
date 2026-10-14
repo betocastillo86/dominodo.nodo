@@ -1,0 +1,47 @@
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3 class="mb-0">Áreas sociales</h3>
+  @if (canCreate()) {
+    <a routerLink="/tenant-info/amenities/new" class="btn btn-primary">
+      <tabler-icon name="plus" class="me-1" />
+      Nueva área
+    </a>
+  }
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="row g-2">
+      <div class="col-12 col-md-6">
+        <div class="input-icon">
+          <span class="input-icon-addon">
+            <tabler-icon name="search" />
+          </span>
+          <input
+            type="text"
+            class="form-control"
+            placeholder="Buscar por nombre…"
+            [formControl]="nameControl"
+          />
+        </div>
+      </div>
+      <div class="col-12 col-md-3">
+        <select class="form-select" [formControl]="statusControl">
+          @for (opt of statusOptions; track opt.value) {
+            <option [value]="opt.value">{{ opt.label }}</option>
+          }
+        </select>
+      </div>
+    </div>
+  </div>
+  <app-data-table
+    [columns]="columns"
+    [rows]="service.items()"
+    [paging]="service.paging()"
+    [loading]="service.loading()"
+    [error]="service.error()"
+    [rowKey]="rowKey"
+    [actionLink]="editLink"
+    [actionIcon]="'edit'"
+    (pageChange)="onPageChange($event)"
+  />
+</div>

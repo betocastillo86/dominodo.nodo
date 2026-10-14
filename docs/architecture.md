@@ -107,7 +107,11 @@ name, logo and colors. Returns only data that is **safe to be public per tenant*
     "primaryColor": "#206bc4",
     "loginText": "Bienvenido a la administración de Los Almendros"
   },
-  "features": ["Requests", "Announcements"]   // enabled TenantFeature keys (§2.2) — gate nav
+  // enabled FeatureKey names (§2.2) — gate nav. NOTE the API's spelling:
+  // `enabledFeatures`, normalized to `TenantProfile.features` by TenantService.
+  // The enum is Requests | Deliveries | Visits | Announcements | Amenities —
+  // anything else (e.g. KnowledgeResources) must be gated by permission alone.
+  "enabledFeatures": ["Requests", "Announcements", "Amenities"]
 }
 // 400 Tenant.Unknown  — unknown/suspended slug (middleware rejects before reaching the handler)
 ```
@@ -259,7 +263,7 @@ src/app/
                             #    residents-lookup.service, apartment-import.*, apartment.permissions)
                             #    apartment-list / -detail components + apartment-import/ (bulk load
                             #    wizard, apartments.create AND memberships.manage)
-    ├── tenant-info/        # ✅ "Mi Conjunto": three tabs, one URL each (see §6) —
+    ├── tenant-info/        # ✅ "Mi Conjunto": four tabs, one URL each (see §6) —
                             #    Contacto (/tenant-info/contact): the contactInfo block of
                             #      GET/PUT /tenants/info
                             #    Tema (/tenant-info/theme): theme + logo (GET/PUT /tenants/branding, and
@@ -274,6 +278,16 @@ src/app/
                             #    saving while phone/schedules are still empty)
                             #    guarded by the `tenant.info` permission (read + write in one code);
                             #    saving goes through a confirmation modal · no feature gate
+                            #    Áreas sociales (/tenant-info/amenities): the one tab that is NOT a
+                            #      mounted form but a routed CRUD sub-feature (list/new/:id/edit behind
+                            #      its own <router-outlet>, see TenantInfoAmenitiesPageComponent) —
+                            #      amenities.* permissions + the Amenities tenant feature (ADR-0016 in
+                            #      dominodo.api). Photos go through the aggregate's OWN upload-url
+                            #      endpoint (not core/files/'s generic one); activate/out-of-service are
+                            #      separate endpoints from the edit save, toggled from the edit form.
+                            #      The schedule REUSES shared/ui/schedule-editor with
+                            #      [allowHolidays]="false" + [requireOpenDay]="false" — see
+                            #      amenities/data-access/amenity-schedule.ts for the mapping
     └── profile/            # ✅ "Mi perfil": the caller's own profile (GET /auth/current, read-only)
                             #    plus "Cambiar clave" (PUT /auth/password, own-password change proving
                             #    the current one). Reached from the header user menu, not the top
@@ -301,6 +315,16 @@ save replaces (and the form stays invalid until real slots exist). `formatSchedu
 `schedule-editor/schedule.model.ts` renders the envelope as the sentence a resident reads — reuse it
 instead of re-parsing. Nothing outside the Tenants module consumes `Schedules` today; any future
 consumer (resident app, WhatsApp bot) must handle both shapes.
+
+**The same control, a different store.** Áreas sociales mounts this editor too — the day switches,
+several ranges per day, "Copiar a…" and the preview are worth having in both places — but
+`Amenity.OpeningHours` is **structured** (`[{ dayOfWeek, opensAt, closesAt }]`, `TimeOnly` as
+`HH:mm:ss`), not this text column. Two inputs carry that difference, both defaulting to the Contacto
+behaviour: `[allowHolidays]="false"` hides the festivos row (`DayOfWeek` has no member for it, so
+those hours would have nowhere to land) and `[requireOpenDay]="false"` makes an empty schedule valid
+(ADR-0016 §4 — an area may be configured before its hours are known). `amenities/data-access/
+amenity-schedule.ts` converts between the envelope and the slot list; holidays are dropped there too,
+so a hand-crafted value can never smuggle them into the API.
 
 **Apartments — the two write paths.** Apartments themselves are never created, edited or deleted here;
 what the administrator manages is the resident list of `GET /apartments/{id}/residents`. Adding one
