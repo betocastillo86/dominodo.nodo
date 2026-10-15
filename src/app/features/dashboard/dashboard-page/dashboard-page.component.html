@@ -13,30 +13,8 @@
 </app-page-header>
 
 <div class="container-xl">
-  <div class="card mb-3">
-    <div class="card-body py-2">
-      <app-range-picker
-        [range]="range()"
-        [disabled]="loading()"
-        (rangeChange)="onRangeChange($event)"
-      />
-    </div>
-  </div>
-
-  @if (error(); as message) {
-    <div class="alert alert-danger" role="alert">
-      <div class="d-flex">
-        <div><tabler-icon name="alert-triangle" class="icon alert-icon" /></div>
-        <div>
-          <h4 class="alert-title">No se pudieron cargar las estadísticas</h4>
-          <div class="text-secondary">{{ message }}</div>
-        </div>
-      </div>
-    </div>
-  }
-
-  @if (report(); as report) {
-    <!-- ── Live status: a photo of now, deliberately independent of the range ── -->
+  <!-- ── Live status: a photo of now. It sits above the picker because the range never touches it ── -->
+  @if (report()) {
     <div class="row row-cards mb-3">
       <div class="col-12">
         <div class="d-flex flex-wrap align-items-baseline justify-content-between gap-2">
@@ -80,8 +58,32 @@
         </div>
       }
     </div>
+  }
 
-    <!-- ── Everything below honours the selected range ── -->
+  <div class="card mb-3">
+    <div class="card-body py-2">
+      <app-range-picker
+        [range]="range()"
+        [disabled]="loading()"
+        (rangeChange)="onRangeChange($event)"
+      />
+    </div>
+  </div>
+
+  @if (error(); as message) {
+    <div class="alert alert-danger" role="alert">
+      <div class="d-flex">
+        <div><tabler-icon name="alert-triangle" class="icon alert-icon" /></div>
+        <div>
+          <h4 class="alert-title">No se pudieron cargar las estadísticas</h4>
+          <div class="text-secondary">{{ message }}</div>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (report(); as report) {
+    <!-- ── Everything below the picker honours the selected range ── -->
     <div class="d-flex flex-wrap align-items-baseline justify-content-between gap-2 mb-3">
       <h3 class="mb-0">El período</h3>
       @if (previousRange(); as previous) {
