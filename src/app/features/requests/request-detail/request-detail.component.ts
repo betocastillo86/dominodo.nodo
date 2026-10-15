@@ -233,6 +233,12 @@ export class RequestDetailComponent {
     return d ? (ALLOWED_TRANSITIONS[d.status] ?? []) : [];
   });
 
+  /**
+   * A closed request is a read-only conversation: the comment form is replaced
+   * by a notice until someone moves it back to an open status.
+   */
+  readonly commentsLocked = computed(() => this.detail()?.status === 'Closed');
+
   /** Status-change history, newest first for the "Histórico" tab. */
   readonly statusHistory = computed(() => {
     const d = this.detail();
@@ -397,7 +403,7 @@ export class RequestDetailComponent {
   }
 
   addComment(): void {
-    if (!this.commentForm.valid || this.addingComment()) return;
+    if (!this.commentForm.valid || this.addingComment() || this.commentsLocked()) return;
     const d = this.detail();
     if (!d) return;
 
