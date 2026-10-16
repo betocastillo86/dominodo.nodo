@@ -69,6 +69,16 @@ resolved from the **domain**. Full design: `docs/architecture.md`.
 - **UI copy in Spanish**; code, identifiers, comments, and docs in English.
 - Every `<tabler-icon name="x">` needs its `IconX` registered in `app.config.ts` — else it renders blank.
 
+## The resident surface is mobile-first (read before touching `/acceso` or `/reservas`)
+Two audiences, one codebase. The portal (shell routes) is an **administrator at a desk**. Everything a
+**handoff session** reaches is a resident who just tapped a WhatsApp link **on their phone**, inside
+WhatsApp's own in-app WebView. For that surface: design and verify at **360px first**, 44px minimum
+touch targets, no hover-only affordances (`@media (hover: hover)` + an `:active` state), DOM ordered
+for the phone with `order-lg-*` restoring the desktop, feedback visible without scrolling, and few
+requests (mobile data). Never move the handoff session to `localStorage` to survive a WebView switch —
+ADR-0017 forbids it; the resident re-taps the link, whose ticket is reusable for its whole TTL.
+Full reasoning and the in-app-browser gotchas: `docs/architecture.md` §5.2.
+
 ## API contract (essentials)
 - Base URL: `http://localhost:5083/api/v1`. **Every** call sends `X-Tenant: <slug>`.
 - Auth: `POST /auth/login {phone,password}` → `{accessToken, refreshToken, expiresAt}`;

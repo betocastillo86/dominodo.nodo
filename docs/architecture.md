@@ -257,8 +257,14 @@ src/app/
     ├── handoff/            # ✅ /acceso?t=<ticket> — redeems a Domi handoff ticket (ADR-0017), then
     │                       #    routes by `purpose` (HANDOFF_PURPOSE_ROUTES in core/handoff/handoff.models).
     │                       #    Standalone, no shell: reached only via an external link, never from nav.
-    ├── reservations/       # ✅ blank landing for the `amenity-reservation` purpose (handoffGuard-protected).
-    │                       #    Placeholder until the reservation form itself ships.
+    ├── reservations/       # ✅ landing for the `amenity-reservation` purpose (handoffGuard-protected,
+    │                       #    ADR-0018): the area's info + policy, this month's availability calendar
+    │                       #    (own CSS grid, not the FullCalendar widget — no new JS dependency for a
+    │                       #    3-state day), and the selected day's bookable time ranges. Read-only so
+    │                       #    far — POST /reservations (actually booking a slot) is the next phase.
+    │                       #    data-access/ (reservation-availability.models + .service, stateless: one
+    │                       #    reader, nothing to lift into signals) · month-calendar/ (presentational
+    │                       #    grid) · reservation-availability/ (the page, `?amenityId=` from the route)
     ├── requests/           # ✅ PQRS: list view (filters + pagination) + board/kanban view (4 status columns)
     │                       #    data-access/ (request.models, requests.service: list + loadBoard + changeStatus/moveInBoard)
     │                       #    request-list/ (dual-mode: list table + kanban with @angular/cdk drag-drop to
@@ -318,6 +324,9 @@ job is narrow: redeem the ticket, land on the right page, stay isolated from the
 - `GET /acceso` authenticates nothing; it only reads `t`. `AccesoComponent` fires the real exchange —
   `POST /auth/handoff/redeem` — and routes on the `purpose` the response carries, via
   `HANDOFF_PURPOSE_ROUTES` (the nodo owns this table, not the API).
+- `/acceso` also accepts an optional `?amenityId=` — a param the API's minted link never carries (it
+  only ever builds `/acceso?t=…`, ADR-0017 §3); Domi appends it itself once it has resolved which area
+  the resident wants, and `AccesoComponent` forwards it verbatim as a query param on the landing route.
 - The redeemed token lives in `HandoffStore`, backed by `sessionStorage` under its own key — never
   `AuthStore`'s `localStorage` key. Both sessions can exist in the same browser (same origin), so they
   are separated **per request, not per tab**: a call is authenticated as the handoff session only when
@@ -335,6 +344,53 @@ job is narrow: redeem the ticket, land on the right page, stay isolated from the
 - Every error the API can return — unknown/expired/revoked/wrong-tenant ticket (all identical,
   `400 Handoff.InvalidTicket`, by design) and `429 RateLimit.Exceeded` — gets its own copy in
   `AccesoComponent`, with a retry action where retrying can plausibly help.
+
+### 5.2 The resident surface is mobile-first — and it arrives from WhatsApp
+
+This app serves **two audiences on one codebase**, and they do not share a device. The portal (every
+route under the shell) is an administrator at a desk. The **resident surface** — `/acceso`, `/reservas`,
+and anything else a handoff session reaches — is someone who just tapped a link in a WhatsApp chat on
+their phone. Build and verify that surface at **360px first**; a wide screen is the afterthought, not
+the baseline.
+
+**Design rules for anything behind a handoff session:**
+
+- **44px minimum touch target.** Not a guideline here: at 360px the calendar's seven columns compute to
+  ~35px, so `.day-cell` carries `min-height: 2.75rem` and `aspect-ratio` only squares it where there is
+  room. The slot chips are sized the same way, ahead of becoming the booking tap target.
+- **No hover-only affordance.** Touch has no hover, and a WebView makes `:hover` stick *after* a tap —
+  put it behind `@media (hover: hover)` and give touch an `:active` state instead. Add
+  `touch-action: manipulation` to anything tapped in sequence, or every tap pays the 300ms double-tap
+  delay.
+- **Order the DOM for the phone, then restore the desktop with `order-*`.** The booking screen puts the
+  calendar first and the area's details after it, because the calendar is what the resident opened the
+  link to use; `order-lg-*` swaps them back on a wide screen. Doing it the other way round leaves the
+  phone inheriting a layout chosen for a monitor.
+- **Feedback has to be visible without scrolling.** Tapping a day renders a panel below a full-height
+  calendar — off-screen on a phone, so the tap reads as broken. The panel scrolls itself into view
+  (`block: 'nearest'`, a no-op when it is already visible).
+- **Stay cheap on mobile data.** The booking screen costs three requests and should stay that way.
+  Never fetch per day, per slot, or per month-cell.
+- **Never render a bare `yyyy-MM-dd` through `new Date(iso)`** — it parses as UTC midnight and the
+  conjunto's -05:00 renders the *previous* day. Build the date from its parts.
+
+**What the in-app browser actually does** (the part that is easy to get wrong):
+
+- WhatsApp opens links in **its own WebView**, not Chrome or Safari. `sessionStorage` is scoped to that
+  WebView, so the very common "Open in Chrome/Safari" starts a blank one and **the handoff session does
+  not follow**. Android also kills WebViews under memory pressure, with the same result. The recovery
+  is the chat itself: the ticket is reusable for its whole TTL (ADR-0018 §10 dropped the burn-on-booking
+  of ADR-0017 §6), so tapping the original link again just works. Note the session cannot recover
+  *in place* — `/reservas` no longer carries `t`, since `AccesoComponent` redirects with `replaceUrl`.
+- **Do not "fix" this by moving the session to `localStorage`.** Surviving the tab is precisely what
+  ADR-0017 forbids: the handoff session shares an origin with the portal's and must not outlive it.
+- **Storage access can throw outright** (private mode, blocked site data — both plausible here), which
+  would otherwise take down app bootstrap. `HandoffStore` catches it and runs in memory for that visit.
+- The link-preview crawler pre-fetches the URL. Harmless by construction: the `GET` redeems nothing,
+  only the `POST` does (ADR-0017 §1).
+
+Since the project has no automated tests, "done" on this surface means **exercised at 360px in the
+device toolbar**, not only at desktop width.
 
 ### Opening hours (`schedules`)
 

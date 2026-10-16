@@ -1,0 +1,193 @@
+<div class="page">
+  <div class="container-xl py-3 py-md-4">
+    <div class="d-flex align-items-center gap-2 mb-2 text-secondary">
+      <!-- Framed box, not a bare height: the logo is tenant-uploaded, so a wide
+           wordmark constrained only in height blows past a phone's width. -->
+      <span class="avatar avatar-xs rounded bg-muted-lt">
+        @if (tenant.logoUrl(); as logo) {
+          <img [src]="logo" [alt]="tenant.name() ?? 'Logo'" class="w-100 h-100 object-fit-contain" />
+        } @else {
+          <tabler-icon name="building-community"></tabler-icon>
+        }
+      </span>
+      <span class="small">{{ tenant.name() ?? 'Dominodo' }}</span>
+    </div>
+
+    @switch (state()) {
+      @case ('loading') {
+        <app-spinner label="Cargando información del área…" />
+      }
+      @case ('error') {
+        <div class="card">
+          <div class="card-body">
+            <app-empty-state
+              icon="alert-triangle"
+              title="No pudimos continuar"
+              [subtitle]="errorMessage() ?? ''"
+            >
+              <div actions>
+                <button type="button" class="btn btn-primary" (click)="retry()">
+                  <tabler-icon name="refresh" class="me-2"></tabler-icon>
+                  Reintentar
+                </button>
+              </div>
+            </app-empty-state>
+          </div>
+        </div>
+      }
+      @case ('ready') {
+        @if (amenity(); as amenity) {
+          <h1 class="h2 mb-3">{{ amenity.name }}</h1>
+
+          @if (amenity.status === 'OutOfService') {
+            <div class="alert alert-warning">Esta área está temporalmente fuera de servicio.</div>
+          }
+
+          <!-- The calendar comes first on a phone: it is what the resident opened
+               the link to do. The area's details read as reference below it, and
+               only swap back to the left column on a wide screen. -->
+          <div class="row g-3 g-lg-4">
+            <div class="col-12 col-lg-8 order-1 order-lg-2">
+              <div class="card mb-3">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                  <button
+                    type="button"
+                    class="btn btn-icon btn-ghost-secondary"
+                    aria-label="Mes anterior"
+                    [disabled]="!canGoPrev()"
+                    (click)="prevMonth()"
+                  >
+                    <tabler-icon name="chevron-left"></tabler-icon>
+                  </button>
+                  <span class="fw-bold text-capitalize">{{ monthLabel() }}</span>
+                  <button
+                    type="button"
+                    class="btn btn-icon btn-ghost-secondary"
+                    aria-label="Mes siguiente"
+                    (click)="nextMonth()"
+                  >
+                    <tabler-icon name="chevron-right"></tabler-icon>
+                  </button>
+                </div>
+                <div class="card-body px-2 px-sm-3">
+                  <app-month-calendar
+                    [year]="year()"
+                    [month]="month()"
+                    [dayAvailability]="dayAvailability()"
+                    [selectedDate]="selectedDate()"
+                    [minDate]="today"
+                    (daySelected)="selectDay($event)"
+                  />
+
+                  <!-- Saturated dots, not the cells' tint: a 8px swatch in a pale
+                       tint is invisible, even though the same tint reads fine
+                       across a whole day cell. -->
+                  <div class="d-flex flex-wrap gap-3 mt-3 small text-secondary">
+                    <span class="d-inline-flex align-items-center gap-1">
+                      <span class="status-dot bg-success"></span> Disponible
+                    </span>
+                    <span class="d-inline-flex align-items-center gap-1">
+                      <span class="status-dot bg-primary"></span> Tu reserva
+                    </span>
+                    <span class="d-inline-flex align-items-center gap-1">
+                      <span class="status-dot bg-secondary"></span> No disponible
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              @if (selectedDate(); as date) {
+                <div class="card" #dayPanel>
+                  <div class="card-header">
+                    <span class="fw-bold text-capitalize">{{ formatDate(date) }}</span>
+                  </div>
+                  <div class="card-body">
+                    @for (reservation of selectedDayOwnReservations(); track reservation.id) {
+                      <div class="alert alert-primary">
+                        Ya tienes una reserva aquí ({{ reservation.code }}).
+                      </div>
+                    }
+
+                    @if (selectedDaySlots().length) {
+                      <div class="d-flex flex-wrap gap-2">
+                        @for (slot of selectedDaySlots(); track slot.startsAtUtc) {
+                          <span
+                            class="slot-chip rounded px-3"
+                            [class.bg-success-lt]="slot.isAvailable"
+                            [class.text-success]="slot.isAvailable"
+                            [class.bg-secondary-lt]="!slot.isAvailable"
+                            [class.text-secondary]="!slot.isAvailable"
+                          >
+                            {{ formatTime(slot.startsAtLocal) }} – {{ formatTime(slot.endsAtLocal) }}
+                          </span>
+                        }
+                      </div>
+                    } @else {
+                      <p class="text-secondary mb-0">Este día no tiene horarios configurados.</p>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+
+            <div class="col-12 col-lg-4 order-2 order-lg-1">
+              <div class="card">
+                @if (amenity.photos[0]; as photo) {
+                  <img
+                    [src]="photo.url"
+                    [alt]="amenity.name"
+                    class="card-img-top"
+                    style="max-height: 180px; object-fit: cover;"
+                  />
+                }
+                <div class="card-body">
+                  <dl class="row mb-0 small">
+                    <dt class="col-5 text-secondary fw-normal">Aforo máximo</dt>
+                    <dd class="col-7 mb-2">{{ amenity.maxOccupancy }} personas</dd>
+
+                    <dt class="col-5 text-secondary fw-normal">Duración</dt>
+                    <dd class="col-7 mb-2">
+                      {{ amenity.policy.minHours }}
+                      @if (amenity.policy.maxHours && amenity.policy.maxHours !== amenity.policy.minHours) {
+                        – {{ amenity.policy.maxHours }}
+                      }
+                      hora(s)
+                    </dd>
+
+                    @if (scheduleText(); as schedule) {
+                      <dt class="col-5 text-secondary fw-normal">Horario</dt>
+                      <dd class="col-7 mb-2">{{ schedule }}</dd>
+                    }
+
+                    @if (amenity.requiresApproval) {
+                      <dt class="col-5 text-secondary fw-normal">Aprobación</dt>
+                      <dd class="col-7 mb-2">Requiere aprobación del administrador</dd>
+                    }
+
+                    @if (amenity.policy.paymentRequired) {
+                      <dt class="col-5 text-secondary fw-normal">Pago</dt>
+                      <dd class="col-7 mb-0">
+                        Requiere pago
+                        @if (amenity.policy.price) {
+                          ({{ formatPrice(amenity.policy.price) }})
+                        }
+                      </dd>
+                    }
+                  </dl>
+
+                  @if (amenity.policy.usageRules) {
+                    <hr />
+                    <p class="text-secondary small mb-0">{{ amenity.policy.usageRules }}</p>
+                  }
+                  @if (amenity.policy.additionalServices) {
+                    <p class="text-secondary small mt-2 mb-0">{{ amenity.policy.additionalServices }}</p>
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+      }
+    }
+  </div>
+</div>

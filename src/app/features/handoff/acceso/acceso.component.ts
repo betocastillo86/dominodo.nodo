@@ -18,6 +18,11 @@ type AccesoState = 'redeeming' | 'redirecting' | 'error';
  *
  * No shell: a resident reaching this almost never has (or needs) a portal
  * account, and this route is never reachable from the app's own navigation.
+ *
+ * `amenityId` is an optional extra query param the API never puts in the
+ * link (it only ever mints `/acceso?t=…`, ADR-0017 §3) — Domi appends it
+ * itself once it has resolved which area the resident wants, and this
+ * component forwards it, verbatim, to wherever the redeemed `purpose` lands.
  */
 @Component({
   selector: 'app-acceso',
@@ -37,9 +42,11 @@ export class AccesoComponent implements OnInit {
   readonly canRetry = signal(false);
 
   private ticket: string | null = null;
+  private amenityId: string | null = null;
 
   ngOnInit(): void {
     this.ticket = this.route.snapshot.queryParamMap.get('t');
+    this.amenityId = this.route.snapshot.queryParamMap.get('amenityId');
     this.redeem();
   }
 
@@ -71,7 +78,10 @@ export class AccesoComponent implements OnInit {
     }
 
     this.state.set('redirecting');
-    void this.router.navigateByUrl(landing, { replaceUrl: true });
+    void this.router.navigate([landing], {
+      queryParams: this.amenityId ? { amenityId: this.amenityId } : undefined,
+      replaceUrl: true,
+    });
   }
 
   private onRedeemError(error: unknown): void {

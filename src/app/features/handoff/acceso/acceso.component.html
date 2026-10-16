@@ -1,13 +1,17 @@
 <div class="page page-center">
   <div class="container container-tight py-4">
     <div class="text-center mb-4">
-      <span class="navbar-brand navbar-brand-autodark d-inline-flex align-items-center gap-2 h1 mb-0">
-        @if (tenant.logoUrl(); as logo) {
-          <img [src]="logo" [alt]="tenant.name() ?? 'Logo'" height="40" />
-        } @else {
-          <tabler-icon name="building-community" class="text-primary"></tabler-icon>
-        }
-        {{ tenant.name() ?? 'Dominodo' }}
+      <span class="d-inline-flex align-items-center gap-2">
+        <!-- Framed box, not a bare height: the logo is tenant-uploaded, so a wide
+             wordmark constrained only in height blows past a phone's width. -->
+        <span class="avatar avatar-sm rounded bg-muted-lt">
+          @if (tenant.logoUrl(); as logo) {
+            <img [src]="logo" [alt]="tenant.name() ?? 'Logo'" class="w-100 h-100 object-fit-contain" />
+          } @else {
+            <tabler-icon name="building-community" class="text-secondary"></tabler-icon>
+          }
+        </span>
+        <span class="h3 mb-0">{{ tenant.name() ?? 'Dominodo' }}</span>
       </span>
     </div>
 

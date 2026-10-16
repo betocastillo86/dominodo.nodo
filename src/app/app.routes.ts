@@ -34,8 +34,8 @@ export const routes: Routes = [
     path: 'reservas',
     canActivate: [tenantResolvedGuard, handoffGuard(HANDOFF_PURPOSE_AMENITY_RESERVATION)],
     loadComponent: () =>
-      import('./features/reservations/reservations-placeholder.component').then(
-        (m) => m.ReservationsPlaceholderComponent,
+      import('./features/reservations/reservation-availability/reservation-availability.component').then(
+        (m) => m.ReservationAvailabilityComponent,
       ),
   },
   // Public auth area (blank layout). Still gated by a resolved tenant.

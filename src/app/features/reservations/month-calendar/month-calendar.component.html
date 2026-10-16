@@ -1,0 +1,25 @@
+<div class="month-grid mb-1">
+  @for (label of weekdayLabels; track label) {
+    <div class="text-center text-secondary small fw-bold">{{ label }}</div>
+  }
+</div>
+
+<div class="month-grid">
+  @for (week of weeks(); track $index) {
+    @for (day of week; track day.date) {
+      @let status = dayAvailability().get(day.date);
+      <button
+        type="button"
+        class="day-cell"
+        [class.border-primary]="selectedDate() === day.date"
+        [class.bg-primary-lt]="day.inMonth && status?.hasOwnReservation"
+        [class.bg-success-lt]="day.inMonth && !status?.hasOwnReservation && status?.hasAvailability"
+        [class.text-secondary]="!day.inMonth"
+        [disabled]="isDisabled(day.date, day.inMonth)"
+        (click)="select(day.date, day.inMonth)"
+      >
+        {{ day.dayNumber }}
+      </button>
+    }
+  }
+</div>
