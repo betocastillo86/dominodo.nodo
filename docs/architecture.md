@@ -226,10 +226,12 @@ src/app/
 │   │                       #   for its filter. One cache, so editing the towers is visible at once.
 │   ├── authz/              # ← PermissionStore (effective permissions) + PermissionService (loads /auth/current)
 │   ├── handoff/            # ← HandoffStore (sessionStorage, isolated from AuthStore) + HandoffService
-│   │                       #   (POST /auth/handoff/redeem). ADR-0017 in dominodo.api — see §5.1 below.
+│   │                       #   (POST /auth/handoff/redeem) + handoff.context (HANDOFF_REQUEST: the
+│   │                       #   per-request opt-in). ADR-0017 in dominodo.api — see §5.1 below.
 │   ├── http/               # tenant + auth + error interceptors (functional) + problem-details (+ toMessage).
-│   │                       #   authInterceptor prefers an active HandoffStore token over AuthStore's;
-│   │                       #   errorInterceptor treats a 401 under a handoff session as "link expired",
+│   │                       #   authInterceptor sends the handoff token ONLY for requests flagged
+│   │                       #   HANDOFF_REQUEST, with no fallback between the two sessions;
+│   │                       #   errorInterceptor treats a 401 on such a request as "link expired",
 │   │                       #   never as a cue to run the portal's own refresh-and-retry.
 │   ├── guards/             # tenantResolvedGuard, authGuard, tenantMemberGuard, permissionGuard(perm),
 │   │                       #   handoffGuard(purpose)
@@ -317,10 +319,14 @@ job is narrow: redeem the ticket, land on the right page, stay isolated from the
   `POST /auth/handoff/redeem` — and routes on the `purpose` the response carries, via
   `HANDOFF_PURPOSE_ROUTES` (the nodo owns this table, not the API).
 - The redeemed token lives in `HandoffStore`, backed by `sessionStorage` under its own key — never
-  `AuthStore`'s `localStorage` key. Both can exist in the same browser (same origin), so **whichever is
-  active wins**: `authInterceptor` prefers a live `HandoffStore` token over `AuthStore`'s for every
-  request in that tab.
-- There is no refresh token for this token shape. `errorInterceptor` checks `HandoffStore.isActive()`
+  `AuthStore`'s `localStorage` key. Both sessions can exist in the same browser (same origin), so they
+  are separated **per request, not per tab**: a call is authenticated as the handoff session only when
+  it opts in with `{ context: handoffContext() }` (`core/handoff/handoff.context.ts`), and
+  `authInterceptor` never falls back from one session to the other.
+  **The axis cannot be the URL:** `GET /auth/current` is in the server's `[AllowsHandoff]` allowlist, so
+  a path rule would feed the resident's identity to the portal's own bootstrap and paint an admin's
+  shell with someone else's profile and permissions.
+- There is no refresh token for this token shape. `errorInterceptor` checks the same request flag
   **before** its normal 401-refresh dance — a handoff 401 means the link is simply spent, and retrying
   with the portal's own refresh token would answer under the wrong identity.
 - `handoffGuard(purpose)` protects a purpose's landing route; failing it (no session, wrong purpose,

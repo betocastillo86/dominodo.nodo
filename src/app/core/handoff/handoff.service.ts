@@ -5,7 +5,15 @@ import { environment } from '../../../environments/environment';
 import { HandoffRedeemRequest, HandoffRedeemResponse } from './handoff.models';
 import { HandoffStore } from './handoff.store';
 
-/** Exchanges a Domi handoff ticket for a purpose-scoped access token (ADR-0017). */
+/**
+ * Exchanges a Domi handoff ticket for a purpose-scoped access token (ADR-0017).
+ *
+ * Every later call that must run as the handoff session — the reservation
+ * feature's reads and writes, and its own `GET /auth/current` — has to pass
+ * `{ context: handoffContext() }`. Without it the request goes out under the
+ * portal's session (or anonymous), because the token is scoped per request on
+ * purpose; see `core/handoff/handoff.context.ts`.
+ */
 @Injectable({ providedIn: 'root' })
 export class HandoffService {
   private readonly http = inject(HttpClient);

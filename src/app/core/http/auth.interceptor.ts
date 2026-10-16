@@ -2,6 +2,7 @@ import { HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { environment } from '../../../environments/environment';
 import { AuthStore } from '../auth/auth.store';
+import { HANDOFF_REQUEST } from '../handoff/handoff.context';
 import { HandoffStore } from '../handoff/handoff.store';
 
 /** Endpoints that must NOT carry the Authorization header. */
@@ -14,9 +15,12 @@ const SKIP_AUTH = ['/auth/login', '/auth/refresh', '/auth/handoff/redeem'];
  * and an extra Bearer header makes Blob reject the request — besides leaking
  * the session token to a host that has no business seeing it.
  *
- * A redeemed handoff session takes over this tab's API calls while active: it
- * is deliberately isolated from — and takes precedence over — the portal's own
- * `AuthStore` session, which may coexist in the same browser (ADR-0017 "Cedimos").
+ * The two sessions share an origin but never share a request. A handoff session
+ * (ADR-0017) authenticates ONLY calls that opted in through `HANDOFF_REQUEST`;
+ * everything else keeps using the portal's own `AuthStore` session. Letting an
+ * active handoff take over the tab instead would hand the resident's identity
+ * to the portal's bootstrap — `GET /auth/current` answers under both sessions —
+ * and paint an admin's shell with someone else's profile and permissions.
  */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const authStore = inject(AuthStore);
@@ -29,7 +33,13 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     return next(req);
   }
 
-  const token = handoffStore.isActive() ? handoffStore.accessToken() : authStore.accessToken();
+  // A handoff request never falls back to the portal token: an expired handoff
+  // session must fail as itself (401 → "ask Domi for a new link"), not silently
+  // continue as whoever else happens to be signed in on this browser.
+  const token = req.context.get(HANDOFF_REQUEST)
+    ? (handoffStore.isActive() ? handoffStore.accessToken() : null)
+    : authStore.accessToken();
+
   if (!token) {
     return next(req);
   }

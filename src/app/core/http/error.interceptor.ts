@@ -5,6 +5,7 @@ import { catchError, switchMap, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../auth/auth.service';
 import { AuthStore } from '../auth/auth.store';
+import { HANDOFF_REQUEST } from '../handoff/handoff.context';
 import { HandoffStore } from '../handoff/handoff.store';
 import { NotificationService } from '../notifications/notification.service';
 import { toMessage } from './problem-details';
@@ -18,9 +19,11 @@ const AUTH_ENDPOINTS = ['/auth/login', '/auth/refresh', '/auth/logout', '/auth/h
  * All other errors are mapped from RFC 9457 ProblemDetails to a user message
  * via the shared `toMessage` helper.
  *
- * A handoff session (ADR-0017) is checked FIRST: that token has no refresh, so
- * a 401 while it is active means the session is simply over — retrying with
- * the portal's own refresh token would silently answer with the wrong identity.
+ * A handoff request (ADR-0017) is checked FIRST: that token has no refresh, so
+ * its 401 means the session is simply over — retrying with the portal's own
+ * refresh token would silently answer with the wrong identity. The check is on
+ * the REQUEST, not merely on having a live handoff session, so a portal 401
+ * never tears down a handoff the resident is still using in this tab.
  */
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
@@ -40,7 +43,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
-      if (error.status === 401 && handoffStore.isActive()) {
+      if (error.status === 401 && req.context.get(HANDOFF_REQUEST)) {
         handoffStore.clear();
         notifications.error('Tu enlace para reservar expiró. Pídele uno nuevo por WhatsApp.');
         void router.navigateByUrl('/acceso');
