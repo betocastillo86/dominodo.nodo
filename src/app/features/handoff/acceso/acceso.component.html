@@ -1,0 +1,50 @@
+<div class="page page-center">
+  <div class="container container-tight py-4">
+    <div class="text-center mb-4">
+      <span class="navbar-brand navbar-brand-autodark d-inline-flex align-items-center gap-2 h1 mb-0">
+        @if (tenant.logoUrl(); as logo) {
+          <img [src]="logo" [alt]="tenant.name() ?? 'Logo'" height="40" />
+        } @else {
+          <tabler-icon name="building-community" class="text-primary"></tabler-icon>
+        }
+        {{ tenant.name() ?? 'Dominodo' }}
+      </span>
+    </div>
+
+    <div class="card card-md">
+      <div class="card-body text-center">
+        @switch (state()) {
+          @case ('redeeming') {
+            <div class="spinner-border text-primary mb-3" role="status">
+              <span class="visually-hidden">Validando enlace…</span>
+            </div>
+            <p class="text-secondary mb-0">Validando tu enlace de acceso…</p>
+          }
+          @case ('redirecting') {
+            <div class="spinner-border text-primary mb-3" role="status">
+              <span class="visually-hidden">Ingresando…</span>
+            </div>
+            <p class="text-secondary mb-0">¡Listo! Te estamos llevando a tu reserva…</p>
+          }
+          @case ('error') {
+            <div class="empty">
+              <div class="empty-icon">
+                <tabler-icon name="alert-triangle" class="text-danger"></tabler-icon>
+              </div>
+              <p class="empty-title">No pudimos continuar</p>
+              <p class="empty-subtitle text-secondary">{{ errorMessage() }}</p>
+              @if (canRetry()) {
+                <div class="empty-action">
+                  <button type="button" class="btn btn-primary" (click)="retry()">
+                    <tabler-icon name="refresh" class="me-2"></tabler-icon>
+                    Reintentar
+                  </button>
+                </div>
+              }
+            </div>
+          }
+        }
+      </div>
+    </div>
+  </div>
+</div>

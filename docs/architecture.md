@@ -225,8 +225,14 @@ src/app/
 │   │                       #   edits every block and the apartment list needs `apartments.towerList`
 │   │                       #   for its filter. One cache, so editing the towers is visible at once.
 │   ├── authz/              # ← PermissionStore (effective permissions) + PermissionService (loads /auth/current)
-│   ├── http/               # tenant + auth + error interceptors (functional) + problem-details (+ toMessage)
-│   ├── guards/             # tenantResolvedGuard, authGuard, tenantMemberGuard, permissionGuard(perm)
+│   ├── handoff/            # ← HandoffStore (sessionStorage, isolated from AuthStore) + HandoffService
+│   │                       #   (POST /auth/handoff/redeem). ADR-0017 in dominodo.api — see §5.1 below.
+│   ├── http/               # tenant + auth + error interceptors (functional) + problem-details (+ toMessage).
+│   │                       #   authInterceptor prefers an active HandoffStore token over AuthStore's;
+│   │                       #   errorInterceptor treats a 401 under a handoff session as "link expired",
+│   │                       #   never as a cue to run the portal's own refresh-and-retry.
+│   ├── guards/             # tenantResolvedGuard, authGuard, tenantMemberGuard, permissionGuard(perm),
+│   │                       #   handoffGuard(purpose)
 │   ├── models/             # shared contracts (PagedResult)
 │   ├── files/              # TenantFilesService: the module-wide two-step upload (ticket → PUT to blob)
 │   └── notifications/      # signal-based notification bus (NotificationService)
@@ -246,6 +252,11 @@ src/app/
     ├── home/               # placeholder (no longer the default route — requests is)
     ├── tenant-error/       # standalone "conjunto no encontrado" page (no shell)
     ├── no-access/          # standalone "sin acceso a este conjunto" page
+    ├── handoff/            # ✅ /acceso?t=<ticket> — redeems a Domi handoff ticket (ADR-0017), then
+    │                       #    routes by `purpose` (HANDOFF_PURPOSE_ROUTES in core/handoff/handoff.models).
+    │                       #    Standalone, no shell: reached only via an external link, never from nav.
+    ├── reservations/       # ✅ blank landing for the `amenity-reservation` purpose (handoffGuard-protected).
+    │                       #    Placeholder until the reservation form itself ships.
     ├── requests/           # ✅ PQRS: list view (filters + pagination) + board/kanban view (4 status columns)
     │                       #    data-access/ (request.models, requests.service: list + loadBoard + changeStatus/moveInBoard)
     │                       #    request-list/ (dual-mode: list table + kanban with @angular/cdk drag-drop to
@@ -295,6 +306,29 @@ src/app/
                             #    A successful change revokes the caller's refresh tokens server-side,
                             #    so the client logs out right after
 ```
+
+### 5.1 Handoff sessions (ADR-0017)
+
+Domi mints a one-time link (`https://{slug}.dominodo.com/acceso?t=<ticket>`) so a resident can jump
+straight into a form the chat can't render well — reserving an amenity is the first case. The nodo's
+job is narrow: redeem the ticket, land on the right page, stay isolated from the portal's own session.
+
+- `GET /acceso` authenticates nothing; it only reads `t`. `AccesoComponent` fires the real exchange —
+  `POST /auth/handoff/redeem` — and routes on the `purpose` the response carries, via
+  `HANDOFF_PURPOSE_ROUTES` (the nodo owns this table, not the API).
+- The redeemed token lives in `HandoffStore`, backed by `sessionStorage` under its own key — never
+  `AuthStore`'s `localStorage` key. Both can exist in the same browser (same origin), so **whichever is
+  active wins**: `authInterceptor` prefers a live `HandoffStore` token over `AuthStore`'s for every
+  request in that tab.
+- There is no refresh token for this token shape. `errorInterceptor` checks `HandoffStore.isActive()`
+  **before** its normal 401-refresh dance — a handoff 401 means the link is simply spent, and retrying
+  with the portal's own refresh token would answer under the wrong identity.
+- `handoffGuard(purpose)` protects a purpose's landing route; failing it (no session, wrong purpose,
+  expired) redirects to `/acceso`, which — reached with no `t` — shows the same "link is no longer
+  valid" state.
+- Every error the API can return — unknown/expired/revoked/wrong-tenant ticket (all identical,
+  `400 Handoff.InvalidTicket`, by design) and `429 RateLimit.Exceeded` — gets its own copy in
+  `AccesoComponent`, with a retry action where retrying can plausibly help.
 
 ### Opening hours (`schedules`)
 

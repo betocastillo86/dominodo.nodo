@@ -1,9 +1,11 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
+import { handoffGuard } from './core/guards/handoff.guard';
 import { permissionGuard } from './core/guards/permission.guard';
 import { tenantMemberGuard } from './core/guards/tenant-member.guard';
 import { tenantResolvedGuard } from './core/guards/tenant-resolved.guard';
 import { landingRedirect } from './core/guards/landing-redirect';
+import { HANDOFF_PURPOSE_AMENITY_RESERVATION } from './core/handoff/handoff.models';
 
 export const routes: Routes = [
   // Standalone error pages (no shell, no tenant/auth gating).
@@ -18,6 +20,23 @@ export const routes: Routes = [
     path: 'sin-acceso',
     loadComponent: () =>
       import('./features/no-access/no-access.component').then((m) => m.NoAccessComponent),
+  },
+  // Handoff from Domi (ADR-0017 in `dominodo.api`): redeems a one-time ticket
+  // into a purpose-scoped session, isolated from the portal's own AuthStore. No
+  // shell — a resident reaching this never has (or needs) a portal account.
+  {
+    path: 'acceso',
+    canActivate: [tenantResolvedGuard],
+    loadComponent: () =>
+      import('./features/handoff/acceso/acceso.component').then((m) => m.AccesoComponent),
+  },
+  {
+    path: 'reservas',
+    canActivate: [tenantResolvedGuard, handoffGuard(HANDOFF_PURPOSE_AMENITY_RESERVATION)],
+    loadComponent: () =>
+      import('./features/reservations/reservations-placeholder.component').then(
+        (m) => m.ReservationsPlaceholderComponent,
+      ),
   },
   // Public auth area (blank layout). Still gated by a resolved tenant.
   {
