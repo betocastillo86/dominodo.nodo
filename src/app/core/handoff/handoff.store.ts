@@ -37,7 +37,7 @@ export class HandoffStore {
     this._accessToken.set(session.accessToken);
     this._expiresAt.set(session.expiresAt);
     this._purpose.set(session.purpose);
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+    this.write(JSON.stringify(session));
   }
 
   /** Wipe the in-memory and persisted session (expired, redeemed again elsewhere, or rejected). */
@@ -45,11 +45,11 @@ export class HandoffStore {
     this._accessToken.set(null);
     this._expiresAt.set(null);
     this._purpose.set(null);
-    sessionStorage.removeItem(STORAGE_KEY);
+    this.write(null);
   }
 
   private rehydrate(): void {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
+    const raw = this.read();
     if (!raw) {
       return;
     }
@@ -58,19 +58,45 @@ export class HandoffStore {
     try {
       session = JSON.parse(raw) as HandoffRedeemResponse;
     } catch {
-      sessionStorage.removeItem(STORAGE_KEY);
+      this.write(null);
       return;
     }
 
     // Drop a session that is missing fields or already expired (e.g. the tab
     // was reloaded long after the resident walked away).
     if (!session.accessToken || !session.expiresAt || Date.parse(session.expiresAt) <= Date.now()) {
-      sessionStorage.removeItem(STORAGE_KEY);
+      this.write(null);
       return;
     }
 
     this._accessToken.set(session.accessToken);
     this._expiresAt.set(session.expiresAt);
     this._purpose.set(session.purpose);
+  }
+
+  /**
+   * Storage access THROWS where site data is blocked — a real case for this
+   * audience, who arrive in WhatsApp's in-app browser and may be in private
+   * mode. The session then lives in memory only: enough for the visit the
+   * resident is making, and a reload simply re-redeems from the link.
+   */
+  private read(): string | null {
+    try {
+      return sessionStorage.getItem(STORAGE_KEY);
+    } catch {
+      return null;
+    }
+  }
+
+  private write(value: string | null): void {
+    try {
+      if (value === null) {
+        sessionStorage.removeItem(STORAGE_KEY);
+      } else {
+        sessionStorage.setItem(STORAGE_KEY, value);
+      }
+    } catch {
+      // In-memory only; the signals above are already set.
+    }
   }
 }
