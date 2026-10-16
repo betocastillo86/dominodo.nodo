@@ -77,7 +77,11 @@ touch targets, no hover-only affordances (`@media (hover: hover)` + an `:active`
 for the phone with `order-lg-*` restoring the desktop, feedback visible without scrolling, and few
 requests (mobile data). Never move the handoff session to `localStorage` to survive a WebView switch —
 ADR-0017 forbids it; the resident re-taps the link, whose ticket is reusable for its whole TTL.
-Full reasoning and the in-app-browser gotchas: `docs/architecture.md` §5.2.
+Full reasoning and the in-app-browser gotchas: `docs/architecture.md` §5.2; the booking flow itself
+(one slot echoed back, `Pending` vs `Confirmed`, the Spanish error mapping) is §5.3. The way back out
+is Domi's WhatsApp chat: `domiWhatsAppNumber` in `src/environments/*.ts` mirrors `Twilio:FromNumber` in
+`dominodo.domi` and is a **different number in prod** than in dev/stage — check it when you touch those
+files.
 
 ## API contract (essentials)
 - Base URL: `http://localhost:5083/api/v1`. **Every** call sends `X-Tenant: <slug>`.

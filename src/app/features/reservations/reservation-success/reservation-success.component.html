@@ -1,0 +1,58 @@
+<div class="card">
+  <div class="card-body text-center">
+    <div class="empty-icon text-success mx-auto">
+      <tabler-icon name="circle-check"></tabler-icon>
+    </div>
+    <h1 class="h2 mb-1">¡Listo! Tu reserva quedó registrada</h1>
+    <p class="text-secondary">{{ amenity().name }}</p>
+
+    <div class="bg-muted-lt rounded py-3 mb-3">
+      <div class="text-secondary small text-uppercase">Número de tu reserva</div>
+      <div class="reservation-code">{{ reservation().code }}</div>
+      <div class="text-secondary small">Menciónalo si necesitas hablar con la administración.</div>
+    </div>
+
+    <dl class="row text-start mb-0 small">
+      <dt class="col-5 text-secondary fw-normal">Día</dt>
+      <dd class="col-7 mb-2 text-capitalize">{{ dateLabel() }}</dd>
+
+      <dt class="col-5 text-secondary fw-normal">Horario</dt>
+      <dd class="col-7 mb-2">{{ timeLabel() }}</dd>
+
+      <dt class="col-5 text-secondary fw-normal">Personas</dt>
+      <dd class="col-7 mb-0">{{ reservation().attendees }}</dd>
+    </dl>
+  </div>
+
+  <div class="card-body border-top">
+    @if (isConfirmed()) {
+      <div class="alert alert-success mb-0">
+        <strong>Tu reserva está confirmada.</strong> No tienes que hacer nada más.
+      </div>
+    } @else {
+      <div class="alert alert-warning mb-0">
+        <strong>{{ pendingReason() }}</strong>
+        @if (priceLabel(); as price) {
+          <div class="mt-1">Valor del área: {{ price }}.</div>
+        }
+        @if (deadlineLabel(); as deadline) {
+          <div class="mt-1">
+            Si no se confirma antes del {{ deadline }}, el horario se libera automáticamente.
+          </div>
+        }
+      </div>
+    }
+  </div>
+
+  <!-- The way back out is the way in: this resident arrived from the Domi chat
+       and finishes the conversation there. It is the only action on this card —
+       a booked slot is the end of the errand. -->
+  @if (whatsAppUrl(); as url) {
+    <div class="card-body border-top d-grid">
+      <a [href]="url" class="btn btn-success action-btn">
+        <tabler-icon name="brand-whatsapp" class="me-2"></tabler-icon>
+        Volver a WhatsApp
+      </a>
+    </div>
+  }
+</div>

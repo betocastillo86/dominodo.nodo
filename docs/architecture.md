@@ -227,7 +227,8 @@ src/app/
 │   ├── authz/              # ← PermissionStore (effective permissions) + PermissionService (loads /auth/current)
 │   ├── handoff/            # ← HandoffStore (sessionStorage, isolated from AuthStore) + HandoffService
 │   │                       #   (POST /auth/handoff/redeem) + handoff.context (HANDOFF_REQUEST: the
-│   │                       #   per-request opt-in). ADR-0017 in dominodo.api — see §5.1 below.
+│   │                       #   per-request opt-in) + domi-whatsapp (the wa.me deep link back to the
+│   │                       #   chat; the number is per-environment). ADR-0017 — see §5.1 below.
 │   ├── http/               # tenant + auth + error interceptors (functional) + problem-details (+ toMessage).
 │   │                       #   authInterceptor sends the handoff token ONLY for requests flagged
 │   │                       #   HANDOFF_REQUEST, with no fallback between the two sessions;
@@ -260,11 +261,15 @@ src/app/
     ├── reservations/       # ✅ landing for the `amenity-reservation` purpose (handoffGuard-protected,
     │                       #    ADR-0018): the area's info + policy, this month's availability calendar
     │                       #    (own CSS grid, not the FullCalendar widget — no new JS dependency for a
-    │                       #    3-state day), and the selected day's bookable time ranges. Read-only so
-    │                       #    far — POST /reservations (actually booking a slot) is the next phase.
+    │                       #    3-state day), the selected day's bookable time ranges, and booking one
+    │                       #    of them: pick a window → confirm (headcount + whether it is born
+    │                       #    Pending) → the booking's CODE and the way back to Domi's chat.
     │                       #    data-access/ (reservation-availability.models + .service, stateless: one
-    │                       #    reader, nothing to lift into signals) · month-calendar/ (presentational
-    │                       #    grid) · reservation-availability/ (the page, `?amenityId=` from the route)
+    │                       #    reader; reservation-errors: the POST's codes → resident Spanish;
+    │                       #    reservation-format: COP, the conjunto's clock) · month-calendar/
+    │                       #    (presentational grid) · reservation-availability/ (the page,
+    │                       #    `?amenityId=` from the route) · reservation-success/ (presentational
+    │                       #    confirmation). Still pending: payment proofs and cancelling (§5.3).
     ├── requests/           # ✅ PQRS: list view (filters + pagination) + board/kanban view (4 status columns)
     │                       #    data-access/ (request.models, requests.service: list + loadBoard + changeStatus/moveInBoard)
     │                       #    request-list/ (dual-mode: list table + kanban with @angular/cdk drag-drop to
@@ -357,7 +362,8 @@ the baseline.
 
 - **44px minimum touch target.** Not a guideline here: at 360px the calendar's seven columns compute to
   ~35px, so `.day-cell` carries `min-height: 2.75rem` and `aspect-ratio` only squares it where there is
-  room. The slot chips are sized the same way, ahead of becoming the booking tap target.
+  room. The slot chips — which ARE the booking tap target — and both confirm buttons are sized the
+  same way.
 - **No hover-only affordance.** Touch has no hover, and a WebView makes `:hover` stick *after* a tap —
   put it behind `@media (hover: hover)` and give touch an `:active` state instead. Add
   `touch-action: manipulation` to anything tapped in sequence, or every tap pays the 300ms double-tap
@@ -366,11 +372,14 @@ the baseline.
   calendar first and the area's details after it, because the calendar is what the resident opened the
   link to use; `order-lg-*` swaps them back on a wide screen. Doing it the other way round leaves the
   phone inheriting a layout chosen for a monitor.
-- **Feedback has to be visible without scrolling.** Tapping a day renders a panel below a full-height
-  calendar — off-screen on a phone, so the tap reads as broken. The panel scrolls itself into view
-  (`block: 'nearest'`, a no-op when it is already visible).
-- **Stay cheap on mobile data.** The booking screen costs three requests and should stay that way.
-  Never fetch per day, per slot, or per month-cell.
+- **Follow the flow down the page.** Every step of the booking screen renders *below* the one that
+  triggered it — the day's windows under a full-height calendar, the Reservar button under a list of
+  windows that can be taller than the screen — so each tap scrolls its own result into view and a tap
+  never reads as broken. `scrollIntoView({ block: 'nearest' })` is not enough: it stops at the nearest
+  edge. The screen's `reveal()` checks the element's rect first (so an element already in view is left
+  alone), then centres it, or anchors a taller-than-viewport panel to its top.
+- **Stay cheap on mobile data.** The booking screen costs three reads (area, availability, own
+  bookings) plus one write. Never fetch per day, per slot, or per month-cell.
 - **Never render a bare `yyyy-MM-dd` through `new Date(iso)`** — it parses as UTC midnight and the
   conjunto's -05:00 renders the *previous* day. Build the date from its parts.
 
@@ -391,6 +400,50 @@ the baseline.
 
 Since the project has no automated tests, "done" on this surface means **exercised at 360px in the
 device toolbar**, not only at desktop width.
+
+### 5.3 Booking a slot (ADR-0018)
+
+The write half of the resident surface. The screen is one page end to end — pick a day, pick a window,
+confirm, read the code — because a resident on a phone should never wonder which step they are on.
+
+- **A booking is exactly one availability slot, echoed back.** `GET /amenities/{id}/availability`
+  generates candidate windows of the area's `MinHours` — the atomic bookable unit (ADR-0018 §3) — and
+  `POST /reservations` re-validates the window against the same policy. Sending the slot's own
+  `startsAtUtc`/`endsAtUtc` verbatim is therefore the only shape the server is guaranteed to accept;
+  the client never composes a window of its own, and never offers a longer one (`MaxHours` would need
+  contiguity logic the availability payload does not describe).
+- **`attendees` is asked for, not assumed.** The API requires 1..`MaxOccupancy`, and the aforo caps
+  *declared attendees* — a booking takes the whole area regardless, it does not compete for seats.
+- **The confirmation says whether the booking will be born `Pending`.** A booking is `Confirmed`
+  immediately only when the area asks for neither approval nor payment (ADR-0018 §2). Saying so
+  *before* the resident confirms, and again on the success screen with its deadline, is the difference
+  between "reservado" and a slot that silently expires.
+- **The booking's `code` (`R001`) is what the resident is shown, never its GUID.** ADR-0011 created the
+  code so a human — and Domi, in the chat — can name the booking out loud.
+- **"Disponible" is not "aceptado", so every rejection has resident copy.** The calendar deliberately
+  does not apply `MaxPerDayPerApartment` (ADR-0018 §8: availability is the same answer for the whole
+  conjunto), and the overlap check has no lock behind it (§11), so a slot drawn as free can still be
+  refused. `data-access/reservation-errors.ts` maps each `Reservation.*` code to Spanish and flags the
+  ones that mean *the calendar on screen is stale* — those close the dialog, toast, and refetch, so the
+  resident sees the corrected calendar instead of arguing with the old one. The rest stay inside the
+  dialog, where the resident can act on them.
+- **The API's `detail` is English, so the resident never sees it.** `errorInterceptor` skips its generic
+  toast for any request flagged `HANDOFF_REQUEST`; that surface owns its own copy. The handoff 401 keeps
+  its toast — that one is the only notice the resident gets that the link expired.
+- **The way out is the way in: `wa.me`.** After booking, the resident goes back to Domi's chat, not to a
+  portal they have no account for. The number is Domi's Twilio sender and is **not the same per
+  environment** (dev and stage share the non-production sender; prod has its own), so it lives in
+  `src/environments/*.ts` as `domiWhatsAppNumber`, mirroring `Twilio:FromNumber` in `dominodo.domi`.
+  `core/handoff/domi-whatsapp.ts` builds the link and returns `null` when none is configured, so the
+  button simply disappears rather than linking nowhere.
+
+**Deliberately not built yet** (all reachable by a handoff session per ADR-0018 §9, so each is a screen
+away): uploading the payment proof (`POST /reservations/{id}/payment-proofs*`), cancelling
+(`POST /reservations/{id}/cancel`), and the resident's own booking list beyond the calendar's tints.
+One known gap: a resident with **two or more active residencies** must send an `apartmentId`, and no
+endpoint reachable from a handoff session lists their apartments — `GET /auth/current` carries
+memberships, not residencies. That case comes back as `Reservation.ApartmentAmbiguous` and is shown as
+"escríbele a la administración".
 
 ### Opening hours (`schedules`)
 

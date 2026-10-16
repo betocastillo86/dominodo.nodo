@@ -62,7 +62,10 @@ export type ReservationStatus = 'Pending' | 'Confirmed' | 'Rejected' | 'Cancelle
 
 export const BLOCKING_RESERVATION_STATUSES: readonly ReservationStatus[] = ['Pending', 'Confirmed'];
 
-/** `OperationsReservationDto` — row shape of `GET /reservations/mine`. */
+/**
+ * `OperationsReservationDto` — the row shape of `GET /reservations/mine` and
+ * also what `POST /reservations` answers with on 201.
+ */
 export interface MyReservation {
   id: string;
   tenantId: string;
@@ -79,4 +82,26 @@ export interface MyReservation {
   pendingDeadlineUtc: string | null;
   createdAtUtc: string;
   updatedAtUtc: string | null;
+}
+
+/**
+ * Body of `POST /reservations` (`OperationsCreateReservationRequest`, ADR-0018 §8).
+ *
+ * The window is the chosen availability slot's own `startsAtUtc`/`endsAtUtc`
+ * sent back verbatim: the API re-validates it against the policy (hour-aligned,
+ * a whole number of hours, inside a single opening tramo), so echoing the slot
+ * is the only way to be sure the client and the server agree on the window.
+ */
+export interface CreateReservationRequest {
+  amenityId: string;
+  startsAtUtc: string;
+  endsAtUtc: string;
+  attendees: number;
+  /**
+   * Only the staff branch and a resident with MORE THAN ONE active residency
+   * need this. This screen never sends it: a handoff session has no way to list
+   * the resident's apartments, so the ambiguous case comes back as
+   * `Reservation.ApartmentAmbiguous` and is handled as an error.
+   */
+  apartmentId?: string;
 }

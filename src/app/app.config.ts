@@ -18,6 +18,7 @@ import {
   IconArrowUp,
   IconBan,
   IconBook,
+  IconBrandWhatsapp,
   IconBuilding,
   IconBuildingCommunity,
   IconBuildingSkyscraper,
@@ -161,6 +162,8 @@ export const appConfig: ApplicationConfig = {
       IconBuildingSkyscraper,
       // New-version banner
       IconRefresh,
+      // Resident surface — the way back to Domi's chat after booking
+      IconBrandWhatsapp,
       // Mi perfil — header user menu + change-password action
       IconUser,
       IconLock,

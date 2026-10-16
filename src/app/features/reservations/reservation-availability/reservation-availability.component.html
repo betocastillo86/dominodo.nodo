@@ -35,6 +35,17 @@
           </div>
         </div>
       }
+      @case ('booked') {
+        @if (createdReservation(); as reservation) {
+          @if (amenity(); as amenity) {
+            <app-reservation-success
+              [reservation]="reservation"
+              [amenity]="amenity"
+              [whatsAppUrl]="whatsAppUrl"
+            />
+          }
+        }
+      }
       @case ('ready') {
         @if (amenity(); as amenity) {
           <h1 class="h2 mb-3">{{ amenity.name }}</h1>
@@ -109,19 +120,53 @@
                     }
 
                     @if (selectedDaySlots().length) {
+                      @if (hasFreeSlots()) {
+                        <p class="text-secondary small">Elige el horario que quieres reservar:</p>
+                      }
+
                       <div class="d-flex flex-wrap gap-2">
                         @for (slot of selectedDaySlots(); track slot.startsAtUtc) {
-                          <span
+                          <button
+                            type="button"
                             class="slot-chip rounded px-3"
-                            [class.bg-success-lt]="slot.isAvailable"
-                            [class.text-success]="slot.isAvailable"
+                            [disabled]="!slot.isAvailable"
+                            [class.bg-success]="isSelected(slot)"
+                            [class.text-white]="isSelected(slot)"
+                            [class.bg-success-lt]="slot.isAvailable && !isSelected(slot)"
+                            [class.text-success]="slot.isAvailable && !isSelected(slot)"
                             [class.bg-secondary-lt]="!slot.isAvailable"
                             [class.text-secondary]="!slot.isAvailable"
+                            [attr.aria-pressed]="isSelected(slot)"
+                            (click)="selectSlot(slot)"
                           >
+                            @if (isSelected(slot)) {
+                              <tabler-icon name="check" class="me-1"></tabler-icon>
+                            }
                             {{ formatTime(slot.startsAtLocal) }} – {{ formatTime(slot.endsAtLocal) }}
-                          </span>
+                          </button>
                         }
                       </div>
+
+                      @if (!hasFreeSlots()) {
+                        <p class="text-secondary small mt-3 mb-0">
+                          Este día ya no tiene horarios disponibles. Prueba con otro día.
+                        </p>
+                      }
+
+                      <!-- The action sits right under the chips, so the tap that
+                           selects and the tap that books are a thumb apart. -->
+                      @if (selectedSlot(); as slot) {
+                        <div class="d-grid mt-3" #bookAction>
+                          <button
+                            type="button"
+                            class="btn btn-primary book-btn"
+                            (click)="openConfirm(confirmTpl)"
+                          >
+                            Reservar {{ formatTime(slot.startsAtLocal) }} –
+                            {{ formatTime(slot.endsAtLocal) }}
+                          </button>
+                        </div>
+                      }
                     } @else {
                       <p class="text-secondary mb-0">Este día no tiene horarios configurados.</p>
                     }
@@ -191,3 +236,71 @@
     }
   </div>
 </div>
+
+<!-- Confirmation ------------------------------------------------------------->
+<ng-template #confirmTpl let-modal>
+  <div class="modal-header">
+    <h5 class="modal-title">Confirma tu reserva</h5>
+    <button type="button" class="btn-close" aria-label="Cerrar" (click)="modal.dismiss()"></button>
+  </div>
+
+  <div class="modal-body">
+    @if (amenity(); as amenity) {
+      @if (selectedSlot(); as slot) {
+        <dl class="row mb-3 small">
+          <dt class="col-4 text-secondary fw-normal">Área</dt>
+          <dd class="col-8 mb-2">{{ amenity.name }}</dd>
+
+          <dt class="col-4 text-secondary fw-normal">Día</dt>
+          <dd class="col-8 mb-2 text-capitalize">{{ selectedDateLabel() }}</dd>
+
+          <dt class="col-4 text-secondary fw-normal">Horario</dt>
+          <dd class="col-8 mb-0">
+            {{ formatTime(slot.startsAtLocal) }} – {{ formatTime(slot.endsAtLocal) }}
+          </dd>
+        </dl>
+
+        <div class="mb-3">
+          <label class="form-label" for="attendees">¿Cuántas personas asistirán?</label>
+          <input
+            id="attendees"
+            type="number"
+            inputmode="numeric"
+            class="form-control"
+            min="1"
+            [max]="maxAttendees()"
+            [value]="attendees()"
+            [class.is-invalid]="!attendeesValid()"
+            (input)="setAttendees($event)"
+          />
+          <div class="form-hint">Máximo {{ maxAttendees() }} personas.</div>
+        </div>
+
+        @if (bookingNotice(); as notice) {
+          <div class="alert alert-info mb-0">{{ notice }}</div>
+        }
+
+        @if (bookingError(); as message) {
+          <div class="alert alert-danger mt-3 mb-0" role="alert">{{ message }}</div>
+        }
+      }
+    }
+  </div>
+
+  <div class="modal-footer">
+    <button type="button" class="btn btn-link" [disabled]="booking()" (click)="modal.dismiss()">
+      Cancelar
+    </button>
+    <button
+      type="button"
+      class="btn btn-primary book-btn"
+      [disabled]="booking() || !attendeesValid()"
+      (click)="confirmBooking()"
+    >
+      @if (booking()) {
+        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+      }
+      Confirmar reserva
+    </button>
+  </div>
+</ng-template>

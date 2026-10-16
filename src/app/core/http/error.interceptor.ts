@@ -23,7 +23,9 @@ const AUTH_ENDPOINTS = ['/auth/login', '/auth/refresh', '/auth/logout', '/auth/h
  * its 401 means the session is simply over — retrying with the portal's own
  * refresh token would silently answer with the wrong identity. The check is on
  * the REQUEST, not merely on having a live handoff session, so a portal 401
- * never tears down a handoff the resident is still using in this tab.
+ * never tears down a handoff the resident is still using in this tab. A handoff
+ * request is also exempt from the generic toast: that surface is a resident on
+ * a phone, and it translates its own errors.
  */
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
@@ -66,7 +68,13 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
         );
       }
 
-      notifications.error(toMessage(error));
+      // The resident surface writes its own Spanish copy for every failure it
+      // can get (`reservation-errors.ts`), so the generic toast would only add
+      // the API's English `detail` on top of it. The handoff 401 above keeps
+      // its toast: that one IS the only notice the resident gets.
+      if (!req.context.get(HANDOFF_REQUEST)) {
+        notifications.error(toMessage(error));
+      }
       return throwError(() => error);
     }),
   );

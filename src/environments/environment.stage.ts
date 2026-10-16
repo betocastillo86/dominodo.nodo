@@ -6,4 +6,8 @@ export const environment = {
   baseDomain: 'nodo-stage.dominodo.com',
   defaultTenantSlug: null as string | null, // resolve tenant from the domain in stage, like prod
   ignoredHosts: ['www', 'localhost'],
+  // Domi's WhatsApp number, E.164 without the `+` — where the resident surface sends the
+  // resident back after booking. The non-production sender, shared with dev
+  // (`appsettings.Staging.json` in `dominodo.domi`).
+  domiWhatsAppNumber: '573181848969',
 };
