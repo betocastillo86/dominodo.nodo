@@ -77,6 +77,16 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./features/apartments/apartments.routes').then((m) => m.apartmentsRoutes),
       },
+      // Admin view of amenity bookings — distinct from the standalone `/reservas`
+      // route above, which is the RESIDENT handoff booking flow (no shell).
+      {
+        path: 'reservations',
+        canActivate: [permissionGuard('reservations.view')],
+        loadChildren: () =>
+          import('./features/reservations-admin/reservations-admin.routes').then(
+            (m) => m.reservationsAdminRoutes,
+          ),
+      },
       {
         path: 'knowledge-resources',
         canActivate: [permissionGuard('knowledge.view')],

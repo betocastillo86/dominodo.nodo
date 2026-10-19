@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TablerIconComponent } from 'angular-tabler-icons';
 import { PagedResult } from '../../../core/models/paged-result';
@@ -71,11 +71,31 @@ export class DataTableComponent<T> {
   readonly actionIcon = input<string>('edit');
   /** Optional query params merged into each row's action link. */
   readonly actionQueryParams = input<((row: T) => Record<string, string>) | null>(null);
+  /**
+   * Icon of an extra, non-navigating row action rendered before `actionLink`'s
+   * one (a button that emits `rowAction`). Null — the default — renders none.
+   */
+  readonly rowActionIcon = input<string | null>(null);
+  /** Accessible label for that button. */
+  readonly rowActionLabel = input('Acción');
+  /** When set, the button renders only for the rows it returns true for. */
+  readonly rowActionVisible = input<((row: T) => boolean) | null>(null);
   /** Current sort state (controlled); drives the asc/desc arrow on headers. */
   readonly sort = input<TableSort | null>(null);
 
   readonly pageChange = output<number>();
   readonly sortChange = output<TableSort>();
+  readonly rowAction = output<T>();
+
+  /** Whether the trailing action column exists at all. */
+  readonly hasActions = computed(() => !!this.actionLink() || !!this.rowActionIcon());
+
+  /** Whether the extra button shows for this row (hidden rows keep the cell aligned). */
+  showRowAction(row: T): boolean {
+    if (!this.rowActionIcon()) return false;
+    const visible = this.rowActionVisible();
+    return visible ? visible(row) : true;
+  }
 
   /**
    * CSS class for a sortable header button: `asc`/`desc` when this column is the

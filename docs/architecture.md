@@ -244,7 +244,10 @@ src/app/
 │   ├── header/             # tenant logo/name (from TenantStore) + user menu (AuthStore)
 │   └── navbar/             # horizontal menu; items filtered by PermissionStore + TenantStore.features
 ├── shared/ui/           # reusable presentational pieces
-│   ├── data-table/         # generic paged table (ported 1:1 from admin)
+│   ├── data-table/         # generic paged table (ported from admin, plus an optional SECOND
+│   │                       #   row action: rowActionIcon/rowActionVisible + (rowAction) emit a
+│   │                       #   button next to the navigating one — used by Reservas to answer
+│   │                       #   a booking in place. Opt-in, so every other list is unchanged.
 │   ├── schedule-editor/    # weekly opening-hours control (CVA + Validator over a JSON string)
 │   ├── tower-editor/       # add/remove the conjunto's towers (CVA over string[]; the caller joins
 │   │                       #   them into the comma-separated text /tenants/info stores)
@@ -287,6 +290,35 @@ src/app/
                             #    residents-lookup.service, apartment-import.*, apartment.permissions)
                             #    apartment-list / -detail components + apartment-import/ (bulk load
                             #    wizard, apartments.create AND memberships.manage)
+    ├── reservations-admin/ # ✅ READ-ONLY admin view of amenity bookings (permission: reservations.view;
+                            #    feature: Amenities). Distinct from `features/reservations/` above, which
+                            #    is the RESIDENT handoff booking flow at the standalone `/reservas` route —
+                            #    this one lives under the shell at `/reservations`. List defaults to
+                            #    upcoming bookings — `sortBy=StartDate&direction=Asc` (the API defaults to
+                            #    the LATEST window first, so the sort is always explicit) plus
+                            #    `fromUtc` = today in the conjunto's reporting zone, matching the booked
+                            #    window and never the creation date. Filters: date range + área social.
+                            #    The list row carries `apartment` ({id,tower,number}), `price` (the area's
+                            #    CURRENT price, not frozen at booking) and `paymentUploaded`. The DETAIL
+                            #    carries none of those three, so it rebuilds them: apartment via
+                            #    `GET /apartments/{id}` (needs apartments.view, falls back to the raw id),
+                            #    payment from `paymentProofs`/`amountPaid`, value from `policy.price` —
+                            #    plus the resident's name/phone via `GET /users/{id}` (no permission
+                            #    needed). STILL MISSING server-side: `paymentUploaded` as a list FILTER
+                            #    (it is a row field only), which is why there is no payment filter in the
+                            #    UI; the plumbing for it is in reservations-admin.service.ts.
+                            #    The list also ANSWERS a booking in place: a "responder" row button opens a
+                            #    modal asking for the new state — Aprobar (POST /confirm), Rechazar
+                            #    (POST /reject) or Cancelar (POST /cancel) — the last two with a mandatory
+                            #    reason (<=500 chars, Reservation.ReasonMaxLength). Which states a row
+                            #    offers mirrors the API guards (availableReservationActions): confirm and
+                            #    reject only while Pending and only with reservations.edit; cancel while
+                            #    pending/confirmed and not yet started, and with reservations.cancel — a
+                            #    DIFFERENT permission. Failures map to Spanish by CODE in
+                            #    reservation-action-errors.ts (never the API's English `detail`).
+                            #    data-access/ (reservation.models, reservations-admin.service signals,
+                            #    amenity-options.service for the filter dropdown, resident-info.service)
+                            #    reservation-admin-list / -detail components
     ├── tenant-info/        # ✅ "Mi Conjunto": four tabs, one URL each (see §6) —
                             #    Contacto (/tenant-info/contact): the contactInfo block of
                             #      GET/PUT /tenants/info

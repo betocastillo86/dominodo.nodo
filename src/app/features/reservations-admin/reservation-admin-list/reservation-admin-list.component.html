@@ -1,0 +1,103 @@
+<app-page-header title="Reservas" pretitle="Áreas sociales" />
+
+<div class="card">
+  <div class="card-header">
+    <div class="row g-2 w-100">
+      <div class="col-6 col-lg-2">
+        <label class="form-label mb-1" for="reservations-from">Desde</label>
+        <input id="reservations-from" type="date" class="form-control" [formControl]="fromControl" />
+      </div>
+      <div class="col-6 col-lg-2">
+        <label class="form-label mb-1" for="reservations-to">Hasta</label>
+        <input id="reservations-to" type="date" class="form-control" [formControl]="toControl" />
+      </div>
+      <div class="col-12 col-lg">
+        <label class="form-label mb-1" for="reservations-area">Área social</label>
+        <select id="reservations-area" class="form-select" [formControl]="amenityControl">
+          <option value="">Todas las áreas</option>
+          @for (area of areas(); track area.id) {
+            <option [value]="area.id">{{ area.name }}</option>
+          }
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <app-data-table
+    [columns]="columns"
+    [rows]="items()"
+    [paging]="paging()"
+    [loading]="loading()"
+    [error]="error()"
+    [rowKey]="rowKey"
+    [actionLink]="detailLink"
+    actionIcon="eye"
+    rowActionIcon="message-reply"
+    rowActionLabel="Responder la reserva"
+    [rowActionVisible]="canRespond"
+    (rowAction)="openRespond($event, respondTpl)"
+    (pageChange)="onPageChange($event)"
+  />
+</div>
+
+<ng-template #respondTpl let-modal>
+  <form [formGroup]="form" (ngSubmit)="submitRespond()">
+    <div class="modal-header">
+      <h5 class="modal-title">
+        @if (target(); as reservation) {
+          Responder la reserva {{ reservation.code }}
+        } @else {
+          Responder la reserva
+        }
+      </h5>
+      <button type="button" class="btn-close" (click)="modal.dismiss()"></button>
+    </div>
+
+    <div class="modal-body">
+      @if (formError(); as message) {
+        <div class="alert alert-danger" role="alert">{{ message }}</div>
+      }
+
+      <div class="mb-3">
+        <label class="form-label required" for="respond-action">Estado</label>
+        <select id="respond-action" class="form-select" formControlName="action">
+          <option value="">Selecciona un estado…</option>
+          @for (action of actionOptions(); track action) {
+            <option [value]="action">{{ actionLabel[action] }}</option>
+          }
+        </select>
+        @if (submitted() && form.controls.action.invalid) {
+          <div class="text-danger small mt-1">Selecciona el estado.</div>
+        }
+      </div>
+
+      @if (needsReason()) {
+        <div class="mb-0">
+          <label class="form-label required" for="respond-reason">Motivo</label>
+          <textarea
+            id="respond-reason"
+            class="form-control"
+            rows="4"
+            formControlName="reason"
+            [maxlength]="reasonMaxLength"
+            placeholder="Explícale al residente por qué."
+          ></textarea>
+          @if (submitted() && form.controls.reason.invalid) {
+            <div class="text-danger small mt-1">Escribe el motivo.</div>
+          }
+          <small class="form-hint">El residente verá este texto. Máximo {{ reasonMaxLength }} caracteres.</small>
+        </div>
+      }
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn btn-link link-secondary" (click)="modal.dismiss()">Cerrar</button>
+      <button type="submit" class="btn btn-primary" [disabled]="saving()">
+        @if (saving()) {
+          <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        }
+        Guardar
+      </button>
+    </div>
+  </form>
+</ng-template>

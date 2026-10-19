@@ -22,6 +22,7 @@ import {
   IconBuilding,
   IconBuildingCommunity,
   IconBuildingSkyscraper,
+  IconCalendarEvent,
   IconCategory,
   IconChartArea,
   IconChartBar,
@@ -49,6 +50,7 @@ import {
   IconLock,
   IconLogout,
   IconMessage,
+  IconMessageReply,
   IconMinus,
   IconPalette,
   IconPaperclip,
@@ -129,6 +131,9 @@ export const appConfig: ApplicationConfig = {
       IconBuilding,
       IconUserPlus,
       IconUserMinus,
+      // Reservations (admin) module — nav icon + the respond action
+      IconCalendarEvent,
+      IconMessageReply,
       // Knowledge Resources module
       IconBook,
       // Mi Conjunto — tabs, schedule editor and branding

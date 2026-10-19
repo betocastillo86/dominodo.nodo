@@ -1,0 +1,159 @@
+<app-page-header [title]="title()" pretitle="Reservas">
+  <a actions routerLink="/reservations" class="btn btn-link link-secondary">
+    <tabler-icon name="arrow-left" class="me-1" />
+    Volver al listado
+  </a>
+</app-page-header>
+
+@if (loading()) {
+  <app-spinner />
+} @else if (error()) {
+  <div class="alert alert-danger" role="alert">{{ error() }}</div>
+} @else if (reservation(); as r) {
+  <div class="row row-cards">
+    <!-- Reservation information (read-only) -->
+    <div class="col-12 col-lg-6">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Información de la reserva</h3>
+          <div class="card-actions">
+            <span [class]="statusBadge[r.status]">{{ statusLabel[r.status] }}</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <dl class="row mb-0">
+            <dt class="col-5 text-secondary">Código</dt>
+            <dd class="col-7 fw-medium">{{ r.code }}</dd>
+
+            <dt class="col-5 text-secondary">Fecha de reserva</dt>
+            <dd class="col-7">{{ windowLabel(r) }}</dd>
+
+            <dt class="col-5 text-secondary">Asistentes</dt>
+            <dd class="col-7">{{ r.attendees }}</dd>
+
+            <dt class="col-5 text-secondary">Apartamento</dt>
+            <dd class="col-7">{{ apartmentDisplay() }}</dd>
+
+            <dt class="col-5 text-secondary">Valor</dt>
+            <dd class="col-7">{{ priceLabel() }}</dd>
+
+            <dt class="col-5 text-secondary">Pago</dt>
+            <dd class="col-7">{{ paymentLabel() }}</dd>
+
+            @if (amountPaidLabel(); as amountPaid) {
+              <dt class="col-5 text-secondary">Monto registrado</dt>
+              <dd class="col-7">{{ amountPaid }}</dd>
+            }
+
+            <dt class="col-5 text-secondary">Fecha de solicitud</dt>
+            <dd class="col-7">{{ formatInstant(r.createdAtUtc) }}</dd>
+
+            @if (r.confirmedAtUtc) {
+              <dt class="col-5 text-secondary">Confirmada</dt>
+              <dd class="col-7">{{ formatInstant(r.confirmedAtUtc) }}</dd>
+            }
+
+            @if (r.rejectedAtUtc) {
+              <dt class="col-5 text-secondary">Rechazada</dt>
+              <dd class="col-7">{{ formatInstant(r.rejectedAtUtc) }}</dd>
+              @if (r.rejectionReason) {
+                <dt class="col-5 text-secondary">Motivo</dt>
+                <dd class="col-7">{{ r.rejectionReason }}</dd>
+              }
+            }
+
+            @if (r.cancelledAtUtc) {
+              <dt class="col-5 text-secondary">Cancelada</dt>
+              <dd class="col-7">{{ formatInstant(r.cancelledAtUtc) }}</dd>
+              @if (r.cancellationReason) {
+                <dt class="col-5 text-secondary">Motivo</dt>
+                <dd class="col-7">{{ r.cancellationReason }}</dd>
+              }
+            }
+
+            @if (r.pendingDeadlineUtc) {
+              <dt class="col-5 text-secondary">Vence (pendiente)</dt>
+              <dd class="col-7">{{ formatInstant(r.pendingDeadlineUtc) }}</dd>
+            }
+          </dl>
+        </div>
+      </div>
+
+      <div class="card mt-3">
+        <div class="card-header">
+          <h3 class="card-title">Política del área</h3>
+        </div>
+        <div class="card-body">
+          <dl class="row mb-0">
+            <dt class="col-5 text-secondary">Requiere pago</dt>
+            <dd class="col-7">{{ r.policy.paymentRequired ? 'Sí' : 'No' }}</dd>
+
+            <dt class="col-5 text-secondary">Anticipación para cancelar</dt>
+            <dd class="col-7">{{ r.policy.cancelBeforeTotalDays ?? 0 }} días</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+
+    <!-- Resident -->
+    <div class="col-12 col-lg-6">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Residente</h3>
+        </div>
+        <div class="card-body">
+          @if (residentLoading()) {
+            <app-spinner />
+          } @else if (residentName()) {
+            <dl class="row mb-0">
+              <dt class="col-5 text-secondary">Nombre</dt>
+              <dd class="col-7 fw-medium">{{ residentName() }}</dd>
+
+              <dt class="col-5 text-secondary">Teléfono</dt>
+              <dd class="col-7">{{ resident()?.phone ?? '—' }}</dd>
+
+              @if (resident()?.email) {
+                <dt class="col-5 text-secondary">Correo</dt>
+                <dd class="col-7">{{ resident()?.email }}</dd>
+              }
+            </dl>
+          } @else {
+            <p class="text-secondary mb-0">No fue posible obtener los datos del residente.</p>
+          }
+        </div>
+      </div>
+
+      <div class="card mt-3">
+        <div class="card-header">
+          <h3 class="card-title">Comprobantes de pago</h3>
+        </div>
+        @if (r.paymentProofs.length === 0) {
+          <app-empty-state
+            icon="file"
+            title="Sin comprobantes"
+            subtitle="El residente no ha subido comprobantes de pago para esta reserva."
+          />
+        } @else {
+          <div class="table-responsive">
+            <table class="table card-table table-vcenter">
+              <thead>
+                <tr>
+                  <th>Archivo</th>
+                  <th>Subido</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (proof of r.paymentProofs; track proof.id) {
+                  <tr>
+                    <td>{{ proof.fileName }}</td>
+                    <td class="text-secondary text-nowrap">{{ formatInstant(proof.uploadedAtUtc) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+}

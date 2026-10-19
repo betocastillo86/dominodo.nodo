@@ -23,7 +23,7 @@
               }
             </th>
           }
-          @if (actionLink()) {
+          @if (hasActions()) {
             <th class="w-1"></th>
           }
         </tr>
@@ -47,21 +47,33 @@
                 }
               </td>
             }
-            @if (actionLink(); as link) {
-              <td class="text-end">
-                <a
-                  [routerLink]="link(row)"
-                  [queryParams]="actionQueryParams()?.(row) ?? null"
-                  class="btn btn-icon btn-sm"
-                >
-                  <tabler-icon [name]="actionIcon()" />
-                </a>
+            @if (hasActions()) {
+              <td class="text-end text-nowrap">
+                @if (showRowAction(row)) {
+                  <button
+                    type="button"
+                    class="btn btn-icon btn-sm me-1"
+                    [attr.aria-label]="rowActionLabel()"
+                    (click)="rowAction.emit(row)"
+                  >
+                    <tabler-icon [name]="rowActionIcon()!" />
+                  </button>
+                }
+                @if (actionLink(); as link) {
+                  <a
+                    [routerLink]="link(row)"
+                    [queryParams]="actionQueryParams()?.(row) ?? null"
+                    class="btn btn-icon btn-sm"
+                  >
+                    <tabler-icon [name]="actionIcon()" />
+                  </a>
+                }
               </td>
             }
           </tr>
         } @empty {
           <tr>
-            <td [attr.colspan]="columns().length + (actionLink() ? 1 : 0)" class="text-center text-secondary py-4">
+            <td [attr.colspan]="columns().length + (hasActions() ? 1 : 0)" class="text-center text-secondary py-4">
               No hay registros para mostrar.
             </td>
           </tr>

@@ -76,6 +76,13 @@ export class NavbarComponent {
       icon: 'building',
       permission: 'apartments.view',
     },
+    {
+      label: 'Reservas',
+      path: '/reservations',
+      icon: 'calendar-event',
+      permission: 'reservations.view',
+      feature: 'Amenities',
+    },
     // No FeatureKey.KnowledgeResources exists server-side either (the enum is
     // Requests, Deliveries, Visits, Announcements, Amenities), so this item is
     // gated by permission alone — same as Apartamentos above.
