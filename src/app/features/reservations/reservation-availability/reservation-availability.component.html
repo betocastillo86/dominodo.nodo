@@ -223,13 +223,16 @@
 
                     @if (amenity.policy.paymentRequired) {
                       <dt class="col-5 text-secondary fw-normal">Pago</dt>
-                      <dd class="col-7 mb-0">
+                      <dd class="col-7 mb-2">
                         Requiere pago
                         @if (amenity.policy.price) {
                           ({{ formatPrice(amenity.policy.price) }})
                         }
                       </dd>
                     }
+
+                    <dt class="col-5 text-secondary fw-normal">Cancelación</dt>
+                    <dd class="col-7 mb-0">{{ cancellationText() }}</dd>
                   </dl>
 
                   @if (amenity.policy.usageRules) {
@@ -290,6 +293,10 @@
 
         @if (bookingNotice(); as notice) {
           <div class="alert alert-info mb-0">{{ notice }}</div>
+        }
+
+        @if (cancellationNotice(); as notice) {
+          <p class="text-secondary small mt-3 mb-0">{{ notice }}</p>
         }
 
         @if (bookingError(); as message) {

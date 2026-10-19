@@ -165,6 +165,41 @@
               formControlName="maxPerDayPerApartment"
             />
           </div>
+          <div class="col-12 col-md-8 mb-3">
+            <label class="form-label required" for="cancelBeforeTotalDays">
+              Anticipación mínima para cancelar (días)
+            </label>
+            <input
+              id="cancelBeforeTotalDays"
+              type="number"
+              min="0"
+              [max]="maxCancelBeforeDays"
+              class="form-control"
+              formControlName="cancelBeforeTotalDays"
+              [class.is-invalid]="
+                form.controls.cancelBeforeTotalDays.invalid &&
+                form.controls.cancelBeforeTotalDays.touched
+              "
+            />
+            @if (
+              form.controls.cancelBeforeTotalDays.invalid &&
+              form.controls.cancelBeforeTotalDays.touched
+            ) {
+              <div class="invalid-feedback">
+                Ingresa un número entre 0 y {{ maxCancelBeforeDays }}.
+              </div>
+            }
+            @if (form.controls.cancelBeforeTotalDays.hasError('server')) {
+              <div class="invalid-feedback d-block">
+                {{ form.controls.cancelBeforeTotalDays.getError('server') }}
+              </div>
+            }
+            <small class="form-hint">
+              Una reserva ya confirmada solo se puede cancelar hasta estos días antes del día
+              reservado; después el sistema ya no la deja cancelar. Usa 0 para permitirlo en
+              cualquier momento. No aplica a reservas pendientes ni a la administración.
+            </small>
+          </div>
         </div>
 
         <div class="mb-3">

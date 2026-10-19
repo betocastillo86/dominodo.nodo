@@ -40,6 +40,10 @@ export interface AmenityOpeningHoursSlot {
  * `OperationsReservationPolicyDto` (read) / `OperationsAmenityPolicyInput`
  * (write) — identical shape, so one interface covers both directions.
  * `minHours` defaults to 1 server-side when omitted on write.
+ *
+ * Every field has to make the round trip on an edit: `PUT /amenities/{id}`
+ * REPLACES the policy document, so a field left out of the body is not kept —
+ * it is reset to whatever the server defaults it to.
  */
 export interface AmenityPolicy {
   allowsMultiplePerDay: boolean;
@@ -51,6 +55,21 @@ export interface AmenityPolicy {
   usageRules: string | null;
   additionalServices: string | null;
   requiresGoodStanding: boolean;
+  /**
+   * How long a `Pending` booking holds its slot before expiring; `null` means
+   * it never expires. Not edited in this portal — carried verbatim on save so
+   * an edit does not silently drop it.
+   */
+  pendingExpiryHours: number | null;
+  /**
+   * The notice the holder owes to cancel a CONFIRMED booking: it stops being
+   * cancellable this many days before it starts, and `0` means no window at
+   * all. Read comes back as a number (`0` for a policy written before the rule
+   * existed); on write an omitted value is NOT 0 — the server fills in
+   * {@link AMENITY_DEFAULT_CANCEL_BEFORE_DAYS}, so always send it explicitly.
+   * Pending bookings and staff holding `reservations.cancel` are never bound.
+   */
+  cancelBeforeTotalDays: number | null;
   openingHours: AmenityOpeningHoursSlot[];
 }
 
@@ -112,3 +131,7 @@ export const AMENITY_MIN_PHOTOS = 1;
 export const AMENITY_MAX_PHOTOS = 5;
 export const AMENITY_NAME_MAX_LENGTH = 200;
 export const AMENITY_POLICY_TEXT_MAX_LENGTH = 2000;
+
+/** `ReservationPolicy.DefaultCancelBeforeTotalDays` / `MaxCancelBeforeTotalDays`. */
+export const AMENITY_DEFAULT_CANCEL_BEFORE_DAYS = 7;
+export const AMENITY_MAX_CANCEL_BEFORE_DAYS = 365;

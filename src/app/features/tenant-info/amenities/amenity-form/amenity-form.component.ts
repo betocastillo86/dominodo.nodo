@@ -31,6 +31,8 @@ import {
   slotsToScheduleValue,
 } from '../data-access/amenity-schedule';
 import {
+  AMENITY_DEFAULT_CANCEL_BEFORE_DAYS,
+  AMENITY_MAX_CANCEL_BEFORE_DAYS,
   AMENITY_MIN_PHOTOS,
   AMENITY_NAME_MAX_LENGTH,
   AMENITY_POLICY_TEXT_MAX_LENGTH,
@@ -105,6 +107,14 @@ export class AmenityFormComponent implements OnInit {
   readonly nameMaxLength = AMENITY_NAME_MAX_LENGTH;
   readonly textMaxLength = AMENITY_POLICY_TEXT_MAX_LENGTH;
   readonly minPhotos = AMENITY_MIN_PHOTOS;
+  readonly maxCancelBeforeDays = AMENITY_MAX_CANCEL_BEFORE_DAYS;
+
+  /**
+   * The area's pending-expiry window. This portal does not edit it, but a save
+   * replaces the whole policy document, so it is held here and sent back
+   * untouched instead of being reset to "never expires".
+   */
+  private pendingExpiryHours: number | null = null;
 
   readonly form = this.fb.group(
     {
@@ -127,6 +137,13 @@ export class AmenityFormComponent implements OnInit {
         Validators.maxLength(AMENITY_POLICY_TEXT_MAX_LENGTH),
       ]),
       requiresGoodStanding: this.fb.nonNullable.control(false),
+      // Required and never null: an omitted value does not mean "no window" on
+      // the server, it means the default of seven days.
+      cancelBeforeTotalDays: this.fb.nonNullable.control(AMENITY_DEFAULT_CANCEL_BEFORE_DAYS, [
+        Validators.required,
+        Validators.min(0),
+        Validators.max(AMENITY_MAX_CANCEL_BEFORE_DAYS),
+      ]),
       // The JSON envelope <app-schedule-editor> produces; mapped to/from the
       // API's `openingHours` slots by `amenity-schedule.ts`.
       schedules: this.fb.control<string | null>(null),
@@ -274,6 +291,8 @@ export class AmenityFormComponent implements OnInit {
         usageRules: v.usageRules.trim() ? v.usageRules.trim() : null,
         additionalServices: v.additionalServices.trim() ? v.additionalServices.trim() : null,
         requiresGoodStanding: v.requiresGoodStanding,
+        pendingExpiryHours: this.pendingExpiryHours,
+        cancelBeforeTotalDays: v.cancelBeforeTotalDays,
         openingHours: scheduleValueToSlots(v.schedules),
       },
       photoKeys: this.photoKeys(),
@@ -289,6 +308,7 @@ export class AmenityFormComponent implements OnInit {
         this.amenityName.set(detail.name);
         this.status.set(detail.status);
         this.initialPhotos.set(detail.photos);
+        this.pendingExpiryHours = detail.policy.pendingExpiryHours;
         this.form.patchValue({
           name: detail.name,
           maxOccupancy: detail.maxOccupancy,
@@ -302,6 +322,9 @@ export class AmenityFormComponent implements OnInit {
           usageRules: detail.policy.usageRules ?? '',
           additionalServices: detail.policy.additionalServices ?? '',
           requiresGoodStanding: detail.policy.requiresGoodStanding,
+          // A policy written before the rule existed reads back as null, and
+          // that means the same as 0 — no window (`AmenityMappers.ToPolicyDto`).
+          cancelBeforeTotalDays: detail.policy.cancelBeforeTotalDays ?? 0,
           schedules: slotsToScheduleValue(detail.policy.openingHours),
         });
         this.applyPriceRule(detail.policy.paymentRequired);

@@ -254,6 +254,32 @@ export class ReservationAvailabilityComponent implements OnInit {
     return null;
   });
 
+  /**
+   * The notice the holder owes to cancel once the booking is CONFIRMED
+   * (`ReservationRules.CheckCancellationWindow`): it stops being cancellable
+   * this many days before it starts. `0` — and a policy written before the rule
+   * existed, which reads back as null — means no window.
+   */
+  readonly cancelBeforeDays = computed(() => this.amenity()?.policy.cancelBeforeTotalDays ?? 0);
+
+  readonly cancellationText = computed(() => {
+    const days = this.cancelBeforeDays();
+    if (days <= 0) return 'En cualquier momento';
+    return days === 1 ? 'Hasta 1 día antes' : `Hasta ${days} días antes`;
+  });
+
+  /**
+   * Said BEFORE confirming, not afterwards: with a paid area the window is the
+   * difference between a booking the resident can still undo and one they
+   * cannot. Nothing to warn about when there is no window.
+   */
+  readonly cancellationNotice = computed(() => {
+    const days = this.cancelBeforeDays();
+    if (days <= 0) return null;
+    const notice = `${days} ${days === 1 ? 'día' : 'días'} antes del día reservado`;
+    return `Una vez confirmada, solo podrás cancelarla hasta ${notice}.`;
+  });
+
   readonly selectedDateLabel = computed(() => {
     const date = this.selectedDate();
     return date ? formatLongDate(date) : '';
