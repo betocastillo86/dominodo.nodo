@@ -177,13 +177,25 @@
 
             <div class="col-12 col-lg-4 order-2 order-lg-1">
               <div class="card">
-                @if (amenity.photos[0]; as photo) {
-                  <img
-                    [src]="photo.url"
-                    [alt]="amenity.name"
-                    class="card-img-top"
-                    style="max-height: 180px; object-fit: cover;"
-                  />
+                <!-- The cover opens the photos full size. It is a button, not an
+                     image: a phone has no hover to hint that it is tappable, so
+                     the badge carries the affordance and the whole photo is the
+                     target. -->
+                @if (photos()[0]; as cover) {
+                  <button
+                    type="button"
+                    class="amenity-cover"
+                    [attr.aria-label]="galleryLabel()"
+                    (click)="openGallery(galleryTpl)"
+                  >
+                    <img [src]="cover.url" [alt]="amenity.name" />
+                    <span class="amenity-cover__badge">
+                      <tabler-icon name="photo"></tabler-icon>
+                      @if (photos().length > 1) {
+                        {{ photos().length }}
+                      }
+                    </span>
+                  </button>
                 }
                 <div class="card-body">
                   <dl class="row mb-0 small">
@@ -302,5 +314,71 @@
       }
       Confirmar reserva
     </button>
+  </div>
+</ng-template>
+
+<!-- Photo gallery ------------------------------------------------------------>
+<ng-template #galleryTpl let-modal>
+  <div class="modal-header">
+    <h5 class="modal-title">
+      {{ amenity()?.name }}
+      @if (photos().length > 1) {
+        <span class="text-secondary fw-normal ms-1">
+          {{ viewerIndex() + 1 }} / {{ photos().length }}
+        </span>
+      }
+    </h5>
+    <button type="button" class="btn-close" aria-label="Cerrar" (click)="modal.dismiss()"></button>
+  </div>
+
+  <div class="modal-body p-0">
+    <!-- Swiping is how a thumb moves through photos; the arrows are the same
+         move for a mouse, and they stay inside the stage on a narrow screen. -->
+    <div
+      class="gallery-stage"
+      (touchstart)="onGalleryTouchStart($event)"
+      (touchend)="onGalleryTouchEnd($event)"
+    >
+      @if (viewerPhoto(); as photo) {
+        <img class="gallery-image" [src]="photo.url" [alt]="amenity()?.name ?? 'Foto del área'" />
+      }
+
+      @if (photos().length > 1) {
+        <button
+          type="button"
+          class="btn btn-icon btn-dark gallery-nav gallery-nav--prev"
+          aria-label="Foto anterior"
+          (click)="galleryPrev()"
+        >
+          <tabler-icon name="chevron-left"></tabler-icon>
+        </button>
+        <button
+          type="button"
+          class="btn btn-icon btn-dark gallery-nav gallery-nav--next"
+          aria-label="Foto siguiente"
+          (click)="galleryNext()"
+        >
+          <tabler-icon name="chevron-right"></tabler-icon>
+        </button>
+      }
+    </div>
+
+    <!-- Thumbnails to jump straight to a photo. -->
+    @if (photos().length > 1) {
+      <div class="d-flex gap-2 p-2 overflow-auto bg-dark">
+        @for (photo of photos(); track photo.id; let i = $index) {
+          <button
+            type="button"
+            class="gallery-thumb"
+            [class.active]="i === viewerIndex()"
+            [attr.aria-label]="'Ver la foto ' + (i + 1)"
+            [attr.aria-current]="i === viewerIndex()"
+            (click)="galleryGoTo(i)"
+          >
+            <img [src]="photo.url" [alt]="'Foto ' + (i + 1) + ' del área'" />
+          </button>
+        }
+      </div>
+    }
   </div>
 </ng-template>
