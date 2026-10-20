@@ -324,7 +324,9 @@ export class ReservationAdminDetailComponent {
       .getPaymentProofDownloadUrl(this.id, proof.id)
       .pipe(finalize(() => this.downloadingId.set(null)))
       .subscribe({
-        next: (res) => window.open(res.url, '_blank'),
+        // `noopener` so the opened tab cannot reach back through `window.opener`,
+        // and `noreferrer` so the SAS never travels as a Referer.
+        next: (res) => window.open(res.url, '_blank', 'noopener,noreferrer'),
         // A toast, never `error`: that signal replaces the whole detail, and a
         // SAS that failed to mint is no reason to take the booking off screen.
         error: () => this.notifications.error('No pudimos abrir el comprobante. Inténtalo de nuevo.'),

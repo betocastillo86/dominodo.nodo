@@ -315,7 +315,7 @@ export class ReservationPaymentProofComponent implements OnInit {
         setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
       })
       .catch(() => {
-        if (!window.open(url, '_blank', 'noopener')) {
+        if (!window.open(url, '_blank', 'noopener,noreferrer')) {
           window.location.href = url;
         }
       })
