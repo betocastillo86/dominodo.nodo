@@ -40,16 +40,17 @@ export class ReservationsAdminService {
   readonly loading = this._loading.asReadonly();
   readonly error = this._error.asReadonly();
 
-  /** Load a page of reservations applying the (server-supported) filters and sort. */
-  list(
+  /**
+   * One page of reservations as an Observable, leaving this service's own list
+   * state untouched — for the screens that keep theirs (the dashboard's
+   * «Requiere atención» inbox). {@link list} is this plus the state.
+   */
+  query(
     filters: ReservationFilters,
     sort: ReservationSort,
     page = 1,
     pageSize = DEFAULT_PAGE_SIZE,
-  ): void {
-    this._loading.set(true);
-    this._error.set(null);
-
+  ): Observable<PagedResult<ReservationDto>> {
     let params = new HttpParams()
       .set('page', page)
       .set('pageSize', pageSize)
@@ -72,7 +73,20 @@ export class ReservationsAdminService {
       params = params.set('paymentUploaded', filters.paymentUploaded);
     }
 
-    this.http.get<PagedResult<ReservationDto>>(this.base, { params }).subscribe({
+    return this.http.get<PagedResult<ReservationDto>>(this.base, { params });
+  }
+
+  /** Load a page of reservations applying the (server-supported) filters and sort. */
+  list(
+    filters: ReservationFilters,
+    sort: ReservationSort,
+    page = 1,
+    pageSize = DEFAULT_PAGE_SIZE,
+  ): void {
+    this._loading.set(true);
+    this._error.set(null);
+
+    this.query(filters, sort, page, pageSize).subscribe({
       next: (result) => {
         this._items.set(result.items);
         this._paging.set(result);

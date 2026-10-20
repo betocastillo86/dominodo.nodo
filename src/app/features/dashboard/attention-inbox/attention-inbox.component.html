@@ -1,0 +1,106 @@
+<!--
+  Renders nothing when neither module is reachable: an administrator without
+  Reservas and without PQRS has no queue, and an empty card is worse than none.
+-->
+@if (queues().length > 0) {
+  <div class="card h-100 d-flex flex-column">
+    <div class="card-header inbox-head">
+      <h3 class="card-title d-flex align-items-center gap-2">
+        Requiere atención
+        <app-help-hint [text]="help.inbox" label="Qué muestra Requiere atención" />
+      </h3>
+    </div>
+
+    <!-- Two tabs, split down the middle: on this card the tab IS the control. -->
+    <ul class="nav nav-tabs nav-fill" role="tablist">
+      @for (queue of queues(); track queue.key) {
+        <li class="nav-item" role="presentation">
+          <a
+            class="nav-link inbox-tab"
+            [class.active]="activeQueue() === queue.key"
+            href="javascript:void(0)"
+            role="tab"
+            [attr.aria-selected]="activeQueue() === queue.key"
+            (click)="select(queue.key)"
+          >
+            <tabler-icon [name]="queue.icon" class="me-2" />
+            {{ queue.label }}
+          </a>
+        </li>
+      }
+    </ul>
+
+    <!--
+      One pane of a FIXED height for every tab: five rows' worth. An empty
+      shortcut and a full one take the same room, so switching tabs never
+      moves the page under the cursor.
+    -->
+    <div class="inbox-pane">
+      @if (activeQueue() === 'reservations') {
+        <!--
+          A single choice, not two checkboxes: the two ask about different
+          instants (the booked window vs. the pending deadline), so one is
+          always applied and picking one drops the other.
+        -->
+        <div class="inbox-filters">
+          <div class="btn-group btn-group-sm w-100" role="group" aria-label="Qué mostrar">
+            @for (option of views; track option.key) {
+              <button
+                type="button"
+                class="btn"
+                [class.btn-primary]="view() === option.key"
+                [attr.aria-pressed]="view() === option.key"
+                [title]="option.hint"
+                (click)="selectView(option.key)"
+              >
+                {{ option.label }}
+              </button>
+            }
+          </div>
+        </div>
+
+        @if (hasRows()) {
+          <div class="inbox-rows">
+            <!-- No action column: the código is already the link to the detail. -->
+            <app-data-table
+              [columns]="columns()"
+              [rows]="items()"
+              [loading]="loading()"
+              [error]="error()"
+              [rowKey]="rowKey"
+              [dense]="true"
+            />
+          </div>
+        } @else {
+          <p class="inbox-placeholder text-secondary">{{ emptyMessage() }}</p>
+        }
+      } @else {
+        <!-- The PQRS queue is declared and gated; it has no rows yet. -->
+        <p class="inbox-placeholder text-secondary">{{ help.emptyRequests }}</p>
+      }
+    </div>
+
+    @if (activeQueueDef(); as queue) {
+      <div class="card-footer inbox-footer d-flex align-items-center justify-content-between">
+        <!-- Nothing was counted on the empty tab, or when the load failed. -->
+        <span class="text-secondary">
+          @if (queue.key === 'reservations' && !error()) {
+            @if (hasMore()) {
+              Mostrando {{ items().length }} de {{ total() }}
+            } @else {
+              {{ total() }} {{ total() === 1 ? 'reserva' : 'reservas' }}
+            }
+          }
+        </span>
+        <a
+          [routerLink]="queue.route"
+          class="btn btn-sm"
+          [title]="'Abrir la pantalla de ' + queue.label"
+        >
+          Ver todas
+          <tabler-icon name="arrow-right" class="ms-1 icon-sm" />
+        </a>
+      </div>
+    }
+  </div>
+}

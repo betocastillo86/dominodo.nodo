@@ -10,7 +10,10 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { map } from 'rxjs';
-import { DataTableComponent, TableColumn } from '../../../shared/ui/data-table/data-table.component';
+import {
+  DataTableComponent,
+  TableColumn,
+} from '../../../shared/ui/data-table/data-table.component';
 import { PageHeaderComponent } from '../../../shared/ui/page-header/page-header.component';
 import {
   SearchSelectComponent,
@@ -18,7 +21,12 @@ import {
   SearchSelectResolveFn,
 } from '../../../shared/ui/search-select/search-select.component';
 import { apartmentLabel } from '../../apartments/data-access/apartment.models';
-import { formatDay, todayInReportZone, toFromUtc, toToUtc } from '../../dashboard/data-access/date-range';
+import {
+  formatDay,
+  todayInReportZone,
+  toFromUtc,
+  toToUtc,
+} from '../../dashboard/data-access/date-range';
 import { formatInstantAsTimeOfDay } from '../../reservations/data-access/reservation-format';
 import { AmenityListItem } from '../../tenant-info/amenities/data-access/amenity.models';
 import { AmenityOptionsService } from '../data-access/amenity-options.service';
@@ -29,47 +37,21 @@ import {
   RESERVATION_STATUS_LABEL,
   RESERVATION_STATUSES,
   ReservationDto,
-  ReservationSort,
   ReservationStatus,
 } from '../data-access/reservation.models';
+import {
+  NO_DATE_FILTERS,
+  RESERVATION_TODAY_VIEWS,
+  RESERVATION_WINDOW_SORT,
+  ReservationTodayView,
+  todayViewDates,
+  todayViewSort,
+  todayViewWindow,
+} from '../data-access/today-views';
 import { ReservationsAdminService } from '../data-access/reservations-admin.service';
 import { ReservationProofGalleryComponent } from '../reservation-proof-gallery/reservation-proof-gallery.component';
 import { ReservationRespondComponent } from '../reservation-respond/reservation-respond.component';
 import { ReservationStatusSelectComponent } from '../reservation-status-select/reservation-status-select.component';
-
-/**
- * Soonest first: the point of this screen is what is about to happen, not what
- * was booked last. The API defaults to the opposite, so the sort is explicit.
- */
-const SORT: ReservationSort = { sortBy: 'StartDate', direction: 'Asc' };
-
-/** Newest request first — the order "Creadas hoy" is about. */
-const CREATED_SORT: ReservationSort = { sortBy: 'CreatedDate', direction: 'Desc' };
-
-/**
- * Now, on the wire. The other boundaries this screen sends are civil days in
- * the reporting zone and go through `toFromUtc`/`toToUtc`; this one is a true
- * instant ("todavía no ha vencido"), so it needs no zone at all.
- */
-function nowAsInstant(): string {
-  return new Date().toISOString();
-}
-
-/** The shortcuts offered above the filter bar. */
-type QuickView = 'startsToday' | 'createdToday' | 'expiresToday';
-
-interface QuickViewDef {
-  key: QuickView;
-  label: string;
-  /** What it narrows to, as the button's tooltip. */
-  hint: string;
-}
-
-const QUICK_VIEWS: readonly QuickViewDef[] = [
-  { key: 'startsToday', label: 'Entrega hoy', hint: RESERVATIONS_HELP.startsToday },
-  { key: 'createdToday', label: 'Creadas hoy', hint: RESERVATIONS_HELP.createdToday },
-  { key: 'expiresToday', label: 'Expiran hoy', hint: RESERVATIONS_HELP.expiresToday },
-];
 
 /**
  * Admin reservations list: upcoming bookings across every area, soonest first,
@@ -126,7 +108,16 @@ export class ReservationAdminListComponent {
 
   readonly areas = signal<AmenityListItem[]>([]);
 
-  readonly quickViews = QUICK_VIEWS;
+  /**
+   * `amenityId` → the area's name. A booking row identifies its area by id
+   * alone, and the areas are already loaded here for the filter, so naming the
+   * column costs no extra request.
+   */
+  private readonly areaNames = computed(
+    () => new Map(this.areas().map((area) => [area.id, area.name])),
+  );
+
+  readonly quickViews = RESERVATION_TODAY_VIEWS;
 
   /**
    * The tooltip of every filter, column and control on this screen. Three of
@@ -138,7 +129,7 @@ export class ReservationAdminListComponent {
   readonly help = RESERVATIONS_HELP;
 
   /** The shortcut currently applied, or null for the plain filter bar. */
-  readonly quickView = signal<QuickView | null>(null);
+  readonly quickView = signal<ReservationTodayView | null>(null);
 
   /** `yyyy-MM-dd` in the conjunto's reporting zone — never the browser's own. */
   readonly fromControl = new FormControl(todayInReportZone(), { nonNullable: true });
@@ -186,46 +177,57 @@ export class ReservationAdminListComponent {
   private readonly paymentCell =
     viewChild<TemplateRef<{ $implicit: ReservationDto }>>('paymentCell');
 
-  readonly columns = computed<readonly TableColumn<ReservationDto>[]>(() => [
-    // The code leads where the row's eye icon does: it is what identifies the
-    // booking, so it is what a reader tries to click first.
-    {
-      header: 'Código',
-      value: (r) => r.code,
-      class: 'w-1 text-nowrap fw-medium',
-      link: (r) => this.detailLink(r),
-      hint: RESERVATIONS_HELP.code,
-    },
-    {
-      header: 'Fecha de reserva',
-      value: (r) => this.windowLabel(r),
-      class: 'text-nowrap',
-      hint: RESERVATIONS_HELP.window,
-    },
-    // Interactive when there is something to see: the template turns "Sí" into
-    // the trigger of the proof gallery. The badge below is the fallback.
-    {
-      header: 'Pago',
-      value: (r) => (r.paymentUploaded ? 'Sí' : 'No'),
-      badgeClass: (r) => (r.paymentUploaded ? 'badge bg-green-lt' : 'badge bg-red-lt'),
-      cellTemplate: this.paymentCell(),
-      hint: RESERVATIONS_HELP.payment,
-    },
-    {
-      header: 'Apartamento',
-      value: (r) => apartmentLabel(r.apartment),
-      hint: RESERVATIONS_HELP.apartmentColumn,
-    },
-    // A control, not a value: the badge below is only what shows if the
-    // template has not resolved yet.
-    {
-      header: 'Estado',
-      value: (r) => RESERVATION_STATUS_LABEL[r.status],
-      badgeClass: (r) => RESERVATION_STATUS_BADGE[r.status],
-      cellTemplate: this.statusCell(),
-      hint: RESERVATIONS_HELP.statusColumn,
-    },
-  ]);
+  readonly columns = computed<readonly TableColumn<ReservationDto>[]>(() => {
+    const areaNames = this.areaNames();
+
+    return [
+      // The code leads where the row's eye icon does: it is what identifies the
+      // booking, so it is what a reader tries to click first.
+      {
+        header: 'Código',
+        value: (r) => r.code,
+        class: 'w-1 text-nowrap fw-medium',
+        link: (r) => this.detailLink(r),
+        hint: RESERVATIONS_HELP.code,
+      },
+      // Right after the code: which area was booked is the next thing asked, and
+      // the dash is what shows while the areas are still on their way.
+      {
+        header: 'Área',
+        value: (r) => areaNames.get(r.amenityId) ?? '—',
+        hint: RESERVATIONS_HELP.areaColumn,
+      },
+      {
+        header: 'Fecha de reserva',
+        value: (r) => this.windowLabel(r),
+        class: 'text-nowrap',
+        hint: RESERVATIONS_HELP.window,
+      },
+      // Interactive when there is something to see: the template turns "Sí" into
+      // the trigger of the proof gallery. The badge below is the fallback.
+      {
+        header: 'Pago',
+        value: (r) => (r.paymentUploaded ? 'Sí' : 'No'),
+        badgeClass: (r) => (r.paymentUploaded ? 'badge bg-green-lt' : 'badge bg-red-lt'),
+        cellTemplate: this.paymentCell(),
+        hint: RESERVATIONS_HELP.payment,
+      },
+      {
+        header: 'Apartamento',
+        value: (r) => apartmentLabel(r.apartment),
+        hint: RESERVATIONS_HELP.apartmentColumn,
+      },
+      // A control, not a value: the badge below is only what shows if the
+      // template has not resolved yet.
+      {
+        header: 'Estado',
+        value: (r) => RESERVATION_STATUS_LABEL[r.status],
+        badgeClass: (r) => RESERVATION_STATUS_BADGE[r.status],
+        cellTemplate: this.statusCell(),
+        hint: RESERVATIONS_HELP.statusColumn,
+      },
+    ];
+  });
 
   readonly rowKey = (r: ReservationDto): string => r.id;
   readonly detailLink = (r: ReservationDto): unknown[] => ['/reservations', r.id];
@@ -274,18 +276,13 @@ export class ReservationAdminListComponent {
    * unanswered one lapses — and what came in or lapses today can be booked for
    * ANY date, so they CLEAR the window and `reload` sends their own range.
    */
-  toggleQuickView(key: QuickView): void {
+  toggleQuickView(key: ReservationTodayView): void {
     const next = this.quickView() === key ? null : key;
     this.quickView.set(next);
 
-    const today = todayInReportZone();
-    const [from, to] =
-      next === 'startsToday'
-        ? [today, today]
-        : next !== null
-          ? ['', ''] // "Creadas hoy" / "Expiran hoy": the window must not narrow them.
-          : // Back to the screen's own default: from today, open-ended.
-            [today, ''];
+    // Back to the screen's own default when the shortcut is switched off:
+    // from today, open-ended.
+    const [from, to] = next ? todayViewWindow(next) : [todayInReportZone(), ''];
 
     this.fromControl.setValue(from, { emitEvent: false });
     this.toControl.setValue(to, { emitEvent: false });
@@ -310,9 +307,17 @@ export class ReservationAdminListComponent {
 
   private reload(page: number): void {
     const view = this.quickView();
-    const createdToday = view === 'createdToday';
-    const expiresToday = view === 'expiresToday';
-    const today = todayInReportZone();
+
+    // With a shortcut on, the dates ARE the shortcut's — which for "Entrega
+    // hoy" is what it already wrote into the two fields. Off it, the window
+    // comes from those fields and the other two instants stay open.
+    const dates = view
+      ? todayViewDates(view)
+      : {
+          ...NO_DATE_FILTERS,
+          fromUtc: this.fromControl.value ? toFromUtc(this.fromControl.value) : null,
+          toUtc: this.toControl.value ? toToUtc(this.toControl.value) : null,
+        };
 
     this.service.list(
       {
@@ -322,28 +327,9 @@ export class ReservationAdminListComponent {
         // `GET /reservations` does not accept a payment filter yet — the column
         // reports it, but narrowing by it has to happen server-side.
         paymentUploaded: null,
-        // The booked window, straight off the two date fields.
-        fromUtc: this.fromControl.value ? toFromUtc(this.fromControl.value) : null,
-        toUtc: this.toControl.value ? toToUtc(this.toControl.value) : null,
-        // A DIFFERENT instant: when the resident asked. No field of its own —
-        // only "Creadas hoy" sets it, and it leaves the window open, because
-        // today's intake can be for any date.
-        createdFromUtc: createdToday ? toFromUtc(today) : null,
-        createdToUtc: createdToday ? toToUtc(today) : null,
-        // A third instant: `pendingDeadlineUtc`, which the domain nulls out the
-        // moment a booking is confirmed, rejected, cancelled or expired — so
-        // this range narrows to the still-PENDING ones on its own, no status
-        // filter needed. It opens at NOW, not at midnight: a deadline earlier
-        // today has already passed, and what this view is for is what can still
-        // be saved before it does.
-        expiresFromUtc: expiresToday ? nowAsInstant() : null,
-        expiresToUtc: expiresToday ? toToUtc(today) : null,
+        ...dates,
       },
-      // Today's intake reads newest request first; everything else, soonest
-      // window first — which for "Expiran hoy" is also near enough to soonest
-      // deadline, since a deadline is trimmed to its own window's start
-      // (`Reservation.Reschedule`) and `sortBy` has no deadline key anyway.
-      createdToday ? CREATED_SORT : SORT,
+      view ? todayViewSort(view) : RESERVATION_WINDOW_SORT,
       page,
       this.pageSize,
     );

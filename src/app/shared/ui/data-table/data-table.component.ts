@@ -119,6 +119,13 @@ export class DataTableComponent<T> {
   readonly rowActionVisible = input<((row: T) => boolean) | null>(null);
   /** Current sort state (controlled); drives the asc/desc arrow on headers. */
   readonly sort = input<TableSort | null>(null);
+  /**
+   * Compact rows (Bootstrap's `table-sm`). For the previews that show a handful
+   * of rows inside a card next to other content — a dashboard tile — where the
+   * full screen's row height would cost more vertical space than the data is
+   * worth. A full-screen list leaves it off.
+   */
+  readonly dense = input(false);
 
   readonly pageChange = output<number>();
   readonly sortChange = output<TableSort>();

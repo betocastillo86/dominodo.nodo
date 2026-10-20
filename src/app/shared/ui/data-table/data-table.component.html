@@ -4,7 +4,7 @@
   <div class="alert alert-danger m-3" role="alert">{{ error() }}</div>
 } @else {
   <div class="table-responsive">
-    <table class="table card-table table-vcenter text-nowrap">
+    <table class="table card-table table-vcenter text-nowrap" [class.table-sm]="dense()">
       <thead>
         <tr>
           @for (col of columns(); track col.header) {

@@ -27,6 +27,7 @@ export const RESERVATIONS_HELP = {
 
   // ── The columns ──────────────────────────────────────────────────────────
   code: 'Número que identifica la reserva, el mismo que ve el residente',
+  areaColumn: 'El área social que se reservó',
   window: 'Día y franja en que el residente usa el área, no cuándo la pidió',
   payment: 'Si el residente ya subió el soporte de su pago',
   apartmentColumn: 'Torre y número del apartamento que hizo la reserva',

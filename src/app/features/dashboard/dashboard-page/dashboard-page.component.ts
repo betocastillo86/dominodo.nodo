@@ -1,8 +1,16 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  viewChild,
+} from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ApexOptions } from 'apexcharts';
 import { TablerIconComponent } from 'angular-tabler-icons';
+import { PermissionStore } from '../../../core/authz/permission.store';
 import { TenantInfoService } from '../../../core/tenant/tenant-info.service';
 import { TenantStore } from '../../../core/tenant/tenant.store';
 import { EmptyStateComponent } from '../../../shared/ui/empty-state/empty-state.component';
@@ -45,9 +53,11 @@ import {
   formatHours,
   formatNumber,
 } from '../data-access/format';
+import { visibleInboxQueues } from '../data-access/attention-inbox';
 import { DASHBOARD_HELP, statusHelp } from '../data-access/help-text';
 import { clipMonthlyFlow } from '../data-access/request-report.models';
 import { RequestReportService } from '../data-access/request-report.service';
+import { AttentionInboxComponent } from '../attention-inbox/attention-inbox.component';
 import { RangePickerComponent } from '../range-picker/range-picker.component';
 
 interface StatusTile {
@@ -77,6 +87,7 @@ interface StatusTile {
     ChartDirective,
     TablerIconComponent,
     HelpHintComponent,
+    AttentionInboxComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './dashboard-page.component.html',
@@ -86,7 +97,25 @@ export class DashboardPageComponent {
   private readonly router = inject(Router);
   private readonly service = inject(RequestReportService);
   private readonly tenantInfo = inject(TenantInfoService);
+  private readonly permissions = inject(PermissionStore);
   protected readonly tenant = inject(TenantStore);
+
+  /**
+   * Whether the attention inbox has any queue to show. Asked here too — and not
+   * only inside the component — because the answer decides the SHAPE of this
+   * row: with no inbox the status counters take the full width back instead of
+   * leaving five columns empty.
+   */
+  protected readonly showInbox = computed(
+    () =>
+      visibleInboxQueues(
+        (code) => this.permissions.has(code),
+        (key) => this.tenant.hasFeature(key),
+      ).length > 0,
+  );
+
+  /** The inbox, so «Actualizar» refreshes it along with the report. */
+  private readonly inbox = viewChild(AttentionInboxComponent);
 
   protected readonly report = this.service.report;
   protected readonly loading = this.service.loading;
@@ -168,6 +197,7 @@ export class DashboardPageComponent {
 
   protected refresh(): void {
     this.service.load(this.range());
+    this.inbox()?.reload();
   }
 
   // ── Headline numbers ───────────────────────────────────────────────────────

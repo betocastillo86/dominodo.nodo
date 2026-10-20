@@ -13,52 +13,67 @@
 </app-page-header>
 
 <div class="container-xl">
-  <!-- ── Live status: a photo of now. It sits above the picker because the range never touches it ── -->
-  @if (report()) {
-    <div class="row row-cards mb-3">
-      <div class="col-12">
-        <div class="d-flex flex-wrap align-items-baseline justify-content-between gap-2">
-          <h3 class="mb-0">Estado actual</h3>
-          <span class="text-secondary">
-            {{ formatNumber(openNow()) }} abiertas ahora mismo · no depende del rango
-          </span>
-        </div>
-      </div>
-
-      @if (todayOutsideRange()) {
-        <div class="col-12">
-          <div class="alert alert-warning mb-0" role="alert">
-            <div class="d-flex">
-              <div><tabler-icon name="alert-triangle" class="icon alert-icon" /></div>
-              <div>
-                Estas cifras son de hoy ({{ todayLabel }}), que queda fuera del rango elegido. No se
-                pueden recortar al rango: el reporte entrega un solo conteo por estado, sin desglose
-                por día.
-              </div>
+  <!--
+    Now, in two halves: on the left the live status counters, on the right what
+    has a deadline attached to today. Both sit above the picker because neither
+    one depends on the range.
+  -->
+  <div class="row row-cards mb-3">
+    <div [class]="showInbox() ? 'col-12 col-xl-7' : 'col-12'">
+      @if (report()) {
+        <div class="row row-cards">
+          <div class="col-12">
+            <div class="d-flex flex-wrap align-items-baseline justify-content-between gap-2">
+              <h3 class="mb-0">Estado actual</h3>
+              <span class="text-secondary">
+                {{ formatNumber(openNow()) }} abiertas ahora mismo · no depende del rango
+              </span>
             </div>
           </div>
-        </div>
-      }
 
-      @for (tile of statusTiles(); track tile.status) {
-        <div class="col-6 col-lg-3">
-          <div class="card card-sm">
-            <div class="card-status-start" [class]="'bg-' + tile.color"></div>
-            <div class="card-body">
-              <div class="subheader d-flex align-items-center gap-2">
-                {{ tile.label }}
-                <app-help-hint
-                  [text]="statusHelp()[tile.status]"
-                  [label]="'Qué significa ' + tile.label"
-                />
+          @if (todayOutsideRange()) {
+            <div class="col-12">
+              <div class="alert alert-warning mb-0" role="alert">
+                <div class="d-flex">
+                  <div><tabler-icon name="alert-triangle" class="icon alert-icon" /></div>
+                  <div>
+                    Estas cifras son de hoy ({{ todayLabel }}), que queda fuera del rango elegido.
+                    No se pueden recortar al rango: el reporte entrega un solo conteo por estado,
+                    sin desglose por día.
+                  </div>
+                </div>
               </div>
-              <div class="h1 mb-0">{{ formatNumber(tile.count) }}</div>
             </div>
-          </div>
+          }
+
+          @for (tile of statusTiles(); track tile.status) {
+            <div [class]="showInbox() ? 'col-6 col-md-3 col-xl-6' : 'col-6 col-lg-3'">
+              <div class="card card-sm">
+                <div class="card-status-start" [class]="'bg-' + tile.color"></div>
+                <div class="card-body">
+                  <div class="subheader d-flex align-items-center gap-2">
+                    {{ tile.label }}
+                    <app-help-hint
+                      [text]="statusHelp()[tile.status]"
+                      [label]="'Qué significa ' + tile.label"
+                    />
+                  </div>
+                  <div class="h1 mb-0">{{ formatNumber(tile.count) }}</div>
+                </div>
+              </div>
+            </div>
+          }
         </div>
       }
     </div>
-  }
+
+    <!-- Its own load, its own errors: it shows up even while the report is still coming. -->
+    @if (showInbox()) {
+      <div class="col-12 col-xl-5">
+        <app-attention-inbox />
+      </div>
+    }
+  </div>
 
   <div class="card mb-3">
     <div class="card-body py-2">
@@ -224,8 +239,8 @@
               </div>
             </div>
             <p class="text-secondary mt-3 mb-0">
-              Desde que se abre la PQRS hasta que se resuelve o se cierra, sobre las
-              gestionadas dentro del rango.
+              Desde que se abre la PQRS hasta que se resuelve o se cierra, sobre las gestionadas
+              dentro del rango.
             </p>
           </div>
         </div>
@@ -271,8 +286,8 @@
               </div>
             </div>
             <p class="text-secondary mt-3 mb-0">
-              Desde que se abre hasta que pasa a «En progreso» por primera vez. Un comentario de
-              la administración sobre una PQRS nueva también cuenta.
+              Desde que se abre hasta que pasa a «En progreso» por primera vez. Un comentario de la
+              administración sobre una PQRS nueva también cuenta.
             </p>
           </div>
         </div>
@@ -417,10 +432,12 @@
               </h3>
               <p class="card-subtitle">
                 @if (backlogCoverage(); as coverage) {
-                  La franja entre las dos curvas es lo que sigue pendiente. «Resueltas» incluye
-                  las cerradas · {{ coverage.days }} días consolidados@if (coverage.hasLive) {
+                  La franja entre las dos curvas es lo que sigue pendiente. «Resueltas» incluye las
+                  cerradas · {{ coverage.days }} días consolidados
+                  @if (coverage.hasLive) {
                     <span> + el día en curso, en vivo</span>
-                  } · {{ coverage.from }} — {{ coverage.to }}
+                  }
+                  · {{ coverage.from }} — {{ coverage.to }}
                 } @else {
                   Solo incluye días ya consolidados y el día en curso
                 }

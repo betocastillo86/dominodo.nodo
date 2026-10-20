@@ -24,7 +24,12 @@
     <div class="row g-2 w-100">
       <div class="col-6 col-lg-2" [title]="help.from">
         <label class="form-label mb-1" for="reservations-from">Desde</label>
-        <input id="reservations-from" type="date" class="form-control" [formControl]="fromControl" />
+        <input
+          id="reservations-from"
+          type="date"
+          class="form-control"
+          [formControl]="fromControl"
+        />
       </div>
       <div class="col-6 col-lg-2" [title]="help.to">
         <label class="form-label mb-1" for="reservations-to">Hasta</label>
