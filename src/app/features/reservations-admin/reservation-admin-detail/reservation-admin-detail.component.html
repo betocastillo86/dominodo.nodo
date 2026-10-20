@@ -1,8 +1,20 @@
 <app-page-header [title]="title()" pretitle="Reservas">
-  <a actions routerLink="/reservations" class="btn btn-link link-secondary">
-    <tabler-icon name="arrow-left" class="me-1" />
-    Volver al listado
-  </a>
+  <div actions class="btn-list">
+    <a routerLink="/reservations" class="btn btn-link link-secondary">
+      <tabler-icon name="arrow-left" class="me-1" />
+      Volver al listado
+    </a>
+    <!-- Beside the code the page is titled with, and only while the booking
+         still has a move left — the same rule the list's row action uses. -->
+    @if (reservation(); as r) {
+      @if (respond.canRespond(r)) {
+        <button type="button" class="btn btn-primary" (click)="respond.open(r)">
+          <tabler-icon name="message-reply" class="me-1" />
+          Responder
+        </button>
+      }
+    }
+  </div>
 </app-page-header>
 
 @if (loading()) {
@@ -10,6 +22,18 @@
 } @else if (error()) {
   <div class="alert alert-danger" role="alert">{{ error() }}</div>
 } @else if (reservation(); as r) {
+  <!-- Which area this booking is for, at the top and in the page's largest
+       type. `GET /reservations/{id}` names it only by `amenityId`, and the
+       booking means nothing until the reader knows the area. Resolved after
+       the booking itself, so it appears a beat later rather than holding the
+       whole screen behind one more request. -->
+  @if (amenityName(); as name) {
+    <div class="d-flex align-items-center gap-2 mb-3">
+      <tabler-icon name="armchair" class="text-secondary flex-shrink-0" />
+      <h2 class="h2 mb-0">{{ name }}</h2>
+    </div>
+  }
+
   <div class="row row-cards">
     <!-- Reservation information (read-only) -->
     <div class="col-12 col-lg-6">
@@ -22,6 +46,9 @@
         </div>
         <div class="card-body">
           <dl class="row mb-0">
+            <dt class="col-5 text-secondary">Área social</dt>
+            <dd class="col-7 fw-medium">{{ amenityName() ?? '—' }}</dd>
+
             <dt class="col-5 text-secondary">Código</dt>
             <dd class="col-7 fw-medium">{{ r.code }}</dd>
 
@@ -134,26 +161,119 @@
             subtitle="El residente no ha subido comprobantes de pago para esta reserva."
           />
         } @else {
-          <div class="table-responsive">
-            <table class="table card-table table-vcenter">
-              <thead>
-                <tr>
-                  <th>Archivo</th>
-                  <th>Subido</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (proof of r.paymentProofs; track proof.id) {
-                  <tr>
-                    <td>{{ proof.fileName }}</td>
-                    <td class="text-secondary text-nowrap">{{ formatInstant(proof.uploadedAtUtc) }}</td>
-                  </tr>
+          <!-- The proof itself, not a row naming it: what this card is for is
+               checking that the receipt matches the booking, and a file name
+               answers none of that. Tap it for full size. -->
+          <div class="card-body">
+            @for (proof of r.paymentProofs; track proof.id; let last = $last) {
+              <div [class.mb-3]="!last">
+                @if (isImage(proof)) {
+                  @if (previewUrl(proof.id); as url) {
+                    @if (isBrokenPreview(proof.id)) {
+                      <div class="proof-placeholder mb-2">
+                        <tabler-icon name="photo" />
+                      </div>
+                    } @else {
+                      <button
+                        type="button"
+                        class="proof-preview mb-2"
+                        [title]="'Ver ' + proof.fileName"
+                        (click)="openViewer(proof, viewerTpl)"
+                      >
+                        <img [src]="url" [alt]="proof.fileName" (error)="onPreviewError(proof.id)" />
+                      </button>
+                    }
+                  } @else {
+                    <div class="proof-placeholder mb-2">
+                      @if (previewsLoading()) {
+                        <span class="spinner-border spinner-border-sm"></span>
+                      } @else {
+                        <tabler-icon name="photo" />
+                      }
+                    </div>
+                  }
+                } @else {
+                  <!-- A PDF or a document: the API accepts them, so the card
+                       shows what it has and leaves opening it to the button. -->
+                  <div class="proof-placeholder mb-2">
+                    <tabler-icon name="file" />
+                  </div>
                 }
-              </tbody>
-            </table>
+
+                <div class="d-flex align-items-center gap-2">
+                  <div class="flex-grow-1 overflow-hidden">
+                    <div class="text-truncate small fw-medium" [title]="proof.fileName">
+                      {{ proof.fileName }}
+                    </div>
+                    <div class="text-secondary small">{{ formatInstant(proof.uploadedAtUtc) }}</div>
+                  </div>
+                  <button
+                    type="button"
+                    class="btn btn-icon btn-sm btn-ghost-secondary flex-shrink-0"
+                    title="Descargar"
+                    [disabled]="downloadingId() === proof.id"
+                    (click)="download(proof)"
+                  >
+                    @if (downloadingId() === proof.id) {
+                      <span class="spinner-border spinner-border-sm"></span>
+                    } @else {
+                      <tabler-icon name="download" />
+                    }
+                  </button>
+                </div>
+              </div>
+            }
           </div>
         }
       </div>
     </div>
   </div>
 }
+
+<!-- Payment proof, full size --------------------------------------------------->
+<ng-template #viewerTpl let-modal>
+  <div class="modal-header">
+    <h5 class="modal-title text-truncate">{{ viewerProof()?.fileName }}</h5>
+    @if (viewerCounter(); as counter) {
+      <span class="text-secondary small ms-2">{{ counter }}</span>
+    }
+    <button type="button" class="btn-close" aria-label="Cerrar" (click)="modal.dismiss()"></button>
+  </div>
+
+  <div class="modal-body p-0">
+    <div class="lightbox-stage">
+      @if (imageProofs().length > 1) {
+        <button
+          type="button"
+          class="btn btn-icon btn-dark lightbox-nav lightbox-nav--prev"
+          aria-label="Anterior"
+          (click)="viewerPrev()"
+        >
+          <tabler-icon name="chevron-left" />
+        </button>
+      }
+
+      @if (viewerProof(); as proof) {
+        @if (previewUrl(proof.id); as url) {
+          <img class="lightbox-image" [src]="url" [alt]="proof.fileName" />
+        } @else {
+          <span class="spinner-border text-light"></span>
+        }
+      }
+
+      @if (imageProofs().length > 1) {
+        <button
+          type="button"
+          class="btn btn-icon btn-dark lightbox-nav lightbox-nav--next"
+          aria-label="Siguiente"
+          (click)="viewerNext()"
+        >
+          <tabler-icon name="chevron-right" />
+        </button>
+      }
+    </div>
+  </div>
+</ng-template>
+
+<!-- Renders only its dialog; the button beside the booking's code opens it. -->
+<app-reservation-respond #respond (responded)="onResponded()" />

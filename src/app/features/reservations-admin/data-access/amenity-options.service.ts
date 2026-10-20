@@ -3,15 +3,21 @@ import { inject, Injectable } from '@angular/core';
 import { map, Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { PagedResult } from '../../../core/models/paged-result';
-import { AmenityListItem } from '../../tenant-info/amenities/data-access/amenity.models';
+import {
+  AmenityDetail,
+  AmenityListItem,
+} from '../../tenant-info/amenities/data-access/amenity.models';
 
 /** Large enough to cover a conjunto's whole social-area catalog in one page. */
 const MAX_AREAS = 100;
 
 /**
- * Read-only options for the "área social" filter dropdown (`GET /amenities`).
+ * Read-only access to the conjunto's social areas, for the screens of this
+ * module that hold a BOOKING and not the catalog: the list's "área social"
+ * filter, and the detail, which has to name the area it is showing.
+ *
  * Deliberately separate from `AmenitiesService` (the Áreas sociales CRUD
- * screen's own `providedIn: 'root'` list state) so loading this filter never
+ * screen's own `providedIn: 'root'` list state) so reading from here never
  * clobbers whatever that screen has loaded — same reasoning as
  * `ApartmentRequestsService` in the Apartments module.
  */
@@ -26,5 +32,18 @@ export class AmenityOptionsService {
     return this.http
       .get<PagedResult<AmenityListItem>>(this.base, { params })
       .pipe(map((result) => result.items));
+  }
+
+  /**
+   * One area by id (`GET /amenities/{id}`). `[Authorize]` only on the API —
+   * "amenities.view OR an active membership" — so anybody who can read a
+   * booking can name its area.
+   *
+   * The booking's detail already carries the area's POLICY, but not its NAME:
+   * `ReservationDetailDto` identifies the area by `amenityId` alone, and a GUID
+   * is not an answer to "¿cuál área?".
+   */
+  getById(id: string): Observable<AmenityDetail> {
+    return this.http.get<AmenityDetail>(`${this.base}/${id}`);
   }
 }

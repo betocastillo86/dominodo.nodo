@@ -5,6 +5,7 @@ import { environment } from '../../../../environments/environment';
 import { toMessage } from '../../../core/http/problem-details';
 import { PagedResult } from '../../../core/models/paged-result';
 import {
+  AttachmentDownloadUrl,
   ConfirmReservationRequest,
   ReservationDetailDto,
   ReservationDto,
@@ -55,6 +56,8 @@ export class ReservationsAdminService {
       .set('sortBy', sort.sortBy)
       .set('direction', sort.direction);
     if (filters.amenityId) params = params.set('amenityId', filters.amenityId);
+    if (filters.apartmentId) params = params.set('apartmentId', filters.apartmentId);
+    if (filters.status) params = params.set('status', filters.status);
     if (filters.fromUtc) params = params.set('fromUtc', filters.fromUtc);
     if (filters.toUtc) params = params.set('toUtc', filters.toUtc);
     // `GET /reservations` carries `paymentUploaded` on each ROW but does not yet
@@ -101,6 +104,18 @@ export class ReservationsAdminService {
   reject(id: string, reason: string): Observable<void> {
     const body: ReservationReasonRequest = { reason };
     return this.http.post<void>(`${this.base}/${id}/reject`, body);
+  }
+
+  /**
+   * A short-lived (~5 min) SAS to read one payment proof out of the PRIVATE
+   * container (`GET /reservations/{id}/payment-proofs/{proofId}/download-url`,
+   * needs `reservations.view`). There is no lasting URL to cache: unlike an
+   * amenity photo, a proof is somebody's financial record.
+   */
+  getPaymentProofDownloadUrl(id: string, proofId: string): Observable<AttachmentDownloadUrl> {
+    return this.http.get<AttachmentDownloadUrl>(
+      `${this.base}/${id}/payment-proofs/${proofId}/download-url`,
+    );
   }
 
   /**

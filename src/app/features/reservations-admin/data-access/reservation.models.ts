@@ -15,9 +15,12 @@
  * `OperationsReservationStatus` enum, so one definition covers both.
  */
 import type { AmenityPolicy } from '../../tenant-info/amenities/data-access/amenity.models';
-import type { ReservationStatus } from '../../reservations/data-access/reservation-availability.models';
+import type {
+  AttachmentDownloadUrl,
+  ReservationStatus,
+} from '../../reservations/data-access/reservation-availability.models';
 
-export type { ReservationStatus };
+export type { AttachmentDownloadUrl, ReservationStatus };
 
 export const RESERVATION_STATUS_LABEL: Record<ReservationStatus, string> = {
   Pending: 'Pendiente',
@@ -26,6 +29,19 @@ export const RESERVATION_STATUS_LABEL: Record<ReservationStatus, string> = {
   Cancelled: 'Cancelada',
   Expired: 'Expirada',
 };
+
+/**
+ * Every status, in the order the status filter offers them — the API's own
+ * `OperationsReservationStatus` order, which also runs from "needs an answer"
+ * to "already closed".
+ */
+export const RESERVATION_STATUSES: readonly ReservationStatus[] = [
+  'Pending',
+  'Confirmed',
+  'Rejected',
+  'Cancelled',
+  'Expired',
+];
 
 export const RESERVATION_STATUS_BADGE: Record<ReservationStatus, string> = {
   Pending: 'badge bg-yellow-lt',
@@ -91,6 +107,21 @@ export interface ReservationPaymentProofDto {
   uploadedAtUtc: string;
 }
 
+/** Extensions still treated as images when the stored content type came back generic. */
+const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.avif'];
+
+/**
+ * Whether a payment proof can be rendered as an image. Not every proof can: the
+ * API's allowlist also takes PDFs and Office documents, and those keep the
+ * generic file icon. An upload that lost its content type on the way to Blob
+ * (`application/octet-stream`) still matches by extension.
+ */
+export function isImageProof(proof: ReservationPaymentProofDto): boolean {
+  if (proof.contentType?.toLowerCase().startsWith('image/')) return true;
+  const name = proof.fileName.toLowerCase();
+  return IMAGE_EXTENSIONS.some((ext) => name.endsWith(ext));
+}
+
 /**
  * Full shape returned by `GET /reservations/{id}`
  * (`OperationsReservationDetailDto`). Deliberately NOT extending
@@ -148,6 +179,18 @@ export function requiresReason(action: ReservationAction): boolean {
 }
 
 /**
+ * As much of a booking as answering it needs. Structural on purpose: the LIST
+ * row (`ReservationDto`) and the DETAIL (`ReservationDetailDto`) are different
+ * shapes, and both screens open the same dialog.
+ */
+export interface RespondableReservation {
+  id: string;
+  code: string;
+  status: ReservationStatus;
+  startsAtUtc: string;
+}
+
+/**
  * The moves the API would actually accept for this booking, mirroring the
  * domain guards (`Reservation.Confirm/Reject/Cancel`):
  *  - confirm/reject: only a PENDING booking, and only with `reservations.edit`;
@@ -159,7 +202,7 @@ export function requiresReason(action: ReservationAction): boolean {
  * still comes back as a 409 and is shown as such.
  */
 export function availableReservationActions(
-  reservation: ReservationDto,
+  reservation: RespondableReservation,
   canEdit: boolean,
   canCancel: boolean,
 ): ReservationAction[] {
@@ -195,6 +238,8 @@ export interface ReservationReasonRequest {
  */
 export interface ReservationFilters {
   amenityId: string | null;
+  apartmentId: string | null;
+  status: ReservationStatus | null;
   paymentUploaded: boolean | null;
   fromUtc: string | null;
   toUtc: string | null;

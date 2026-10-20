@@ -1,12 +1,15 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal, TemplateRef } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
-import { Observable, finalize } from 'rxjs';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { map } from 'rxjs';
 import { PermissionStore } from '../../../core/authz/permission.store';
-import { NotificationService } from '../../../core/notifications/notification.service';
 import { DataTableComponent, TableColumn } from '../../../shared/ui/data-table/data-table.component';
 import { PageHeaderComponent } from '../../../shared/ui/page-header/page-header.component';
+import {
+  SearchSelectComponent,
+  SearchSelectFn,
+  SearchSelectResolveFn,
+} from '../../../shared/ui/search-select/search-select.component';
 import { apartmentLabel } from '../../apartments/data-access/apartment.models';
 import { formatDay, todayInReportZone, toFromUtc, toToUtc } from '../../dashboard/data-access/date-range';
 import {
@@ -15,19 +18,18 @@ import {
 } from '../../reservations/data-access/reservation-format';
 import { AmenityListItem } from '../../tenant-info/amenities/data-access/amenity.models';
 import { AmenityOptionsService } from '../data-access/amenity-options.service';
-import { toReservationActionMessage } from '../data-access/reservation-action-errors';
+import { ApartmentOptionsService } from '../data-access/apartment-options.service';
 import {
   availableReservationActions,
-  RESERVATION_ACTION_LABEL,
-  RESERVATION_REASON_MAX_LENGTH,
   RESERVATION_STATUS_BADGE,
   RESERVATION_STATUS_LABEL,
-  requiresReason,
-  ReservationAction,
+  RESERVATION_STATUSES,
   ReservationDto,
   ReservationSort,
+  ReservationStatus,
 } from '../data-access/reservation.models';
 import { ReservationsAdminService } from '../data-access/reservations-admin.service';
+import { ReservationRespondComponent } from '../reservation-respond/reservation-respond.component';
 
 /**
  * Soonest first: the point of this screen is what is about to happen, not what
@@ -37,14 +39,10 @@ const SORT: ReservationSort = { sortBy: 'StartDate', direction: 'Asc' };
 
 /**
  * Admin reservations list: upcoming bookings across every area, soonest first,
- * each answerable in place — the "responder" action opens a modal that asks for
- * the new state (aprobar / rechazar / cancelar) and, for the two that release
- * the slot, the administrator's reason.
- *
- * Which states a row offers mirrors the API's own guards (see
- * `availableReservationActions`), and the two write permissions differ:
- * approving and rejecting need `reservations.edit`, cancelling needs
- * `reservations.cancel`.
+ * each answerable in place — the "responder" action opens
+ * `ReservationRespondComponent`, the dialog this screen shares with the detail.
+ * Which rows offer it mirrors the API's own guards (see
+ * `availableReservationActions`).
  *
  * Defaults to "desde hoy" on the reservation WINDOW (`sortBy=StartDate`,
  * `fromUtc`), never the creation date — an admin who clears the "desde" filter
@@ -53,16 +51,21 @@ const SORT: ReservationSort = { sortBy: 'StartDate', direction: 'Asc' };
 @Component({
   selector: 'app-reservation-admin-list',
   standalone: true,
-  imports: [PageHeaderComponent, DataTableComponent, ReactiveFormsModule],
+  imports: [
+    PageHeaderComponent,
+    DataTableComponent,
+    ReactiveFormsModule,
+    SearchSelectComponent,
+    ReservationRespondComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './reservation-admin-list.component.html',
 })
 export class ReservationAdminListComponent {
   private readonly service = inject(ReservationsAdminService);
   private readonly amenityOptions = inject(AmenityOptionsService);
+  private readonly apartmentOptions = inject(ApartmentOptionsService);
   private readonly permissions = inject(PermissionStore);
-  private readonly notifications = inject(NotificationService);
-  private readonly modal = inject(NgbModal);
 
   readonly items = this.service.items;
   readonly paging = this.service.paging;
@@ -75,6 +78,31 @@ export class ReservationAdminListComponent {
   readonly fromControl = new FormControl(todayInReportZone(), { nonNullable: true });
   readonly toControl = new FormControl('', { nonNullable: true });
   readonly amenityControl = new FormControl('', { nonNullable: true });
+  readonly statusControl = new FormControl<ReservationStatus | ''>('', { nonNullable: true });
+
+  /** Options for the status filter, with their Spanish labels. */
+  readonly statuses = RESERVATION_STATUSES;
+  readonly statusLabel = RESERVATION_STATUS_LABEL;
+
+  /**
+   * Holds the chosen apartment's id → sent as `apartmentId` to
+   * `GET /reservations`. A typeahead rather than the area filter's `<select>`:
+   * a conjunto has a handful of social areas and hundreds of apartments, and
+   * only one of those two fits in a dropdown.
+   */
+  readonly apartmentControl = new FormControl<string | null>(null);
+
+  /** Remote lookup behind that typeahead, in the shape `app-search-select` expects. */
+  readonly searchApartments: SearchSelectFn = (term) =>
+    this.apartmentOptions
+      .search(term)
+      .pipe(map((items) => items.map((a) => ({ value: a.id, label: apartmentLabel(a) }))));
+
+  /** Turns an id set from outside — a shared URL — back into something readable. */
+  readonly resolveApartment: SearchSelectResolveFn = (id) =>
+    this.apartmentOptions
+      .getById(id)
+      .pipe(map((a) => (a ? { value: a.id, label: apartmentLabel(a) } : null)));
 
   /**
    * Permissive only while `GET /auth/current` is still in flight, as everywhere
@@ -87,39 +115,15 @@ export class ReservationAdminListComponent {
     () => !this.permissions.loaded() || this.permissions.has('reservations.cancel'),
   );
 
-  // ── Respond modal ──────────────────────────────────────────────────────────
-
-  /** The booking the modal is currently about. */
-  readonly target = signal<ReservationDto | null>(null);
-  readonly saving = signal(false);
-  readonly formError = signal<string | null>(null);
-  readonly submitted = signal(false);
-
-  readonly actionLabel = RESERVATION_ACTION_LABEL;
-  readonly reasonMaxLength = RESERVATION_REASON_MAX_LENGTH;
-
-  readonly form = new FormGroup({
-    action: new FormControl<ReservationAction | ''>('', {
-      nonNullable: true,
-      validators: [Validators.required],
-    }),
-    reason: new FormControl('', { nonNullable: true }),
-  });
-
-  /** The states this particular booking can still move to. */
-  readonly actionOptions = computed<ReservationAction[]>(() => {
-    const row = this.target();
-    return row ? availableReservationActions(row, this.canEdit(), this.canCancel()) : [];
-  });
-
-  /** Drives the reason textarea; recomputed from the control so the template stays dumb. */
-  readonly needsReason = signal(false);
-
-  /** Held so the component closes the dialog itself on success. */
-  private respondModal: NgbModalRef | null = null;
-
   readonly columns: readonly TableColumn<ReservationDto>[] = [
-    { header: 'Código', value: (r) => r.code, class: 'w-1 text-nowrap fw-medium' },
+    // The code leads where the row's eye icon does: it is what identifies the
+    // booking, so it is what a reader tries to click first.
+    {
+      header: 'Código',
+      value: (r) => r.code,
+      class: 'w-1 text-nowrap fw-medium',
+      link: (r) => this.detailLink(r),
+    },
     { header: 'Fecha de reserva', value: (r) => this.windowLabel(r), class: 'text-nowrap' },
     {
       header: 'Valor',
@@ -155,14 +159,16 @@ export class ReservationAdminListComponent {
       error: () => this.areas.set([]),
     });
 
-    for (const control of [this.fromControl, this.toControl, this.amenityControl]) {
+    const filters = [
+      this.fromControl,
+      this.toControl,
+      this.amenityControl,
+      this.apartmentControl,
+      this.statusControl,
+    ];
+    for (const control of filters) {
       control.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => this.reload(1));
     }
-
-    // Rejecting and cancelling need a reason; approving must not demand one.
-    this.form.controls.action.valueChanges.pipe(takeUntilDestroyed()).subscribe((action) => {
-      this.applyReasonValidators(action);
-    });
 
     this.reload(1);
   }
@@ -171,71 +177,12 @@ export class ReservationAdminListComponent {
     this.reload(page);
   }
 
-  openRespond(row: ReservationDto, tpl: TemplateRef<unknown>): void {
-    this.target.set(row);
-    this.submitted.set(false);
-    this.formError.set(null);
-    this.form.reset({ action: '', reason: '' });
-    this.applyReasonValidators('');
-
-    this.respondModal = this.modal.open(tpl);
-    this.respondModal.result.then(
-      () => (this.respondModal = null),
-      () => (this.respondModal = null),
-    );
-  }
-
-  submitRespond(): void {
-    this.submitted.set(true);
-    this.formError.set(null);
-    if (this.form.invalid) return;
-
-    const row = this.target();
-    const { action, reason } = this.form.getRawValue();
-    if (!row || !action) return;
-
-    const request = this.requestFor(row.id, action, reason.trim());
-
-    this.saving.set(true);
-    request.pipe(finalize(() => this.saving.set(false))).subscribe({
-      next: () => {
-        this.respondModal?.close();
-        this.notifications.success(`Reserva ${row.code}: ${this.pastTense(action)}.`);
-        // Acting changes the row's state, and the state is a column — refetch
-        // the page the administrator is standing on rather than patching it.
-        this.reload(this.paging()?.page ?? 1);
-      },
-      error: (error: unknown) => this.formError.set(toReservationActionMessage(error)),
-    });
-  }
-
-  private requestFor(id: string, action: ReservationAction, reason: string): Observable<void> {
-    switch (action) {
-      case 'confirm':
-        return this.service.confirm(id);
-      case 'reject':
-        return this.service.reject(id, reason);
-      case 'cancel':
-        return this.service.cancel(id, reason);
-    }
-  }
-
-  private pastTense(action: ReservationAction): string {
-    return { confirm: 'aprobada', reject: 'rechazada', cancel: 'cancelada' }[action];
-  }
-
-  private applyReasonValidators(action: ReservationAction | ''): void {
-    const needed = !!action && requiresReason(action);
-    this.needsReason.set(needed);
-
-    const reason = this.form.controls.reason;
-    if (needed) {
-      reason.setValidators([Validators.required, Validators.maxLength(RESERVATION_REASON_MAX_LENGTH)]);
-    } else {
-      reason.clearValidators();
-      reason.setValue('', { emitEvent: false });
-    }
-    reason.updateValueAndValidity({ emitEvent: false });
+  /**
+   * Answering changes the booking's state, and the state is a column — refetch
+   * the page the administrator is standing on rather than patching the row.
+   */
+  onResponded(): void {
+    this.reload(this.paging()?.page ?? 1);
   }
 
   /** `"20 oct 2026 · 8:00 a. m.–10:00 a. m."` — the booked WINDOW, not when it was requested. */
@@ -250,6 +197,8 @@ export class ReservationAdminListComponent {
     this.service.list(
       {
         amenityId: this.amenityControl.value || null,
+        apartmentId: this.apartmentControl.value || null,
+        status: this.statusControl.value || null,
         // `GET /reservations` does not accept a payment filter yet — the column
         // reports it, but narrowing by it has to happen server-side.
         paymentUploaded: null,

@@ -1,0 +1,61 @@
+<ng-template #respondTpl let-modal>
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <div class="modal-header">
+      <h5 class="modal-title">
+        @if (target(); as reservation) {
+          Responder la reserva {{ reservation.code }}
+        } @else {
+          Responder la reserva
+        }
+      </h5>
+      <button type="button" class="btn-close" (click)="modal.dismiss()"></button>
+    </div>
+
+    <div class="modal-body">
+      @if (formError(); as message) {
+        <div class="alert alert-danger" role="alert">{{ message }}</div>
+      }
+
+      <div class="mb-3">
+        <label class="form-label required" for="respond-action">Estado</label>
+        <select id="respond-action" class="form-select" formControlName="action">
+          <option value="">Selecciona un estado…</option>
+          @for (action of actionOptions(); track action) {
+            <option [value]="action">{{ actionLabel[action] }}</option>
+          }
+        </select>
+        @if (submitted() && form.controls.action.invalid) {
+          <div class="text-danger small mt-1">Selecciona el estado.</div>
+        }
+      </div>
+
+      @if (needsReason()) {
+        <div class="mb-0">
+          <label class="form-label required" for="respond-reason">Motivo</label>
+          <textarea
+            id="respond-reason"
+            class="form-control"
+            rows="4"
+            formControlName="reason"
+            [maxlength]="reasonMaxLength"
+            placeholder="Explícale al residente por qué."
+          ></textarea>
+          @if (submitted() && form.controls.reason.invalid) {
+            <div class="text-danger small mt-1">Escribe el motivo.</div>
+          }
+          <small class="form-hint">El residente verá este texto. Máximo {{ reasonMaxLength }} caracteres.</small>
+        </div>
+      }
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn btn-link link-secondary" (click)="modal.dismiss()">Cerrar</button>
+      <button type="submit" class="btn btn-primary" [disabled]="saving()">
+        @if (saving()) {
+          <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        }
+        Guardar
+      </button>
+    </div>
+  </form>
+</ng-template>
