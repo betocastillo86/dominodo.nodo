@@ -79,6 +79,7 @@ export type SearchSelectResolveFn = (value: string) => Observable<SearchSelectOp
           type="button"
           class="btn btn-icon btn-sm btn-ghost-secondary"
           [attr.aria-label]="clearLabel()"
+          [attr.title]="clearLabel()"
           [disabled]="isDisabled()"
           (click)="clear()"
         >

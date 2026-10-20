@@ -12,6 +12,15 @@ import { TablerIconComponent } from 'angular-tabler-icons';
 import { PagedResult } from '../../../core/models/paged-result';
 import { SpinnerComponent } from '../spinner/spinner.component';
 
+/**
+ * What the action column's icon means in this portal, so a table that sets no
+ * `actionLabel` still labels its button instead of shipping a bare icon.
+ */
+const ACTION_ICON_LABEL: Record<string, string> = {
+  eye: 'Ver detalle',
+  edit: 'Editar',
+};
+
 /** Definition of a single column for the generic data table. */
 export interface TableColumn<T> {
   /** Column header text. */
@@ -42,6 +51,12 @@ export interface TableColumn<T> {
    * template is being resolved.
    */
   cellTemplate?: TemplateRef<{ $implicit: T }>;
+  /**
+   * One line saying what the column is telling the reader, as the header's own
+   * tooltip. For the columns whose meaning a new administrator cannot guess
+   * from the title alone — never a restatement of it.
+   */
+  hint?: string;
 }
 
 /** Current sort state: which column key and in which direction. */
@@ -85,6 +100,12 @@ export class DataTableComponent<T> {
   readonly actionLink = input<((row: T) => string | unknown[]) | null>(null);
   /** Icon name for the action column link. */
   readonly actionIcon = input<string>('edit');
+  /**
+   * What that link does, as its tooltip and its accessible name. Left unset it
+   * falls back to what the icon conventionally means here — an icon-only button
+   * with no name at all is what a first-time user cannot read.
+   */
+  readonly actionLabel = input<string | null>(null);
   /** Optional query params merged into each row's action link. */
   readonly actionQueryParams = input<((row: T) => Record<string, string>) | null>(null);
   /**
@@ -102,6 +123,11 @@ export class DataTableComponent<T> {
   readonly pageChange = output<number>();
   readonly sortChange = output<TableSort>();
   readonly rowAction = output<T>();
+
+  /** The action link's label: what the host set, else the icon's usual meaning. */
+  readonly resolvedActionLabel = computed(
+    () => this.actionLabel() ?? ACTION_ICON_LABEL[this.actionIcon()] ?? 'Abrir',
+  );
 
   /** Whether the trailing action column exists at all. */
   readonly hasActions = computed(() => !!this.actionLink() || !!this.rowActionIcon());

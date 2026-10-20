@@ -8,7 +8,7 @@
       <thead>
         <tr>
           @for (col of columns(); track col.header) {
-            <th [class]="col.class ?? ''">
+            <th [class]="col.class ?? ''" [attr.title]="col.hint ?? null">
               @if (col.sortKey; as key) {
                 <button
                   type="button"
@@ -59,6 +59,7 @@
                     type="button"
                     class="btn btn-icon btn-sm me-1"
                     [attr.aria-label]="rowActionLabel()"
+                    [attr.title]="rowActionLabel()"
                     (click)="rowAction.emit(row)"
                   >
                     <tabler-icon [name]="rowActionIcon()!" />
@@ -69,6 +70,8 @@
                     [routerLink]="link(row)"
                     [queryParams]="actionQueryParams()?.(row) ?? null"
                     class="btn btn-icon btn-sm"
+                    [attr.aria-label]="resolvedActionLabel()"
+                    [attr.title]="resolvedActionLabel()"
                   >
                     <tabler-icon [name]="actionIcon()" />
                   </a>

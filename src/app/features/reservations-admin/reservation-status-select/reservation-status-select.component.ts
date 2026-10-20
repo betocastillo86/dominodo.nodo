@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { PermissionStore } from '../../../core/authz/permission.store';
+import { RESERVATIONS_HELP } from '../data-access/help-text';
 import {
   availableReservationActions,
   RESERVATION_ACTION_LABEL,
@@ -40,6 +41,7 @@ interface StatusOption {
       <select
         class="form-select form-select-sm status-select"
         [class]="tint()"
+        [title]="help.statusSelect"
         [attr.aria-label]="'Cambiar el estado de la reserva ' + reservation().code"
         (change)="onChange($event)"
       >
@@ -50,7 +52,7 @@ interface StatusOption {
         }
       </select>
     } @else {
-      <span [class]="badgeClass()">{{ currentLabel() }}</span>
+      <span [class]="badgeClass()" [title]="help.statusLocked">{{ currentLabel() }}</span>
     }
   `,
   styles: [
@@ -78,6 +80,13 @@ export class ReservationStatusSelectComponent {
   private readonly permissions = inject(PermissionStore);
 
   readonly reservation = input.required<RespondableReservation>();
+
+  /**
+   * Why the cell behaves the way it does, as the control's tooltip: a select
+   * that opens a dialog is not what a `<select>` normally does, and a booking
+   * that renders as a plain badge is not broken — it is closed.
+   */
+  readonly help = RESERVATIONS_HELP;
 
   /** The state the administrator picked, as the move that gets there. */
   readonly actionPicked = output<ReservationAction>();

@@ -22,15 +22,15 @@
     </div>
 
     <div class="row g-2 w-100">
-      <div class="col-6 col-lg-2">
+      <div class="col-6 col-lg-2" [title]="help.from">
         <label class="form-label mb-1" for="reservations-from">Desde</label>
         <input id="reservations-from" type="date" class="form-control" [formControl]="fromControl" />
       </div>
-      <div class="col-6 col-lg-2">
+      <div class="col-6 col-lg-2" [title]="help.to">
         <label class="form-label mb-1" for="reservations-to">Hasta</label>
         <input id="reservations-to" type="date" class="form-control" [formControl]="toControl" />
       </div>
-      <div class="col-12 col-lg-2">
+      <div class="col-12 col-lg-2" [title]="help.statusFilter">
         <label class="form-label mb-1" for="reservations-status">Estado</label>
         <select id="reservations-status" class="form-select" [formControl]="statusControl">
           <option value="">Todos los estados</option>
@@ -39,7 +39,7 @@
           }
         </select>
       </div>
-      <div class="col-12 col-lg">
+      <div class="col-12 col-lg" [title]="help.amenityFilter">
         <label class="form-label mb-1" for="reservations-area">Área social</label>
         <select id="reservations-area" class="form-select" [formControl]="amenityControl">
           <option value="">Todas las áreas</option>
@@ -48,7 +48,7 @@
           }
         </select>
       </div>
-      <div class="col-12 col-lg">
+      <div class="col-12 col-lg" [title]="help.apartmentFilter">
         <label class="form-label mb-1">Apartamento</label>
         <app-search-select
           [formControl]="apartmentControl"
@@ -70,6 +70,7 @@
     [rowKey]="rowKey"
     [actionLink]="detailLink"
     actionIcon="eye"
+    [actionLabel]="help.detail"
     (pageChange)="onPageChange($event)"
   />
 </div>
@@ -84,13 +85,14 @@
     <button
       type="button"
       class="badge bg-green-lt border-0 payment-badge"
+      [title]="help.paymentYes"
       [attr.aria-label]="'Ver los comprobantes de la reserva ' + reservation.code"
       (click)="gallery.open(reservation)"
     >
       Sí
     </button>
   } @else {
-    <span class="badge bg-red-lt">No</span>
+    <span class="badge bg-red-lt" [title]="help.paymentNo">No</span>
   }
 </ng-template>
 

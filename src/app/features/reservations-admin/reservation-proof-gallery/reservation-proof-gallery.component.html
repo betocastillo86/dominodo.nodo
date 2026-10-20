@@ -28,6 +28,7 @@
               type="button"
               class="btn btn-icon btn-dark gallery-nav gallery-nav--prev"
               aria-label="Anterior"
+              title="Comprobante anterior"
               (click)="prev()"
             >
               <tabler-icon name="chevron-left" />
@@ -41,7 +42,7 @@
               <img
                 class="gallery-image"
                 [src]="src"
-                [alt]="proof.fileName"
+                [alt]="'Comprobante de pago: ' + proof.fileName"
                 (error)="onImageError(proof.id)"
               />
             }
@@ -54,6 +55,7 @@
               type="button"
               class="btn btn-icon btn-dark gallery-nav gallery-nav--next"
               aria-label="Siguiente"
+              title="Comprobante siguiente"
               (click)="next()"
             >
               <tabler-icon name="chevron-right" />
@@ -70,6 +72,7 @@
           <button
             type="button"
             class="btn btn-sm btn-outline-secondary flex-shrink-0"
+            title="Abrir el soporte en una pestaña nueva"
             [disabled]="downloadingId() === proof.id"
             (click)="download(proof)"
           >
@@ -89,14 +92,18 @@
                 type="button"
                 class="gallery-thumb"
                 [class.gallery-thumb--active]="thumb.id === proof.id"
-                [title]="thumb.fileName"
+                [title]="'Ver ' + thumb.fileName"
                 (click)="show(thumb)"
               >
                 @if (url(thumb.id); as src) {
                   @if (isBroken(thumb.id)) {
                     <span class="gallery-placeholder"><tabler-icon name="photo" /></span>
                   } @else {
-                    <img [src]="src" [alt]="thumb.fileName" (error)="onImageError(thumb.id)" />
+                    <img
+                      [src]="src"
+                      [alt]="'Comprobante de pago: ' + thumb.fileName"
+                      (error)="onImageError(thumb.id)"
+                    />
                   }
                 } @else {
                   <span class="gallery-placeholder"><tabler-icon name="photo" /></span>

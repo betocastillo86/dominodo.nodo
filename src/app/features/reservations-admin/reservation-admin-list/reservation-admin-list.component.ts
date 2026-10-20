@@ -23,6 +23,7 @@ import { formatInstantAsTimeOfDay } from '../../reservations/data-access/reserva
 import { AmenityListItem } from '../../tenant-info/amenities/data-access/amenity.models';
 import { AmenityOptionsService } from '../data-access/amenity-options.service';
 import { ApartmentOptionsService } from '../data-access/apartment-options.service';
+import { RESERVATIONS_HELP } from '../data-access/help-text';
 import {
   RESERVATION_STATUS_BADGE,
   RESERVATION_STATUS_LABEL,
@@ -65,13 +66,9 @@ interface QuickViewDef {
 }
 
 const QUICK_VIEWS: readonly QuickViewDef[] = [
-  { key: 'startsToday', label: 'Entrega hoy', hint: 'Las reservas cuya ventana cae hoy' },
-  { key: 'createdToday', label: 'Creadas hoy', hint: 'Las que los residentes solicitaron hoy' },
-  {
-    key: 'expiresToday',
-    label: 'Expiran hoy',
-    hint: 'Pendientes cuyo plazo de respuesta vence hoy',
-  },
+  { key: 'startsToday', label: 'Entrega hoy', hint: RESERVATIONS_HELP.startsToday },
+  { key: 'createdToday', label: 'Creadas hoy', hint: RESERVATIONS_HELP.createdToday },
+  { key: 'expiresToday', label: 'Expiran hoy', hint: RESERVATIONS_HELP.expiresToday },
 ];
 
 /**
@@ -131,6 +128,15 @@ export class ReservationAdminListComponent {
 
   readonly quickViews = QUICK_VIEWS;
 
+  /**
+   * The tooltip of every filter, column and control on this screen. Three of
+   * the five columns are read wrong without one: the dates are about the day
+   * the area is USED (never when it was requested), "Pago" reports a soporte
+   * that is in rather than a payment that is verified, and "Estado" is a
+   * control, not a value.
+   */
+  readonly help = RESERVATIONS_HELP;
+
   /** The shortcut currently applied, or null for the plain filter bar. */
   readonly quickView = signal<QuickView | null>(null);
 
@@ -188,8 +194,14 @@ export class ReservationAdminListComponent {
       value: (r) => r.code,
       class: 'w-1 text-nowrap fw-medium',
       link: (r) => this.detailLink(r),
+      hint: RESERVATIONS_HELP.code,
     },
-    { header: 'Fecha de reserva', value: (r) => this.windowLabel(r), class: 'text-nowrap' },
+    {
+      header: 'Fecha de reserva',
+      value: (r) => this.windowLabel(r),
+      class: 'text-nowrap',
+      hint: RESERVATIONS_HELP.window,
+    },
     // Interactive when there is something to see: the template turns "Sí" into
     // the trigger of the proof gallery. The badge below is the fallback.
     {
@@ -197,8 +209,13 @@ export class ReservationAdminListComponent {
       value: (r) => (r.paymentUploaded ? 'Sí' : 'No'),
       badgeClass: (r) => (r.paymentUploaded ? 'badge bg-green-lt' : 'badge bg-red-lt'),
       cellTemplate: this.paymentCell(),
+      hint: RESERVATIONS_HELP.payment,
     },
-    { header: 'Apartamento', value: (r) => apartmentLabel(r.apartment) },
+    {
+      header: 'Apartamento',
+      value: (r) => apartmentLabel(r.apartment),
+      hint: RESERVATIONS_HELP.apartmentColumn,
+    },
     // A control, not a value: the badge below is only what shows if the
     // template has not resolved yet.
     {
@@ -206,6 +223,7 @@ export class ReservationAdminListComponent {
       value: (r) => RESERVATION_STATUS_LABEL[r.status],
       badgeClass: (r) => RESERVATION_STATUS_BADGE[r.status],
       cellTemplate: this.statusCell(),
+      hint: RESERVATIONS_HELP.statusColumn,
     },
   ]);
 
