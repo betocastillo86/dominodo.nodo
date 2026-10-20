@@ -32,6 +32,7 @@ import {
   ReservationStatus,
 } from '../data-access/reservation.models';
 import { ReservationsAdminService } from '../data-access/reservations-admin.service';
+import { ReservationProofGalleryComponent } from '../reservation-proof-gallery/reservation-proof-gallery.component';
 import { ReservationRespondComponent } from '../reservation-respond/reservation-respond.component';
 import { ReservationStatusSelectComponent } from '../reservation-status-select/reservation-status-select.component';
 
@@ -95,9 +96,26 @@ const QUICK_VIEWS: readonly QuickViewDef[] = [
     SearchSelectComponent,
     ReservationRespondComponent,
     ReservationStatusSelectComponent,
+    ReservationProofGalleryComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './reservation-admin-list.component.html',
+  styles: `
+    /* The "Pago: Sí" badge is a button. Tabler's badge carries no affordance of
+       its own, so the cursor and the hover say it can be opened — and a
+       touch-only device, which has no hover, gets the pressed state instead. */
+    .payment-badge {
+      cursor: pointer;
+    }
+    @media (hover: hover) {
+      .payment-badge:hover {
+        text-decoration: underline;
+      }
+    }
+    .payment-badge:active {
+      opacity: 0.75;
+    }
+  `,
 })
 export class ReservationAdminListComponent {
   private readonly service = inject(ReservationsAdminService);
@@ -154,6 +172,14 @@ export class ReservationAdminListComponent {
    */
   private readonly statusCell = viewChild<TemplateRef<{ $implicit: ReservationDto }>>('statusCell');
 
+  /**
+   * Template for the "Pago" cell — a button when the proof is in, so the
+   * receipt opens from the row itself. Optional for the same reason as the one
+   * above: the badge is what shows until the query resolves.
+   */
+  private readonly paymentCell =
+    viewChild<TemplateRef<{ $implicit: ReservationDto }>>('paymentCell');
+
   readonly columns = computed<readonly TableColumn<ReservationDto>[]>(() => [
     // The code leads where the row's eye icon does: it is what identifies the
     // booking, so it is what a reader tries to click first.
@@ -164,10 +190,13 @@ export class ReservationAdminListComponent {
       link: (r) => this.detailLink(r),
     },
     { header: 'Fecha de reserva', value: (r) => this.windowLabel(r), class: 'text-nowrap' },
+    // Interactive when there is something to see: the template turns "Sí" into
+    // the trigger of the proof gallery. The badge below is the fallback.
     {
       header: 'Pago',
       value: (r) => (r.paymentUploaded ? 'Sí' : 'No'),
       badgeClass: (r) => (r.paymentUploaded ? 'badge bg-green-lt' : 'badge bg-red-lt'),
+      cellTemplate: this.paymentCell(),
     },
     { header: 'Apartamento', value: (r) => apartmentLabel(r.apartment) },
     // A control, not a value: the badge below is only what shows if the

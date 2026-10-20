@@ -75,6 +75,26 @@
 </div>
 
 <!--
+  The "Pago" cell. "Sí" is a button rather than a badge: a proof that is in can
+  be read right here, and the row is where an administrator is already looking.
+  "No" stays a plain badge — there is nothing to open.
+-->
+<ng-template #paymentCell let-reservation>
+  @if (reservation.paymentUploaded) {
+    <button
+      type="button"
+      class="badge bg-green-lt border-0 payment-badge"
+      [attr.aria-label]="'Ver los comprobantes de la reserva ' + reservation.code"
+      (click)="gallery.open(reservation)"
+    >
+      Sí
+    </button>
+  } @else {
+    <span class="badge bg-red-lt">No</span>
+  }
+</ng-template>
+
+<!--
   The "Estado" cell. It is a control rather than a value, so it reaches the
   generic table as a template: picking a state opens the shared dialog with that
   state already chosen, the reason still to be written there.
@@ -88,3 +108,6 @@
 
 <!-- Renders only its dialog; the status select above is its only trigger here. -->
 <app-reservation-respond #respond (responded)="onResponded()" />
+
+<!-- Likewise: the "Pago" cell above is what opens the proofs. -->
+<app-reservation-proof-gallery #gallery />
