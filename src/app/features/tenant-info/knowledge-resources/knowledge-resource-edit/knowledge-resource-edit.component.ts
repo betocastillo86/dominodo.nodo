@@ -9,20 +9,21 @@ import {
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TablerIconComponent } from 'angular-tabler-icons';
-import { toMessage } from '../../../core/http/problem-details';
-import { NotificationService } from '../../../core/notifications/notification.service';
-import { PageHeaderComponent } from '../../../shared/ui/page-header/page-header.component';
-import { SpinnerComponent } from '../../../shared/ui/spinner/spinner.component';
+import { toMessage } from '../../../../core/http/problem-details';
+import { NotificationService } from '../../../../core/notifications/notification.service';
+import { SpinnerComponent } from '../../../../shared/ui/spinner/spinner.component';
 import { KnowledgeResourcesService } from '../data-access/knowledge-resources.service';
 import {
   KnowledgeResourceStatus,
   UpdateKnowledgeResourceRequest,
 } from '../data-access/knowledge-resource.models';
 
+/** Edit form of the "Base de conocimiento" tab; the page chrome (header + tab
+ * bar) comes from `TenantInfoKnowledgePageComponent`. */
 @Component({
   selector: 'app-knowledge-resource-edit',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, TablerIconComponent, PageHeaderComponent, SpinnerComponent],
+  imports: [ReactiveFormsModule, RouterLink, TablerIconComponent, SpinnerComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './knowledge-resource-edit.component.html',
 })
@@ -70,7 +71,7 @@ export class KnowledgeResourceEditComponent implements OnInit {
     this.service.update(this.id, this.toRequest()).subscribe({
       next: () => {
         this.notifications.success('Recurso actualizado.');
-        void this.router.navigate(['/knowledge-resources']);
+        void this.router.navigate(['/tenant-info/knowledge-resources']);
       },
       error: (error: HttpErrorResponse) => {
         this.saving.set(false);

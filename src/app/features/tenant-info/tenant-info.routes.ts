@@ -2,6 +2,10 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router, Routes } from '@angular/router';
 import { permissionGuard } from '../../core/guards/permission.guard';
 import { AMENITIES_CREATE, AMENITIES_VIEW } from './amenities/data-access/amenity.permissions';
+import {
+  KNOWLEDGE_EDIT,
+  KNOWLEDGE_VIEW,
+} from './knowledge-resources/data-access/knowledge-resource.permissions';
 import { DEFAULT_TENANT_INFO_TAB, isTenantInfoTab } from './tenant-info-tabs';
 
 /**
@@ -57,6 +61,41 @@ export const tenantInfoRoutes: Routes = [
           import('./amenities/amenity-form/amenity-form.component').then(
             (m) => m.AmenityFormComponent,
           ),
+      },
+    ],
+  },
+  // Base de conocimiento: the other routed CRUD sub-feature, same shape as
+  // Áreas sociales above — see `TenantInfoKnowledgePageComponent`.
+  {
+    path: 'knowledge-resources',
+    canActivate: [permissionGuard(KNOWLEDGE_VIEW)],
+    loadComponent: () =>
+      import('./tenant-info-knowledge-page/tenant-info-knowledge-page.component').then(
+        (m) => m.TenantInfoKnowledgePageComponent,
+      ),
+    children: [
+      {
+        path: '',
+        loadComponent: () =>
+          import(
+            './knowledge-resources/knowledge-resource-list/knowledge-resource-list.component'
+          ).then((m) => m.KnowledgeResourceListComponent),
+      },
+      {
+        path: 'new',
+        canActivate: [permissionGuard(KNOWLEDGE_EDIT)],
+        loadComponent: () =>
+          import(
+            './knowledge-resources/knowledge-resource-create/knowledge-resource-create.component'
+          ).then((m) => m.KnowledgeResourceCreateComponent),
+      },
+      {
+        path: ':id/edit',
+        canActivate: [permissionGuard(KNOWLEDGE_EDIT)],
+        loadComponent: () =>
+          import(
+            './knowledge-resources/knowledge-resource-edit/knowledge-resource-edit.component'
+          ).then((m) => m.KnowledgeResourceEditComponent),
       },
     ],
   },

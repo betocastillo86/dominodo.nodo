@@ -88,14 +88,6 @@ export const routes: Routes = [
           ),
       },
       {
-        path: 'knowledge-resources',
-        canActivate: [permissionGuard('knowledge.view')],
-        loadChildren: () =>
-          import('./features/knowledge-resources/knowledge-resources.routes').then(
-            (m) => m.knowledgeResourcesRoutes,
-          ),
-      },
-      {
         path: 'tenant-info',
         canActivate: [permissionGuard('tenant.info')],
         loadChildren: () =>

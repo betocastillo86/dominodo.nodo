@@ -11,18 +11,18 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { TablerIconComponent } from 'angular-tabler-icons';
-import { PermissionStore } from '../../../core/authz/permission.store';
-import { PageHeaderComponent } from '../../../shared/ui/page-header/page-header.component';
+import { PermissionStore } from '../../../../core/authz/permission.store';
 import {
   DataTableComponent,
   TableColumn,
-} from '../../../shared/ui/data-table/data-table.component';
+} from '../../../../shared/ui/data-table/data-table.component';
 import { KnowledgeResourcesService } from '../data-access/knowledge-resources.service';
 import {
   KnowledgeResourceFilters,
   KnowledgeResourceListItem,
   KnowledgeResourceStatus,
 } from '../data-access/knowledge-resource.models';
+import { KNOWLEDGE_EDIT } from '../data-access/knowledge-resource.permissions';
 
 const STATUS_LABELS: Record<KnowledgeResourceStatus, string> = {
   Draft: 'Borrador',
@@ -36,10 +36,16 @@ const STATUS_BADGE: Record<KnowledgeResourceStatus, string> = {
   Archived: 'badge bg-warning-lt',
 };
 
+/**
+ * Knowledge resources list ("Base de conocimiento" tab of Mi Conjunto).
+ * Server-side filters (`search` debounced text + `status`) + paging via the
+ * shared DataTable. The Draft/Published/Archived transition lives in the edit
+ * form, not here, so the table keeps its single edit action.
+ */
 @Component({
   selector: 'app-knowledge-resource-list',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, TablerIconComponent, PageHeaderComponent, DataTableComponent],
+  imports: [ReactiveFormsModule, RouterLink, TablerIconComponent, DataTableComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './knowledge-resource-list.component.html',
 })
@@ -51,7 +57,7 @@ export class KnowledgeResourceListComponent implements OnInit {
   private page = 1;
 
   readonly canEdit = computed(
-    () => !this.permissions.loaded() || this.permissions.has('knowledge.edit'),
+    () => !this.permissions.loaded() || this.permissions.has(KNOWLEDGE_EDIT),
   );
 
   readonly searchControl = new FormControl<string>('', { nonNullable: true });
@@ -74,7 +80,8 @@ export class KnowledgeResourceListComponent implements OnInit {
   ]);
 
   readonly editLink = (row: KnowledgeResourceListItem): unknown[] => [
-    '/knowledge-resources',
+    '/tenant-info',
+    'knowledge-resources',
     row.id,
     'edit',
   ];

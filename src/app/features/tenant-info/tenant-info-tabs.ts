@@ -32,9 +32,9 @@ export interface MiConjuntoNavTab {
 /**
  * Every "Mi Conjunto" tab, in display order. Unlike `TENANT_INFO_TABS` (which
  * only validates the `:section` param of the always-mounted forms), this list
- * also covers `amenities` — a routed sub-feature (list/create/edit), not a
- * single mounted form, so it lives under its own route branch
- * (`tenant-info.routes.ts`) rather than the `:section` one.
+ * also covers `amenities` and `knowledge-resources` — routed sub-features
+ * (list/create/edit), not single mounted forms, so they live under their own
+ * route branches (`tenant-info.routes.ts`) rather than the `:section` one.
  */
 export const MI_CONJUNTO_NAV_TABS: readonly MiConjuntoNavTab[] = [
   { id: 'contact', label: 'Contacto', icon: 'address-book', routerLink: ['contact'] },
@@ -47,5 +47,14 @@ export const MI_CONJUNTO_NAV_TABS: readonly MiConjuntoNavTab[] = [
     routerLink: ['amenities'],
     permission: 'amenities.view',
     feature: 'Amenities',
+  },
+  // No FeatureKey covers knowledge resources server-side, so this tab is gated
+  // by permission alone.
+  {
+    id: 'knowledge-resources',
+    label: 'Base de conocimiento',
+    icon: 'book',
+    routerLink: ['knowledge-resources'],
+    permission: 'knowledge.view',
   },
 ];

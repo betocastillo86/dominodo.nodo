@@ -319,7 +319,7 @@ src/app/
                             #    data-access/ (reservation.models, reservations-admin.service signals,
                             #    amenity-options.service for the filter dropdown, resident-info.service)
                             #    reservation-admin-list / -detail components
-    ├── tenant-info/        # ✅ "Mi Conjunto": four tabs, one URL each (see §6) —
+    ├── tenant-info/        # ✅ "Mi Conjunto": five tabs, one URL each (see §6) —
                             #    Contacto (/tenant-info/contact): the contactInfo block of
                             #      GET/PUT /tenants/info
                             #    Tema (/tenant-info/theme): theme + logo (GET/PUT /tenants/branding, and
@@ -344,6 +344,13 @@ src/app/
                             #      The schedule REUSES shared/ui/schedule-editor with
                             #      [allowHolidays]="false" + [requireOpenDay]="false" — see
                             #      amenities/data-access/amenity-schedule.ts for the mapping
+                            #    Base de conocimiento (/tenant-info/knowledge-resources): the other
+                            #      routed CRUD sub-feature, same shape as Áreas sociales (list/new/
+                            #      :id/edit behind TenantInfoKnowledgePageComponent) —
+                            #      GET/POST/PUT /knowledge-resources, filters `search` + `status`
+                            #      (Draft | Published | Archived, the transition made from the edit
+                            #      form). knowledge.view to read, knowledge.edit to write; no
+                            #      FeatureKey covers it server-side, so permission alone gates it
     └── profile/            # ✅ "Mi perfil": the caller's own profile (GET /auth/current, read-only)
                             #    plus "Cambiar clave" (PUT /auth/password, own-password change proving
                             #    the current one). Reached from the header user menu, not the top
@@ -582,6 +589,14 @@ section is a **route param** (`:section`), not three sibling routes, because Ang
 component when only a param changes — the tabs stay mounted, so an unsaved draft survives a jump to
 another tab. A small `canActivate` rejects an unknown section instead of silently showing the
 default under a lying URL. Copy this shape for the next tabbed page.
+
+A tab that is a **CRUD sub-feature** rather than a single form branches out of `:section` instead:
+`/tenant-info/amenities` and `/tenant-info/knowledge-resources` each own a wrapper component that
+repeats only the page chrome (header + `TenantInfoNavComponent`) around a `<router-outlet>` holding
+list / `new` / `:id/edit`. There is nothing to preserve across a tab switch there, and the three
+views are genuinely different pages. The tab bar itself is one list — `MI_CONJUNTO_NAV_TABS` in
+`tenant-info-tabs.ts` — filtered by permission + tenant feature, so both kinds of tab render the
+same way.
 
 ---
 

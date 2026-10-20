@@ -1,9 +1,9 @@
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { inject, Injectable, signal } from '@angular/core';
 import { Observable } from 'rxjs';
-import { environment } from '../../../../environments/environment';
-import { toMessage } from '../../../core/http/problem-details';
-import { PagedResult } from '../../../core/models/paged-result';
+import { environment } from '../../../../../environments/environment';
+import { toMessage } from '../../../../core/http/problem-details';
+import { PagedResult } from '../../../../core/models/paged-result';
 import {
   CreateKnowledgeResourceRequest,
   KnowledgeResourceDetail,

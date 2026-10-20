@@ -1,4 +1,4 @@
-<app-page-header [title]="'Nuevo recurso'" [pretitle]="'Base de conocimiento'" />
+<h3 class="mb-3">Nuevo recurso</h3>
 
 <form [formGroup]="form" (ngSubmit)="submit()">
   <div class="card">
@@ -37,7 +37,7 @@
     </div>
 
     <div class="card-footer d-flex">
-      <a routerLink="/knowledge-resources" class="btn btn-link">Cancelar</a>
+      <a routerLink="/tenant-info/knowledge-resources" class="btn btn-link">Cancelar</a>
       <button type="submit" class="btn btn-primary ms-auto" [disabled]="saving()">
         @if (saving()) {
           <span class="spinner-border spinner-border-sm me-1" role="status"></span>

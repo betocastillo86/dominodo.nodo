@@ -134,9 +134,8 @@ export const appConfig: ApplicationConfig = {
       // Reservations (admin) module — nav icon + the respond action
       IconCalendarEvent,
       IconMessageReply,
-      // Knowledge Resources module
-      IconBook,
       // Mi Conjunto — tabs, schedule editor and branding
+      IconBook,
       IconAddressBook,
       IconPalette,
       IconSettings,

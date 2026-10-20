@@ -8,16 +8,17 @@ import {
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { TablerIconComponent } from 'angular-tabler-icons';
-import { toMessage } from '../../../core/http/problem-details';
-import { NotificationService } from '../../../core/notifications/notification.service';
-import { PageHeaderComponent } from '../../../shared/ui/page-header/page-header.component';
+import { toMessage } from '../../../../core/http/problem-details';
+import { NotificationService } from '../../../../core/notifications/notification.service';
 import { KnowledgeResourcesService } from '../data-access/knowledge-resources.service';
 import { CreateKnowledgeResourceRequest } from '../data-access/knowledge-resource.models';
 
+/** Create form of the "Base de conocimiento" tab; the page chrome (header +
+ * tab bar) comes from `TenantInfoKnowledgePageComponent`. */
 @Component({
   selector: 'app-knowledge-resource-create',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, TablerIconComponent, PageHeaderComponent],
+  imports: [ReactiveFormsModule, RouterLink, TablerIconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './knowledge-resource-create.component.html',
 })
@@ -48,7 +49,7 @@ export class KnowledgeResourceCreateComponent {
     this.service.create(this.toRequest()).subscribe({
       next: () => {
         this.notifications.success('Recurso creado.');
-        void this.router.navigate(['/knowledge-resources']);
+        void this.router.navigate(['/tenant-info/knowledge-resources']);
       },
       error: (error: HttpErrorResponse) => {
         this.saving.set(false);
