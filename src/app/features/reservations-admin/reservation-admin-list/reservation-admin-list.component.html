@@ -11,6 +11,15 @@
         <label class="form-label mb-1" for="reservations-to">Hasta</label>
         <input id="reservations-to" type="date" class="form-control" [formControl]="toControl" />
       </div>
+      <div class="col-12 col-lg-2">
+        <label class="form-label mb-1" for="reservations-status">Estado</label>
+        <select id="reservations-status" class="form-select" [formControl]="statusControl">
+          <option value="">Todos los estados</option>
+          @for (status of statuses; track status) {
+            <option [value]="status">{{ statusLabel[status] }}</option>
+          }
+        </select>
+      </div>
       <div class="col-12 col-lg">
         <label class="form-label mb-1" for="reservations-area">Área social</label>
         <select id="reservations-area" class="form-select" [formControl]="amenityControl">
