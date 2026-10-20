@@ -352,15 +352,34 @@
                               {{ initials(p.user.fullName) }}
                             </span>
                             <div class="flex-grow-1 overflow-hidden">
-                              <div class="fw-medium text-truncate">{{ p.user.fullName }}</div>
+                              <!-- No user screen in this portal: a person's
+                                   record lives in their apartment's
+                                   "Residentes" card, so that is where the name
+                                   goes. Plain text when there is no apartment
+                                   or no permission to open it. -->
+                              <div class="fw-medium text-truncate">
+                                @if (apartmentLink(p.apartment); as link) {
+                                  <a [routerLink]="link" title="Ver al participante en la ficha de su apartamento">
+                                    {{ p.user.fullName }}
+                                  </a>
+                                } @else {
+                                  {{ p.user.fullName }}
+                                }
+                              </div>
                               <div class="text-secondary small d-flex align-items-center gap-1">
                                 <tabler-icon name="phone" class="icon-sm" />
                                 {{ p.user.phone || '—' }}
                               </div>
                               <div class="text-secondary small d-flex align-items-center gap-1">
                                 <tabler-icon name="building" class="icon-sm" />
-                                @if (p.apartment) {
-                                  {{ apartmentLabel(p.apartment) }}
+                                @if (p.apartment; as apartment) {
+                                  @if (apartmentLink(apartment); as link) {
+                                    <a [routerLink]="link" title="Ir al apartamento: quiénes viven ahí y sus datos">
+                                      {{ apartmentLabel(apartment) }}
+                                    </a>
+                                  } @else {
+                                    {{ apartmentLabel(apartment) }}
+                                  }
                                 } @else {
                                   Sin apartamento
                                 }

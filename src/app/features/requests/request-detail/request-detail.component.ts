@@ -20,6 +20,7 @@ import { PermissionStore } from '../../../core/authz/permission.store';
 import { NotificationService } from '../../../core/notifications/notification.service';
 import { toMessage } from '../../../core/http/problem-details';
 
+import { APARTMENTS_VIEW } from '../../apartments/data-access/apartment.permissions';
 import { RequestsService } from '../data-access/requests.service';
 import { CategoriesLookupService, RequestCategoryDto } from '../data-access/categories-lookup.service';
 import {
@@ -567,6 +568,20 @@ export class RequestDetailComponent {
   /** `Torre · Número` when the apartment has a tower, otherwise just the number. */
   apartmentLabel(apartment: RequestParticipantApartmentDto): string {
     return apartment.tower ? `${apartment.tower} · ${apartment.number}` : apartment.number;
+  }
+
+  /**
+   * Where a participant's apartment points — and, for want of a user screen in
+   * this portal, where the participant's own NAME points too: the apartment's
+   * "Residentes" card is the only place a person's record is shown.
+   *
+   * Null when there is nowhere to go: the participant has no apartment, or the
+   * administrator lacks `apartments.view` and `/apartments` would bounce them
+   * off its guard. Hiding the link is UX; the route stays authoritative.
+   */
+  apartmentLink(apartment: RequestParticipantApartmentDto | null): unknown[] | null {
+    if (!apartment || !this.permissions.has(APARTMENTS_VIEW)) return null;
+    return ['/apartments', apartment.id];
   }
 
   categoryName(categoryId: string): string {

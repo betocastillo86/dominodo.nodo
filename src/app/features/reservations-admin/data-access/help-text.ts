@@ -38,4 +38,9 @@ export const RESERVATIONS_HELP = {
   statusSelect: 'Elegir un estado para cambiar la reserva',
   statusLocked: 'Esta reserva ya está cerrada: no admite cambios de estado',
   detail: 'Ver detalle',
+
+  // ── The detail ───────────────────────────────────────────────────────────
+  editAmenity: 'Ir a editar esta área social',
+  apartmentDetail: 'Ir al apartamento: quiénes viven ahí y sus datos',
+  residentDetail: 'Ver al residente en la ficha de su apartamento',
 } as const;

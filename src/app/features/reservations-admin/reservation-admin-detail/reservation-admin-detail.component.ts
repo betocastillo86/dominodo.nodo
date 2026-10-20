@@ -11,6 +11,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { TablerIconComponent } from 'angular-tabler-icons';
 import { catchError, finalize, forkJoin, map, Observable, of, tap } from 'rxjs';
+import { PermissionStore } from '../../../core/authz/permission.store';
 import { toMessage } from '../../../core/http/problem-details';
 import { NotificationService } from '../../../core/notifications/notification.service';
 import { EmptyStateComponent } from '../../../shared/ui/empty-state/empty-state.component';
@@ -18,6 +19,7 @@ import { PageHeaderComponent } from '../../../shared/ui/page-header/page-header.
 import { SpinnerComponent } from '../../../shared/ui/spinner/spinner.component';
 import { ApartmentDetailDto, apartmentLabel } from '../../apartments/data-access/apartment.models';
 import { AmenityDetail } from '../../tenant-info/amenities/data-access/amenity.models';
+import { AMENITIES_EDIT } from '../../tenant-info/amenities/data-access/amenity.permissions';
 import { AmenityOptionsService } from '../data-access/amenity-options.service';
 import { ApartmentOptionsService } from '../data-access/apartment-options.service';
 import { formatDay } from '../../dashboard/data-access/date-range';
@@ -26,6 +28,7 @@ import {
   formatInstant,
   formatInstantAsTimeOfDay,
 } from '../../reservations/data-access/reservation-format';
+import { RESERVATIONS_HELP } from '../data-access/help-text';
 import { ResidentInfo, ResidentInfoService } from '../data-access/resident-info.service';
 import {
   isImageProof,
@@ -147,6 +150,7 @@ export class ReservationAdminDetailComponent {
   private readonly residentInfo = inject(ResidentInfoService);
   private readonly apartments = inject(ApartmentOptionsService);
   private readonly amenities = inject(AmenityOptionsService);
+  private readonly permissions = inject(PermissionStore);
   private readonly modal = inject(NgbModal);
   private readonly notifications = inject(NotificationService);
 
@@ -170,6 +174,7 @@ export class ReservationAdminDetailComponent {
 
   readonly statusLabel = RESERVATION_STATUS_LABEL;
   readonly statusBadge = RESERVATION_STATUS_BADGE;
+  readonly help = RESERVATIONS_HELP;
 
   readonly title = computed(() => {
     const r = this.reservation();
@@ -178,10 +183,35 @@ export class ReservationAdminDetailComponent {
 
   readonly amenityName = computed(() => this.amenity()?.name ?? null);
 
+  /**
+   * Where the area's name goes, or null when it must stay plain text — either
+   * the area never resolved (nothing to point at) or the administrator cannot
+   * edit areas. The edit form IS the area's page: the module has a list and a
+   * form, no read-only detail. Permissive only while `GET /auth/current` is in
+   * flight, as everywhere else in the portal; the server stays authoritative.
+   */
+  readonly amenityEditLink = computed<unknown[] | null>(() => {
+    const amenity = this.amenity();
+    if (!amenity) return null;
+    const canEdit = !this.permissions.loaded() || this.permissions.has(AMENITIES_EDIT);
+    return canEdit ? ['/tenant-info', 'amenities', amenity.id, 'edit'] : null;
+  });
+
   readonly apartmentDisplay = computed(() => {
     const apartment = this.apartment();
     if (apartment) return apartmentLabel(apartment);
     return this.reservation()?.apartmentId ?? '—';
+  });
+
+  /**
+   * Where the apartment's name goes, or null when it must stay plain text.
+   * No permission check of its own: the lookup behind `apartment()` is the
+   * check — it answers null on the 403 of a caller without `apartments.view`,
+   * which is exactly who must not be sent to `/apartments/:id`.
+   */
+  readonly apartmentLink = computed<unknown[] | null>(() => {
+    const apartment = this.apartment();
+    return apartment ? ['/apartments', apartment.id] : null;
   });
 
   readonly residentName = computed(() => {

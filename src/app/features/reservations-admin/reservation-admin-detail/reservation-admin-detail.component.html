@@ -47,7 +47,16 @@
         <div class="card-body">
           <dl class="row mb-0">
             <dt class="col-5 text-secondary">Área social</dt>
-            <dd class="col-7 fw-medium">{{ amenityName() ?? '—' }}</dd>
+            <!-- The way out to the area itself: whoever answers a booking is
+                 often the one who spots that its price or hours are wrong.
+                 Plain text for an administrator who may not edit areas. -->
+            <dd class="col-7 fw-medium">
+              @if (amenityEditLink(); as link) {
+                <a [routerLink]="link" [title]="help.editAmenity">{{ amenityName() ?? '—' }}</a>
+              } @else {
+                {{ amenityName() ?? '—' }}
+              }
+            </dd>
 
             <dt class="col-5 text-secondary">Código</dt>
             <dd class="col-7 fw-medium">{{ r.code }}</dd>
@@ -59,7 +68,13 @@
             <dd class="col-7">{{ r.attendees }}</dd>
 
             <dt class="col-5 text-secondary">Apartamento</dt>
-            <dd class="col-7">{{ apartmentDisplay() }}</dd>
+            <dd class="col-7">
+              @if (apartmentLink(); as link) {
+                <a [routerLink]="link" [title]="help.apartmentDetail">{{ apartmentDisplay() }}</a>
+              } @else {
+                {{ apartmentDisplay() }}
+              }
+            </dd>
 
             <dt class="col-5 text-secondary">Valor</dt>
             <dd class="col-7">{{ priceLabel() }}</dd>
@@ -140,7 +155,17 @@
           } @else if (residentName()) {
             <dl class="row mb-0">
               <dt class="col-5 text-secondary">Nombre</dt>
-              <dd class="col-7 fw-medium">{{ residentName() }}</dd>
+              <!-- This portal has no user detail screen; the apartment's
+                   "Residentes" card is where a person's record lives, so that
+                   is where the name goes. Plain text when the apartment did not
+                   resolve — see `apartmentLink`. -->
+              <dd class="col-7 fw-medium">
+                @if (apartmentLink(); as link) {
+                  <a [routerLink]="link" [title]="help.residentDetail">{{ residentName() }}</a>
+                } @else {
+                  {{ residentName() }}
+                }
+              </dd>
 
               <dt class="col-5 text-secondary">Teléfono</dt>
               <dd class="col-7">{{ resident()?.phone ?? '—' }}</dd>
