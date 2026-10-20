@@ -11,7 +11,7 @@ import {
   TemplateRef,
   viewChild,
 } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, ParamMap } from '@angular/router';
 import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
 import { TablerIconComponent } from 'angular-tabler-icons';
 import { finalize, forkJoin } from 'rxjs';
@@ -25,7 +25,13 @@ import { formatSchedule, parseSchedule } from '../../../shared/ui/schedule-edito
 import { slotsToScheduleValue } from '../../tenant-info/amenities/data-access/amenity-schedule';
 import { ReservationAvailabilityService } from '../data-access/reservation-availability.service';
 import { toBookingFailure } from '../data-access/reservation-errors';
-import { formatCurrencyCOP, formatLongDate, formatTimeOfDay } from '../data-access/reservation-format';
+import {
+  formatCurrencyCOP,
+  formatInstant,
+  formatInstantAsTimeOfDay,
+  formatLongDate,
+  formatTimeOfDay,
+} from '../data-access/reservation-format';
 import {
   AmenityAvailability,
   AmenityAvailabilitySlot,
@@ -33,12 +39,38 @@ import {
   AmenityPhoto,
   BLOCKING_RESERVATION_STATUSES,
   MyReservation,
+  RESIDENT_RESERVATION_STATUS_BADGE,
+  RESIDENT_RESERVATION_STATUS_LABEL,
+  ReservationDetailDto,
 } from '../data-access/reservation-availability.models';
 import { DayAvailability, MonthCalendarComponent } from '../month-calendar/month-calendar.component';
 import { daysInMonth, MONTH_NAMES_ES, toIsoDate } from '../month-calendar/month-grid';
+import { ReservationPaymentProofComponent } from '../reservation-payment-proof/reservation-payment-proof.component';
 import { ReservationSuccessComponent } from '../reservation-success/reservation-success.component';
 
-type ViewState = 'loading' | 'error' | 'ready' | 'booked';
+type ViewState = 'loading' | 'error' | 'gate' | 'ready' | 'booked';
+
+/**
+ * The day and window a Domi link may already carry, in the conjunto's LOCAL
+ * terms — `?date=2027-02-15&time=15:00`, the same shape `dateLocal` and
+ * `startsAtLocal` use. Matched as strings, never parsed into a `Date`: these
+ * are wall-clock values with no offset, and reading them through the device's
+ * timezone is how a 3 p.m. slot becomes someone else's 8 p.m.
+ */
+interface LinkPreselection {
+  date: string;
+  /** `HH:mm`, or null when the link named only a day. */
+  time: string | null;
+}
+
+/** `yyyy-MM-dd`. */
+const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+/**
+ * `HH:mm`, with optional seconds and a tolerated single-digit hour. The date
+ * comes from the API's own `DateOnly` and is unambiguous; the hour is the half
+ * a chat writes loosely, so `9:00` is padded rather than thrown away.
+ */
+const TIME_OF_DAY_PATTERN = /^(\d{1,2}):(\d{2})(?::\d{2})?$/;
 
 /**
  * Resident booking screen for a social area (ADR-0018). Reached only through a
@@ -48,6 +80,10 @@ type ViewState = 'loading' | 'error' | 'ready' | 'booked';
  * The amenity comes in via `?amenityId=` on the handoff link, a param the API
  * never carries (it only knows `/acceso?t=`, ADR-0017 §3) — Domi appends it
  * before sending the link, and `AccesoComponent` forwards it here verbatim.
+ * `?date=` and `?time=` ride along the same way when the chat already settled
+ * them: the screen then opens ON that day with that window selected, so the
+ * resident's next tap is Reservar and not a calendar they already filled in
+ * once, in words, with Domi.
  *
  * The whole flow lives here, on one screen: pick a day, pick one of that day's
  * free windows, confirm, and land on the booking's code. One window per
@@ -64,6 +100,7 @@ type ViewState = 'loading' | 'error' | 'ready' | 'booked';
     EmptyStateComponent,
     MonthCalendarComponent,
     ReservationSuccessComponent,
+    ReservationPaymentProofComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './reservation-availability.component.html',
@@ -91,6 +128,27 @@ type ViewState = 'loading' | 'error' | 'ready' | 'booked';
     .book-btn {
       min-height: 2.75rem;
       touch-action: manipulation;
+    }
+
+    /* The resident's own booking for the day: an alert that is also the way
+       into it, so it keeps the alert's look and gains a button's target. */
+    .own-reservation {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      width: 100%;
+      min-height: 2.75rem;
+      text-align: left;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .own-reservation:active {
+      filter: brightness(0.96);
+    }
+    @media (hover: hover) {
+      .own-reservation:hover {
+        filter: brightness(0.98);
+      }
     }
 
     /* The cover is the gallery's trigger, so it is a button that is all image:
@@ -223,6 +281,28 @@ export class ReservationAvailabilityComponent implements OnInit {
 
   readonly whatsAppUrl = domiWhatsAppUrl();
 
+  // ── An own booking, reopened ───────────────────────────────────────────────
+
+  /**
+   * The booking the resident tapped in the day panel, and its full detail.
+   * Two shapes because only the detail carries `paymentProofs` — the summary
+   * renders from the row that is already in hand, so the sheet has something on
+   * screen while the detail is still in flight.
+   */
+  readonly ownReservation = signal<MyReservation | null>(null);
+  readonly ownDetail = signal<ReservationDetailDto | null>(null);
+  readonly ownDetailLoading = signal(false);
+  readonly ownDetailError = signal<string | null>(null);
+
+  readonly statusLabel = RESIDENT_RESERVATION_STATUS_LABEL;
+  readonly statusBadge = RESIDENT_RESERVATION_STATUS_BADGE;
+
+  /** A booking takes proofs only while it blocks a slot (`Pending`/`Confirmed`). */
+  readonly ownAcceptsProofs = computed(() => {
+    const reservation = this.ownReservation();
+    return !!reservation && BLOCKING_RESERVATION_STATUSES.includes(reservation.status);
+  });
+
   readonly maxAttendees = computed(() => this.amenity()?.maxOccupancy ?? 1);
 
   readonly attendeesValid = computed(() => {
@@ -326,6 +406,30 @@ export class ReservationAvailabilityComponent implements OnInit {
   /** Where the finger went down, to tell a swipe from a tap on the stage. */
   private touchStartX: number | null = null;
 
+  // ── The gate in front of the calendar ──────────────────────────────────────
+
+  /**
+   * The resident's own bookings for THIS area that are still ahead of them:
+   * pending or confirmed, and whose window has not finished yet. A booking from
+   * last season is history, not a reason to stand between anybody and the
+   * calendar — which is why the end of the window, and not just the status,
+   * decides. Soonest first.
+   */
+  readonly activeReservations = computed<MyReservation[]>(() => {
+    const amenityId = this.amenity()?.id;
+    if (!amenityId) return [];
+
+    const now = Date.now();
+    return this.myReservations()
+      .filter(
+        (reservation) =>
+          reservation.amenityId === amenityId &&
+          BLOCKING_RESERVATION_STATUSES.includes(reservation.status) &&
+          new Date(reservation.endsAtUtc).getTime() > now,
+      )
+      .sort((a, b) => new Date(a.startsAtUtc).getTime() - new Date(b.startsAtUtc).getTime());
+  });
+
   private readonly ownReservationDates = computed(() => {
     const amenityId = this.amenity()?.id;
     const dates = new Set<string>();
@@ -377,7 +481,20 @@ export class ReservationAvailabilityComponent implements OnInit {
     );
   });
 
+  /**
+   * Said when the link's window is gone. A resident who was told "te aparto las
+   * 3" and lands on a day where 3 is grey deserves the reason, not a silent
+   * calendar — and the honest answer is that somebody got there first.
+   */
+  readonly takenSlotNotice = signal<string | null>(null);
+
   private amenityId: string | null = null;
+
+  /** The link's day/window, consumed once the first availability answer lands. */
+  private preselection: LinkPreselection | null = null;
+
+  /** Set once the resident has asked for the calendar; the gate never returns after that. */
+  private calendarOpened = false;
 
   private readonly dayPanel = viewChild<ElementRef<HTMLElement>>('dayPanel');
   private readonly bookAction = viewChild<ElementRef<HTMLElement>>('bookAction');
@@ -434,12 +551,93 @@ export class ReservationAvailabilityComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.amenityId = this.route.snapshot.queryParamMap.get('amenityId');
+    const params = this.route.snapshot.queryParamMap;
+    this.amenityId = params.get('amenityId');
     if (!this.amenityId) {
       this.fail('No se especificó un área social. Vuelve a intentarlo desde el enlace que te compartieron.');
       return;
     }
+
+    // Before the first load, never after: the month it moves to is the range
+    // the availability request asks for, so the resident never watches the
+    // current month paint and then jump.
+    this.readPreselection(params);
     this.loadAmenity(this.amenityId);
+  }
+
+  /**
+   * Reads `?date=`/`?time=` off the link and points the calendar at that month.
+   *
+   * A malformed value is ignored rather than failing the screen: the link is
+   * written by Domi, and a resident who reached a valid handoff ticket must
+   * still be able to book, with or without a usable hint. A day already past is
+   * ignored for the same reason — the calendar could not select it anyway.
+   */
+  private readPreselection(params: ParamMap): void {
+    const date = params.get('date');
+    if (!date || !ISO_DATE_PATTERN.test(date) || date < this.today) {
+      return;
+    }
+
+    this.preselection = { date, time: this.parseTime(params.get('time')) };
+    const [year, month] = date.split('-').map(Number);
+    this.year.set(year);
+    this.month.set(month);
+  }
+
+  /** `"9:00"` / `"09:00:00"` → `"09:00"`, the shape a slot's `startsAtLocal` trims to. */
+  private parseTime(raw: string | null): string | null {
+    const match = raw?.match(TIME_OF_DAY_PATTERN);
+    if (!match) return null;
+
+    const [, hours, minutes] = match;
+    return `${hours.padStart(2, '0')}:${minutes}`;
+  }
+
+  /**
+   * Applies the link's day — and its window, when that window is still free —
+   * once the availability for the month is in, then forgets it: from there on
+   * the resident navigates like any other visit.
+   *
+   * A taken window is deliberately NOT selected. Selecting it would send the
+   * resident into a confirmation the server is going to refuse (ADR-0018 §8:
+   * availability is a snapshot, the booking ladder is the authority), so the
+   * day opens with the window greyed out and the notice says why.
+   */
+  private applyPreselection(): void {
+    const preselection = this.preselection;
+    if (!preselection) return;
+    this.preselection = null;
+
+    const day = this.availability()?.days.find((d) => d.date === preselection.date);
+    if (!day) return;
+
+    this.selectedDate.set(preselection.date);
+    if (!preselection.time) return;
+
+    const slot = day.slots.find((s) => s.startsAtLocal.slice(0, 5) === preselection.time);
+    if (!slot) {
+      // The link named an hour this area does not open a window at — nothing
+      // to explain, the day's real windows are right there to choose from.
+      return;
+    }
+
+    if (slot.isAvailable) {
+      this.selectedSlot.set(slot);
+    } else {
+      this.takenSlotNotice.set(formatTimeOfDay(slot.startsAtLocal));
+    }
+  }
+
+  /**
+   * Leaves the gate for the calendar. One-way for this visit — the gate holds
+   * nothing the day panel does not also reach — and remembered, so a month
+   * change (which reloads, and with it the resident's bookings) does not drop
+   * them back in front of it.
+   */
+  startNewReservation(): void {
+    this.calendarOpened = true;
+    this.state.set('ready');
   }
 
   prevMonth(): void {
@@ -453,12 +651,14 @@ export class ReservationAvailabilityComponent implements OnInit {
   }
 
   selectDay(date: string): void {
+    this.takenSlotNotice.set(null);
     this.selectedDate.set(this.selectedDate() === date ? null : date);
     this.selectedSlot.set(null);
   }
 
   selectSlot(slot: AmenityAvailabilitySlot): void {
     if (!slot.isAvailable) return;
+    this.takenSlotNotice.set(null);
     const current = this.selectedSlot();
     this.selectedSlot.set(current?.startsAtUtc === slot.startsAtUtc ? null : slot);
   }
@@ -512,6 +712,57 @@ export class ReservationAvailabilityComponent implements OnInit {
     if (Math.abs(dx) < 40) return;
     if (dx < 0) this.galleryNext();
     else this.galleryPrev();
+  }
+
+  /**
+   * Opens one of the resident's own bookings for this day. The sheet exists for
+   * one errand — the comprobante — which is why it is reachable from the
+   * calendar at all: a resident who booked yesterday has no other way back to
+   * the booking, since the success screen lives only for the session that
+   * created it.
+   */
+  openOwnReservation(reservation: MyReservation, tpl: TemplateRef<unknown>): void {
+    this.ownReservation.set(reservation);
+    this.ownDetail.set(null);
+    this.ownDetailError.set(null);
+    // Scrollable: the summary, the proof and its buttons outgrow a 360x640
+    // screen, and a modal that cannot scroll hides its own actions.
+    this.modal.open(tpl, { centered: true, scrollable: true });
+    this.loadOwnReservation(reservation.id);
+  }
+
+  retryOwnReservation(): void {
+    const reservation = this.ownReservation();
+    if (reservation) {
+      this.loadOwnReservation(reservation.id);
+    }
+  }
+
+  formatInstant(iso: string): string {
+    return formatInstant(iso);
+  }
+
+  /** The booked window in the conjunto's clock, in the calendar's own style. */
+  ownTimeLabel(reservation: MyReservation): string {
+    return `${formatInstantAsTimeOfDay(reservation.startsAtUtc)} – ${formatInstantAsTimeOfDay(reservation.endsAtUtc)}`;
+  }
+
+  private loadOwnReservation(reservationId: string): void {
+    this.ownDetailLoading.set(true);
+    this.ownDetailError.set(null);
+
+    this.reservations
+      .getReservation(reservationId)
+      .pipe(finalize(() => this.ownDetailLoading.set(false)))
+      .subscribe({
+        next: (detail) => this.ownDetail.set(detail),
+        error: (error: unknown) =>
+          this.ownDetailError.set(
+            error instanceof HttpErrorResponse
+              ? toMessage(error)
+              : 'No pudimos cargar tu reserva. Verifica tu conexión e intenta de nuevo.',
+          ),
+      });
   }
 
   isSelected(slot: AmenityAvailabilitySlot): boolean {
@@ -613,6 +864,7 @@ export class ReservationAvailabilityComponent implements OnInit {
     const next = new Date(this.year(), this.month() - 1 + delta, 1);
     this.year.set(next.getFullYear());
     this.month.set(next.getMonth() + 1);
+    this.takenSlotNotice.set(null);
     this.selectedDate.set(null);
     this.selectedSlot.set(null);
     if (this.amenityId) {
@@ -640,11 +892,19 @@ export class ReservationAvailabilityComponent implements OnInit {
       next: ({ availability, mine }) => {
         this.availability.set(availability);
         this.myReservations.set(mine.items);
-        this.state.set('ready');
+        this.state.set(this.showsGate() ? 'gate' : 'ready');
+        // Applied even behind the gate: the link's day and window are then
+        // already chosen when the resident taps through to the calendar.
+        this.applyPreselection();
       },
       error: (error: unknown) =>
         this.onError(error, 'Esta área no está disponible para reservar en este momento.'),
     });
+  }
+
+  /** Read right after a load settles: the bookings are in, the resident has not opted out. */
+  private showsGate(): boolean {
+    return !this.calendarOpened && this.activeReservations().length > 0;
   }
 
   private monthRange(): { from: string; to: string } {

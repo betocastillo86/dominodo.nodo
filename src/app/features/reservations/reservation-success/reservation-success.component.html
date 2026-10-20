@@ -44,9 +44,19 @@
     }
   </div>
 
+  <!-- Above the way out, because it is the one thing still pending ON the
+       resident: a paid area keeps the slot only until the administration sees
+       the comprobante. -->
+  @if (acceptsProofs()) {
+    <div class="card-body border-top">
+      <h2 class="h4 mb-2">Comprobante de pago</h2>
+      <app-reservation-payment-proof [reservationId]="reservation().id" />
+    </div>
+  }
+
   <!-- The way back out is the way in: this resident arrived from the Domi chat
-       and finishes the conversation there. It is the only action on this card —
-       a booked slot is the end of the errand. -->
+       and finishes the conversation there — a booked slot is the end of the
+       errand. -->
   @if (whatsAppUrl(); as url) {
     <div class="card-body border-top d-grid">
       <a [href]="url" class="btn btn-success action-btn">

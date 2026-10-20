@@ -2,13 +2,20 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
+import { TenantFilesService } from '../../../core/files/tenant-files.service';
 import { handoffContext } from '../../../core/handoff/handoff.context';
 import { PagedResult } from '../../../core/models/paged-result';
 import {
   AmenityAvailability,
   AmenityDetail,
+  AttachmentDownloadUrl,
+  ConfirmReservationPaymentProofRequest,
+  CreateReservationPaymentProofUploadUrlRequest,
   CreateReservationRequest,
   MyReservation,
+  ReservationDetailDto,
+  ReservationPaymentProofDto,
+  ReservationPaymentProofUploadTicket,
 } from './reservation-availability.models';
 
 const MY_RESERVATIONS_PAGE_SIZE = 100;
@@ -27,6 +34,7 @@ const MY_RESERVATIONS_PAGE_SIZE = 100;
 @Injectable({ providedIn: 'root' })
 export class ReservationAvailabilityService {
   private readonly http = inject(HttpClient);
+  private readonly files = inject(TenantFilesService);
   private readonly amenitiesUrl = `${environment.apiBaseUrl}/amenities`;
   private readonly reservationsUrl = `${environment.apiBaseUrl}/reservations`;
 
@@ -67,5 +75,71 @@ export class ReservationAvailabilityService {
     return this.http.post<MyReservation>(this.reservationsUrl, request, {
       context: handoffContext(),
     });
+  }
+
+  // ── Payment proofs (ADR-0018 §5) ───────────────────────────────────────────
+
+  /**
+   * One booking in full — `GET /reservations/{id}`. The resident reaches it as
+   * the holder (the endpoint is dual-mode: holder OR `reservations.view`), and
+   * it is the only read that carries `paymentProofs`: neither the 201 of
+   * `POST /reservations` nor the rows of `/reservations/mine` do.
+   */
+  getReservation(reservationId: string): Observable<ReservationDetailDto> {
+    return this.http.get<ReservationDetailDto>(`${this.reservationsUrl}/${reservationId}`, {
+      context: handoffContext(),
+    });
+  }
+
+  /**
+   * Step 1 of the direct-to-blob upload: the API mints a 15-minute pre-signed
+   * PUT and never sees the bytes. The cap of five proofs is spent at step 3,
+   * not here — this route hands out a URL even on a full booking.
+   */
+  createPaymentProofUploadUrl(
+    reservationId: string,
+    body: CreateReservationPaymentProofUploadUrlRequest,
+  ): Observable<ReservationPaymentProofUploadTicket> {
+    return this.http.post<ReservationPaymentProofUploadTicket>(
+      `${this.reservationsUrl}/${reservationId}/payment-proofs/upload-url`,
+      body,
+      { context: handoffContext() },
+    );
+  }
+
+  /**
+   * Step 2: PUT the bytes straight to Blob Storage. No `handoffContext()` and
+   * no `X-Tenant` — the target is not our API, the SAS in the URL is the whole
+   * credential, and both interceptors skip non-API hosts on purpose.
+   */
+  uploadPaymentProof(uploadUrl: string, file: File): Observable<void> {
+    return this.files.upload(uploadUrl, file, file.type);
+  }
+
+  /**
+   * Step 3: adopt the uploaded blob as a proof of this booking. Attaching a
+   * proof does NOT confirm the reservation — it stays `Pending` until the
+   * administration confirms it (ADR-0018 §5).
+   */
+  confirmPaymentProof(
+    reservationId: string,
+    body: ConfirmReservationPaymentProofRequest,
+  ): Observable<ReservationPaymentProofDto> {
+    return this.http.post<ReservationPaymentProofDto>(
+      `${this.reservationsUrl}/${reservationId}/payment-proofs`,
+      body,
+      { context: handoffContext() },
+    );
+  }
+
+  /** A short-lived SAS to read one proof back out of the private container. */
+  getPaymentProofDownloadUrl(
+    reservationId: string,
+    proofId: string,
+  ): Observable<AttachmentDownloadUrl> {
+    return this.http.get<AttachmentDownloadUrl>(
+      `${this.reservationsUrl}/${reservationId}/payment-proofs/${proofId}/download-url`,
+      { context: handoffContext() },
+    );
   }
 }

@@ -1,0 +1,116 @@
+<!-- Hidden on purpose: the label-less input is driven by the buttons below, so
+     the tap target is a full-width button and never a native file control. -->
+<input
+  #picker
+  type="file"
+  class="d-none"
+  [accept]="acceptedTypes"
+  (change)="onFileSelected($event)"
+/>
+
+@if (hasProofs()) {
+  <p class="text-secondary small mb-2">
+    @if (proofs().length === 1) {
+      Este es el comprobante que enviaste.
+    } @else {
+      Estos son los comprobantes que enviaste.
+    }
+    La administración debe revisarlo para confirmar tu reserva.
+  </p>
+
+  @for (proof of proofs(); track proof.id) {
+    <div class="mb-3">
+      <div class="proof-figure mb-2">
+        @if (previewUrl(proof.id); as url) {
+          @if (isBrokenPreview(proof.id)) {
+            <div class="proof-placeholder">
+              <tabler-icon name="file"></tabler-icon>
+            </div>
+          } @else {
+            <img
+              class="proof-image"
+              [src]="url"
+              [alt]="'Comprobante ' + proof.fileName"
+              (error)="onPreviewError(proof.id)"
+            />
+          }
+        } @else {
+          <div class="proof-placeholder">
+            <span class="spinner-border spinner-border-sm" role="status"></span>
+          </div>
+        }
+      </div>
+
+      <div class="text-secondary small mb-2 text-truncate">
+        {{ proof.fileName }} · {{ uploadedAt(proof) }}
+      </div>
+
+      <div class="d-grid">
+        <button
+          type="button"
+          class="btn btn-outline-primary proof-btn"
+          [disabled]="downloadingId() === proof.id"
+          (click)="download(proof)"
+        >
+          @if (downloadingId() === proof.id) {
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+            Preparando…
+          } @else {
+            <tabler-icon name="download" class="me-2"></tabler-icon>
+            Descargar imagen
+          }
+        </button>
+      </div>
+    </div>
+  }
+}
+
+<!-- Both sit here, right above the action: this is where the thumb that
+     tapped already is, so the answer needs no scrolling to be read. -->
+@if (success(); as message) {
+  <div class="alert alert-success d-flex align-items-center" role="status">
+    <tabler-icon name="circle-check" class="me-2 flex-shrink-0"></tabler-icon>
+    <span>{{ message }}</span>
+  </div>
+}
+
+@if (error(); as message) {
+  <div class="alert alert-danger" role="alert">{{ message }}</div>
+}
+
+<!-- The action sits last so the feedback above it — the confirmation, or the
+     error — is what the resident sees without scrolling after tapping. -->
+@if (canAddMore()) {
+  <div class="d-grid">
+    <button
+      type="button"
+      class="btn proof-btn"
+      [class.btn-primary]="!hasProofs()"
+      [class.btn-outline-secondary]="hasProofs()"
+      [disabled]="uploading()"
+      (click)="picker.click()"
+    >
+      @if (uploading()) {
+        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        Subiendo comprobante…
+      } @else {
+        <tabler-icon name="upload" class="me-2"></tabler-icon>
+        @if (hasProofs()) {
+          Subir otro comprobante
+        } @else {
+          Cargar comprobante de pago
+        }
+      }
+    </button>
+  </div>
+
+  @if (!hasProofs()) {
+    <p class="text-secondary small mt-2 mb-0">
+      Sube una imagen del pago (JPG, PNG, WEBP o GIF), máximo {{ maxBytesLabel }}.
+    </p>
+  }
+} @else if (!hasProofs()) {
+  <p class="text-secondary small mb-0">
+    Esta reserva ya no admite comprobantes de pago.
+  </p>
+}

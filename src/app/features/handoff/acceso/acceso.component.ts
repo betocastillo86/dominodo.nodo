@@ -10,6 +10,14 @@ import { TenantStore } from '../../../core/tenant/tenant.store';
 type AccesoState = 'redeeming' | 'redirecting' | 'error';
 
 /**
+ * The extra query params Domi may append to a link, forwarded verbatim to the
+ * landing route. An ALLOWLIST, never the whole query string: `t` must not be
+ * copied into the next URL, which is the entire reason the redeem is a POST
+ * fired from here (ADR-0017).
+ */
+const FORWARDED_PARAMS = ['amenityId', 'date', 'time'] as const;
+
+/**
  * Landing page for a Domi handoff link (ADR-0017): `/acceso?t=<ticket>`. The
  * `GET` that loads this page authenticates nothing — it only reads `t` from
  * the query string. The redeem itself is a `POST`, fired from here, so the
@@ -19,10 +27,12 @@ type AccesoState = 'redeeming' | 'redirecting' | 'error';
  * No shell: a resident reaching this almost never has (or needs) a portal
  * account, and this route is never reachable from the app's own navigation.
  *
- * `amenityId` is an optional extra query param the API never puts in the
- * link (it only ever mints `/acceso?t=…`, ADR-0017 §3) — Domi appends it
- * itself once it has resolved which area the resident wants, and this
- * component forwards it, verbatim, to wherever the redeemed `purpose` lands.
+ * `amenityId`, `date` and `time` are optional extra query params the API never
+ * puts in the link (it only ever mints `/acceso?t=…`, ADR-0017 §3) — Domi
+ * appends them itself once the chat has settled which area the resident wants
+ * and, often, which day and hour. This component forwards them verbatim to
+ * wherever the redeemed `purpose` lands; interpreting them is that screen's
+ * job, not this one's.
  */
 @Component({
   selector: 'app-acceso',
@@ -42,11 +52,19 @@ export class AccesoComponent implements OnInit {
   readonly canRetry = signal(false);
 
   private ticket: string | null = null;
-  private amenityId: string | null = null;
+  private forwarded: Record<string, string> = {};
 
   ngOnInit(): void {
-    this.ticket = this.route.snapshot.queryParamMap.get('t');
-    this.amenityId = this.route.snapshot.queryParamMap.get('amenityId');
+    const params = this.route.snapshot.queryParamMap;
+    this.ticket = params.get('t');
+
+    for (const key of FORWARDED_PARAMS) {
+      const value = params.get(key);
+      if (value) {
+        this.forwarded[key] = value;
+      }
+    }
+
     this.redeem();
   }
 
@@ -79,7 +97,7 @@ export class AccesoComponent implements OnInit {
 
     this.state.set('redirecting');
     void this.router.navigate([landing], {
-      queryParams: this.amenityId ? { amenityId: this.amenityId } : undefined,
+      queryParams: Object.keys(this.forwarded).length ? this.forwarded : undefined,
       replaceUrl: true,
     });
   }

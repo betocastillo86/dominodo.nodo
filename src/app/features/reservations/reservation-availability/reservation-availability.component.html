@@ -46,6 +46,82 @@
           }
         }
       }
+      <!-- A resident who already holds a booking here gets that, and only that.
+           The errand they came back for is almost always the booking itself —
+           the hour, the comprobante — and a calendar on top of it buries the
+           answer. Its own state, not a flag inside 'ready', so the calendar
+           below stays exactly as it was. -->
+      @case ('gate') {
+        @if (amenity(); as amenity) {
+          <h1 class="h2 mb-3">{{ amenity.name }}</h1>
+
+          @if (amenity.status === 'OutOfService') {
+            <div class="alert alert-warning">Esta área está temporalmente fuera de servicio.</div>
+          }
+
+          <div class="card">
+            <div class="card-body">
+              <div class="empty-icon text-primary mx-auto">
+                <tabler-icon name="calendar-event"></tabler-icon>
+              </div>
+              <h2 class="h3 text-center mb-1">
+                @if (activeReservations().length === 1) {
+                  Ya tienes una reserva en esta área
+                } @else {
+                  Ya tienes reservas en esta área
+                }
+              </h2>
+              <p class="text-secondary text-center">
+                Toca tu reserva para ver el detalle y enviar el comprobante de pago.
+              </p>
+
+              @for (reservation of activeReservations(); track reservation.id) {
+                <button
+                  type="button"
+                  class="alert alert-primary own-reservation mb-2"
+                  (click)="openOwnReservation(reservation, ownReservationTpl)"
+                >
+                  <span class="flex-fill">
+                    <span class="d-flex align-items-center gap-2">
+                      <span class="fw-bold">{{ reservation.code }}</span>
+                      <span [class]="statusBadge[reservation.status]">
+                        {{ statusLabel[reservation.status] }}
+                      </span>
+                    </span>
+                    <span class="d-block text-capitalize">
+                      {{ formatDate(reservation.dateLocal) }}
+                    </span>
+                    <span class="d-block small">{{ ownTimeLabel(reservation) }}</span>
+                  </span>
+                  <tabler-icon name="chevron-right"></tabler-icon>
+                </button>
+              }
+            </div>
+
+            <!-- Outline, not primary: booking again is the rarer errand here,
+                 and the action that matters is the booking listed above.
+                 Under it, the way out — this resident arrived from the Domi
+                 chat, and "ya tengo reserva" is an answer they can leave on. -->
+            <div class="card-body border-top d-grid gap-2">
+              <button
+                type="button"
+                class="btn btn-outline-primary book-btn"
+                (click)="startNewReservation()"
+              >
+                <tabler-icon name="calendar-event" class="me-2"></tabler-icon>
+                Hacer otra reserva
+              </button>
+
+              @if (whatsAppUrl; as url) {
+                <a [href]="url" class="btn btn-success book-btn">
+                  <tabler-icon name="brand-whatsapp" class="me-2"></tabler-icon>
+                  Volver a WhatsApp
+                </a>
+              }
+            </div>
+          </div>
+        }
+      }
       @case ('ready') {
         @if (amenity(); as amenity) {
           <h1 class="h2 mb-3">{{ amenity.name }}</h1>
@@ -113,9 +189,30 @@
                     <span class="fw-bold text-capitalize">{{ formatDate(date) }}</span>
                   </div>
                   <div class="card-body">
+                    <!-- Tappable, not just informative: this is the only way
+                         back into a booking made in an earlier session, and the
+                         comprobante is what the resident comes back for. -->
                     @for (reservation of selectedDayOwnReservations(); track reservation.id) {
-                      <div class="alert alert-primary">
-                        Ya tienes una reserva aquí ({{ reservation.code }}).
+                      <button
+                        type="button"
+                        class="alert alert-primary own-reservation"
+                        (click)="openOwnReservation(reservation, ownReservationTpl)"
+                      >
+                        <span class="flex-fill">
+                          Ya tienes una reserva aquí ({{ reservation.code }}).
+                          <span class="d-block small">Ver detalle y comprobante de pago</span>
+                        </span>
+                        <tabler-icon name="chevron-right"></tabler-icon>
+                      </button>
+                    }
+
+                    <!-- Only ever set by the link's own window: the resident
+                         was told an hour in the chat and must not have to work
+                         out from a grey chip why it is not the one selected. -->
+                    @if (takenSlotNotice(); as time) {
+                      <div class="alert alert-warning">
+                        El horario de las {{ time }} que te compartieron ya está reservado. Elige
+                        otro de los disponibles.
                       </div>
                     }
 
@@ -387,5 +484,72 @@
         }
       </div>
     }
+  </div>
+</ng-template>
+
+<!-- One of the resident's own bookings ----------------------------------------->
+<ng-template #ownReservationTpl let-modal>
+  <div class="modal-header">
+    <h5 class="modal-title">Tu reserva</h5>
+    <button type="button" class="btn-close" aria-label="Cerrar" (click)="modal.dismiss()"></button>
+  </div>
+
+  <div class="modal-body">
+    @if (ownReservation(); as reservation) {
+      <!-- Rendered from the row already in hand, so the sheet is never blank
+           while the detail (the only read that carries the proofs) is in flight. -->
+      <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
+        <span class="fw-bold">{{ reservation.code }}</span>
+        <span [class]="statusBadge[reservation.status]">
+          {{ statusLabel[reservation.status] }}
+        </span>
+      </div>
+
+      <dl class="row small mb-0">
+        <dt class="col-5 text-secondary fw-normal">Día</dt>
+        <dd class="col-7 mb-2 text-capitalize">{{ formatDate(reservation.dateLocal) }}</dd>
+
+        <dt class="col-5 text-secondary fw-normal">Horario</dt>
+        <dd class="col-7 mb-2">{{ ownTimeLabel(reservation) }}</dd>
+
+        <dt class="col-5 text-secondary fw-normal">Personas</dt>
+        <dd class="col-7 mb-0">{{ reservation.attendees }}</dd>
+      </dl>
+
+      @if (reservation.status === 'Pending' && reservation.pendingDeadlineUtc) {
+        <div class="alert alert-warning mt-3 mb-0">
+          Si no se confirma antes del {{ formatInstant(reservation.pendingDeadlineUtc) }}, el
+          horario se libera automáticamente.
+        </div>
+      }
+
+      <hr />
+
+      <h2 class="h4 mb-2">Comprobante de pago</h2>
+
+      @if (ownDetailLoading()) {
+        <app-spinner label="Cargando tu comprobante…" />
+      } @else if (ownDetailError(); as message) {
+        <div class="alert alert-danger mb-0" role="alert">
+          {{ message }}
+          <div class="d-grid mt-2">
+            <button type="button" class="btn btn-outline-danger book-btn" (click)="retryOwnReservation()">
+              <tabler-icon name="refresh" class="me-2"></tabler-icon>
+              Reintentar
+            </button>
+          </div>
+        </div>
+      } @else if (ownDetail(); as detail) {
+        <app-reservation-payment-proof
+          [reservationId]="detail.id"
+          [initialProofs]="detail.paymentProofs"
+          [canUpload]="ownAcceptsProofs()"
+        />
+      }
+    }
+  </div>
+
+  <div class="modal-footer">
+    <button type="button" class="btn btn-link" (click)="modal.dismiss()">Cerrar</button>
   </div>
 </ng-template>

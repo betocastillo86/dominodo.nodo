@@ -105,3 +105,97 @@ export interface CreateReservationRequest {
    */
   apartmentId?: string;
 }
+
+// ── Payment proofs (ADR-0018 §5) ──────────────────────────────────────────────
+
+/**
+ * The booking's full detail — `GET /reservations/{id}`, reachable by the
+ * handoff session. Re-exported from the admin Reservations module instead of
+ * redefined: both sides read the SAME `OperationsReservationDetailDto`, and
+ * these are type-only imports, so nothing of that feature reaches this bundle.
+ */
+export type {
+  ReservationDetailDto,
+  ReservationPaymentProofDto,
+} from '../../reservations-admin/data-access/reservation.models';
+
+/** `Reservation.MaxPaymentProofs` — mirrored from the domain. */
+export const RESERVATION_MAX_PAYMENT_PROOFS = 5;
+
+/**
+ * What the resident's file picker accepts. The API's allowlist is wider (it
+ * also takes PDFs and Office documents), but this surface is a phone inside
+ * WhatsApp's WebView: the comprobante is a screenshot of the transfer or a
+ * photo of the receipt, and narrowing the picker to images is what keeps the
+ * preview below meaningful — every proof shown here can be rendered as one.
+ */
+export const RESERVATION_PROOF_IMAGE_CONTENT_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+];
+
+/**
+ * Same cap the branding logo and the apartment import use. The API enforces no
+ * size of its own — the PUT goes straight to Blob Storage — so this is the only
+ * thing standing between a 12 MP phone photo and a resident's mobile data.
+ */
+export const RESERVATION_PROOF_MAX_BYTES = 5 * 1024 * 1024;
+
+/** Body of `POST /reservations/{id}/payment-proofs/upload-url`. */
+export interface CreateReservationPaymentProofUploadUrlRequest {
+  fileName: string;
+  contentType: string;
+}
+
+/**
+ * `OperationsReservationPaymentProofUploadTicketDto`. No `url`, unlike an
+ * amenity photo's ticket: the container is private, so reading the blob back
+ * needs its own short-lived SAS (`AttachmentDownloadUrl`).
+ */
+export interface ReservationPaymentProofUploadTicket {
+  uploadUrl: string;
+  /** What the confirm call echoes back; the API checks it belongs to this booking. */
+  key: string;
+}
+
+/** Body of `POST /reservations/{id}/payment-proofs`. */
+export interface ConfirmReservationPaymentProofRequest {
+  key: string;
+  fileName: string;
+  contentType: string;
+}
+
+/**
+ * `AttachmentDownloadUrlDto` — a short-lived (~5 min) SAS for one blob in the
+ * private container. Defined here rather than imported from the PQRS feature:
+ * the API shares the contract across modules, the portal does not share it
+ * across features.
+ */
+export interface AttachmentDownloadUrl {
+  url: string;
+  /** SAS expiry; a cached URL must be re-minted past it. */
+  expiresAtUtc: string;
+}
+
+/**
+ * The booking's state as the RESIDENT reads it. Deliberately not the admin
+ * table's one-word label: "Pendiente" alone, on the screen where a resident
+ * just booked, reads as "ya quedó" — the waiting is the part they must notice.
+ */
+export const RESIDENT_RESERVATION_STATUS_LABEL: Record<ReservationStatus, string> = {
+  Pending: 'Pendiente de confirmación',
+  Confirmed: 'Confirmada',
+  Rejected: 'Rechazada',
+  Cancelled: 'Cancelada',
+  Expired: 'Expirada',
+};
+
+export const RESIDENT_RESERVATION_STATUS_BADGE: Record<ReservationStatus, string> = {
+  Pending: 'badge bg-yellow-lt',
+  Confirmed: 'badge bg-green-lt',
+  Rejected: 'badge bg-red-lt',
+  Cancelled: 'badge bg-secondary-lt',
+  Expired: 'badge bg-secondary-lt',
+};
