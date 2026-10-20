@@ -43,12 +43,27 @@ export const RESERVATION_STATUSES: readonly ReservationStatus[] = [
   'Expired',
 ];
 
+/**
+ * The Tabler colour utility each status wears. Split out from the badge class
+ * because the list paints the same colours on a `<select>` rather than a
+ * `<span>` — `badge` would fight the control's own shape, the tint alone does
+ * not (it sets background, text and border colour, nothing else).
+ */
+export const RESERVATION_STATUS_TINT: Record<ReservationStatus, string> = {
+  Pending: 'bg-yellow-lt',
+  Confirmed: 'bg-green-lt',
+  Rejected: 'bg-red-lt',
+  Cancelled: 'bg-secondary-lt',
+  Expired: 'bg-secondary-lt',
+};
+
+/** That same tint worn as a badge — every static status cell in the module. */
 export const RESERVATION_STATUS_BADGE: Record<ReservationStatus, string> = {
-  Pending: 'badge bg-yellow-lt',
-  Confirmed: 'badge bg-green-lt',
-  Rejected: 'badge bg-red-lt',
-  Cancelled: 'badge bg-secondary-lt',
-  Expired: 'badge bg-secondary-lt',
+  Pending: `badge ${RESERVATION_STATUS_TINT.Pending}`,
+  Confirmed: `badge ${RESERVATION_STATUS_TINT.Confirmed}`,
+  Rejected: `badge ${RESERVATION_STATUS_TINT.Rejected}`,
+  Cancelled: `badge ${RESERVATION_STATUS_TINT.Cancelled}`,
+  Expired: `badge ${RESERVATION_STATUS_TINT.Expired}`,
 };
 
 /** Sort key accepted by `GET /reservations` (`sortBy`). `StartDate` is the booked window. */
@@ -145,6 +160,8 @@ export interface ReservationDetailDto {
   confirmedAtUtc: string | null;
   /** What the staff RECORDED as paid when confirming; there is no wallet behind it. */
   amountPaid: number | null;
+  /** The approver's optional note, written when the booking was confirmed. */
+  confirmationComment: string | null;
   rejectedBy: string | null;
   rejectedAtUtc: string | null;
   rejectionReason: string | null;
@@ -164,18 +181,45 @@ export interface ReservationDetailDto {
 /** `Reservation.ReasonMaxLength` — mirrored from the domain. */
 export const RESERVATION_REASON_MAX_LENGTH = 500;
 
+/** `Reservation.CommentMaxLength` — mirrored from the domain. */
+export const RESERVATION_COMMENT_MAX_LENGTH = 500;
+
 /** The three moves this portal offers on a booking, one endpoint each. */
 export type ReservationAction = 'confirm' | 'reject' | 'cancel';
 
+/** The state each move LANDS the booking on. */
+export const RESERVATION_ACTION_TARGET: Record<ReservationAction, ReservationStatus> = {
+  confirm: 'Confirmed',
+  reject: 'Rejected',
+  cancel: 'Cancelled',
+};
+
+/**
+ * How a move is NAMED wherever it is offered or reported: by the state it lands
+ * on, never by a verb. One source for all three places a move surfaces — the
+ * list's status select, the dialog's own select, and the toast that follows —
+ * so a booking reads "Confirmada" everywhere instead of being approved in one
+ * screen and confirmed in the next.
+ */
 export const RESERVATION_ACTION_LABEL: Record<ReservationAction, string> = {
-  confirm: 'Aprobar',
-  reject: 'Rechazar',
-  cancel: 'Cancelar',
+  confirm: RESERVATION_STATUS_LABEL[RESERVATION_ACTION_TARGET.confirm],
+  reject: RESERVATION_STATUS_LABEL[RESERVATION_ACTION_TARGET.reject],
+  cancel: RESERVATION_STATUS_LABEL[RESERVATION_ACTION_TARGET.cancel],
 };
 
 /** Rejecting and cancelling keep a mandatory reason; approving does not take one. */
 export function requiresReason(action: ReservationAction): boolean {
   return action === 'reject' || action === 'cancel';
+}
+
+/**
+ * Approving takes an OPTIONAL note where the other two take a motive — the only
+ * move that carries one. Nothing is lost by leaving it empty: the domain trims
+ * it and reads blank as absence (`Reservation.CheckComment`), so an untouched
+ * textarea and a whitespace-only one both store nothing.
+ */
+export function acceptsComment(action: ReservationAction): boolean {
+  return action === 'confirm';
 }
 
 /**
@@ -222,9 +266,14 @@ export function availableReservationActions(
   return actions;
 }
 
-/** Body of `POST /reservations/{id}/confirm`. `amountPaid` is recorded, not processed. */
+/**
+ * Body of `POST /reservations/{id}/confirm`. `amountPaid` is recorded, not
+ * processed; `comment` is the approver's optional note, read back on the detail
+ * as `confirmationComment`.
+ */
 export interface ConfirmReservationRequest {
   amountPaid: number | null;
+  comment: string | null;
 }
 
 /** Body of `POST /reservations/{id}/reject` and `.../cancel`. */
@@ -234,7 +283,12 @@ export interface ReservationReasonRequest {
 
 /**
  * Server-side filters this screen sends to `GET /reservations` (plus paging and
- * sort). `fromUtc`/`toUtc` match the booking WINDOW, never the creation date.
+ * sort). THREE independent date ranges, each over a different instant — picking
+ * the wrong one is the easy mistake here:
+ *  - `fromUtc`/`toUtc` — the booked WINDOW, when the area is used;
+ *  - `createdFromUtc`/`createdToUtc` — when the resident ASKED for it;
+ *  - `expiresFromUtc`/`expiresToUtc` — `pendingDeadlineUtc`, when an unanswered
+ *    pending booking lapses.
  */
 export interface ReservationFilters {
   amenityId: string | null;
@@ -243,4 +297,8 @@ export interface ReservationFilters {
   paymentUploaded: boolean | null;
   fromUtc: string | null;
   toUtc: string | null;
+  createdFromUtc: string | null;
+  createdToUtc: string | null;
+  expiresFromUtc: string | null;
+  expiresToUtc: string | null;
 }

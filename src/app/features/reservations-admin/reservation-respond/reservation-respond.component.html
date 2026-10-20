@@ -46,6 +46,23 @@
           <small class="form-hint">El residente verá este texto. Máximo {{ reasonMaxLength }} caracteres.</small>
         </div>
       }
+
+      @if (allowsComment()) {
+        <div class="mb-0">
+          <label class="form-label" for="respond-comment">Comentario</label>
+          <textarea
+            id="respond-comment"
+            class="form-control"
+            rows="3"
+            formControlName="comment"
+            [maxlength]="commentMaxLength"
+            placeholder="Si quieres, deja una nota sobre la aprobación."
+          ></textarea>
+          <small class="form-hint">
+            Opcional. Queda guardado en la reserva. Máximo {{ commentMaxLength }} caracteres.
+          </small>
+        </div>
+      }
     </div>
 
     <div class="modal-footer">

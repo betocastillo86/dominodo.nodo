@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  input,
+  output,
+  TemplateRef,
+} from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { TablerIconComponent } from 'angular-tabler-icons';
 import { PagedResult } from '../../../core/models/paged-result';
@@ -26,6 +34,14 @@ export interface TableColumn<T> {
    * identify the row (a code, a title), so they lead where the row action does.
    */
   link?: (row: T) => unknown[];
+  /**
+   * Escape hatch for a cell the host wants to render itself — the row arrives
+   * as `$implicit`. Wins over every other rendering above, and is how a column
+   * gets something interactive (a control) rather than a formatted value.
+   * `value` is still required, as the column's plain-text fallback while the
+   * template is being resolved.
+   */
+  cellTemplate?: TemplateRef<{ $implicit: T }>;
 }
 
 /** Current sort state: which column key and in which direction. */
@@ -41,7 +57,7 @@ export interface TableSort {
 @Component({
   selector: 'app-data-table',
   standalone: true,
-  imports: [SpinnerComponent, RouterLink, TablerIconComponent],
+  imports: [SpinnerComponent, RouterLink, TablerIconComponent, NgTemplateOutlet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './data-table.component.html',
   styles: [

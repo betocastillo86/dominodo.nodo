@@ -58,8 +58,13 @@ export class ReservationsAdminService {
     if (filters.amenityId) params = params.set('amenityId', filters.amenityId);
     if (filters.apartmentId) params = params.set('apartmentId', filters.apartmentId);
     if (filters.status) params = params.set('status', filters.status);
+    // Three independent ranges — booked window, request date, pending deadline.
     if (filters.fromUtc) params = params.set('fromUtc', filters.fromUtc);
     if (filters.toUtc) params = params.set('toUtc', filters.toUtc);
+    if (filters.createdFromUtc) params = params.set('createdFromUtc', filters.createdFromUtc);
+    if (filters.createdToUtc) params = params.set('createdToUtc', filters.createdToUtc);
+    if (filters.expiresFromUtc) params = params.set('expiresFromUtc', filters.expiresFromUtc);
+    if (filters.expiresToUtc) params = params.set('expiresToUtc', filters.expiresToUtc);
     // `GET /reservations` carries `paymentUploaded` on each ROW but does not yet
     // accept it as a filter, so nothing sets this today — the plumbing is here
     // so enabling the filter is a template change once the API takes the param.
@@ -90,10 +95,16 @@ export class ReservationsAdminService {
   /**
    * Approve a PENDING booking (`POST /reservations/{id}/confirm`, requires
    * `reservations.edit`). `amountPaid` is optional and merely RECORDED — this
-   * screen does not collect it, so it always goes null.
+   * screen does not collect it, so it always goes null. `comment` is the
+   * approver's optional note: an empty one goes as null rather than `''`, which
+   * is what the domain stores for it anyway.
    */
-  confirm(id: string, amountPaid: number | null = null): Observable<void> {
-    const body: ConfirmReservationRequest = { amountPaid };
+  confirm(
+    id: string,
+    amountPaid: number | null = null,
+    comment: string | null = null,
+  ): Observable<void> {
+    const body: ConfirmReservationRequest = { amountPaid, comment: comment?.trim() || null };
     return this.http.post<void>(`${this.base}/${id}/confirm`, body);
   }
 

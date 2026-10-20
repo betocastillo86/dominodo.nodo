@@ -7,8 +7,10 @@ import { PermissionStore } from '../../../core/authz/permission.store';
 import { NotificationService } from '../../../core/notifications/notification.service';
 import { toReservationActionMessage } from '../data-access/reservation-action-errors';
 import {
+  acceptsComment,
   availableReservationActions,
   RESERVATION_ACTION_LABEL,
+  RESERVATION_COMMENT_MAX_LENGTH,
   RESERVATION_REASON_MAX_LENGTH,
   requiresReason,
   RespondableReservation,
@@ -18,8 +20,9 @@ import { ReservationsAdminService } from '../data-access/reservations-admin.serv
 
 /**
  * The "responder" dialog of the Reservas module: pick the booking's new state
- * (aprobar / rechazar / cancelar) and, for the two that release the slot, write
- * the administrator's reason.
+ * (confirmar / rechazar / cancelar) and write what that state carries — a
+ * mandatory reason for the two that release the slot, an optional note for the
+ * one that grants the booking.
  *
  * Its own component because BOTH screens of the module answer bookings — the
  * list row by row, the detail for the one it is showing — and the rules behind
@@ -56,6 +59,7 @@ export class ReservationRespondComponent {
 
   readonly actionLabel = RESERVATION_ACTION_LABEL;
   readonly reasonMaxLength = RESERVATION_REASON_MAX_LENGTH;
+  readonly commentMaxLength = RESERVATION_COMMENT_MAX_LENGTH;
 
   readonly form = new FormGroup({
     action: new FormControl<ReservationAction | ''>('', {
@@ -63,6 +67,7 @@ export class ReservationRespondComponent {
       validators: [Validators.required],
     }),
     reason: new FormControl('', { nonNullable: true }),
+    comment: new FormControl('', { nonNullable: true }),
   });
 
   /**
@@ -84,6 +89,8 @@ export class ReservationRespondComponent {
 
   /** Drives the reason textarea; recomputed from the control so the template stays dumb. */
   readonly needsReason = signal(false);
+  /** Same, for the optional note that approving a booking carries. */
+  readonly allowsComment = signal(false);
 
   private readonly tpl = viewChild.required<TemplateRef<unknown>>('respondTpl');
 
@@ -91,9 +98,10 @@ export class ReservationRespondComponent {
   private respondModal: NgbModalRef | null = null;
 
   constructor() {
-    // Rejecting and cancelling need a reason; approving must not demand one.
+    // Rejecting and cancelling need a reason; approving takes an optional note
+    // instead and must never demand anything.
     this.form.controls.action.valueChanges.pipe(takeUntilDestroyed()).subscribe((action) => {
-      this.applyReasonValidators(action);
+      this.applyActionValidators(action);
     });
   }
 
@@ -106,12 +114,18 @@ export class ReservationRespondComponent {
     return availableReservationActions(reservation, this.canEdit(), this.canCancel()).length > 0;
   }
 
-  open(reservation: RespondableReservation): void {
+  /**
+   * `action` pre-picks the state the dialog opens on — what the list's status
+   * select sends when the administrator chooses a state straight from the row.
+   * The dialog still asks for the reason and can still be dismissed; the caller
+   * only saves a click. Callers with a plain "responder" trigger omit it.
+   */
+  open(reservation: RespondableReservation, action: ReservationAction | '' = ''): void {
     this.target.set(reservation);
     this.submitted.set(false);
     this.formError.set(null);
-    this.form.reset({ action: '', reason: '' });
-    this.applyReasonValidators('');
+    this.form.reset({ action, reason: '', comment: '' });
+    this.applyActionValidators(action);
 
     this.respondModal = this.modal.open(this.tpl());
     this.respondModal.result.then(
@@ -126,10 +140,10 @@ export class ReservationRespondComponent {
     if (this.form.invalid) return;
 
     const row = this.target();
-    const { action, reason } = this.form.getRawValue();
+    const { action, reason, comment } = this.form.getRawValue();
     if (!row || !action) return;
 
-    const request = this.requestFor(row.id, action, reason.trim());
+    const request = this.requestFor(row.id, action, reason.trim(), comment.trim());
 
     this.saving.set(true);
     request.pipe(finalize(() => this.saving.set(false))).subscribe({
@@ -142,10 +156,16 @@ export class ReservationRespondComponent {
     });
   }
 
-  private requestFor(id: string, action: ReservationAction, reason: string): Observable<void> {
+  private requestFor(
+    id: string,
+    action: ReservationAction,
+    reason: string,
+    comment: string,
+  ): Observable<void> {
     switch (action) {
       case 'confirm':
-        return this.service.confirm(id);
+        // No `amountPaid`: this dialog records the note, not the money.
+        return this.service.confirm(id, null, comment);
       case 'reject':
         return this.service.reject(id, reason);
       case 'cancel':
@@ -153,21 +173,40 @@ export class ReservationRespondComponent {
     }
   }
 
+  /**
+   * `"Reserva A-123: confirmada."` — the destination state's own label, so the
+   * toast says the same word the two selects offered.
+   */
   private pastTense(action: ReservationAction): string {
-    return { confirm: 'aprobada', reject: 'rechazada', cancel: 'cancelada' }[action];
+    return RESERVATION_ACTION_LABEL[action].toLowerCase();
   }
 
-  private applyReasonValidators(action: ReservationAction | ''): void {
-    const needed = !!action && requiresReason(action);
-    this.needsReason.set(needed);
+  private applyActionValidators(action: ReservationAction | ''): void {
+    const needsReason = !!action && requiresReason(action);
+    this.needsReason.set(needsReason);
 
     const reason = this.form.controls.reason;
-    if (needed) {
+    if (needsReason) {
       reason.setValidators([Validators.required, Validators.maxLength(RESERVATION_REASON_MAX_LENGTH)]);
     } else {
       reason.clearValidators();
       reason.setValue('', { emitEvent: false });
     }
     reason.updateValueAndValidity({ emitEvent: false });
+
+    // The note is optional, so its only rule is the domain's length cap — and it
+    // is cleared whenever the move does not carry one, so a note typed before
+    // switching to "Rechazada" never rides along with the rejection.
+    const allowsNote = !!action && acceptsComment(action);
+    this.allowsComment.set(allowsNote);
+
+    const comment = this.form.controls.comment;
+    if (allowsNote) {
+      comment.setValidators([Validators.maxLength(RESERVATION_COMMENT_MAX_LENGTH)]);
+    } else {
+      comment.clearValidators();
+      comment.setValue('', { emitEvent: false });
+    }
+    comment.updateValueAndValidity({ emitEvent: false });
   }
 }

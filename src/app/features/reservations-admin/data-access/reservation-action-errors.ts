@@ -16,7 +16,7 @@ import { ProblemDetails } from '../../../core/http/problem-details';
  */
 const MESSAGES: Record<string, string> = {
   'Reservation.NotPending':
-    'Esta reserva ya no está pendiente, así que no se puede aprobar ni rechazar. Actualiza el listado.',
+    'Esta reserva ya no está pendiente, así que no se puede confirmar ni rechazar. Actualiza el listado.',
   'Reservation.NotCancellable':
     'Solo se puede cancelar una reserva pendiente o confirmada. Actualiza el listado.',
   'Reservation.AlreadyStarted': 'La reserva ya empezó, así que no se puede cancelar.',

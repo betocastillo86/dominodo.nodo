@@ -78,6 +78,12 @@
             @if (r.confirmedAtUtc) {
               <dt class="col-5 text-secondary">Confirmada</dt>
               <dd class="col-7">{{ formatInstant(r.confirmedAtUtc) }}</dd>
+              <!-- Optional, unlike the two motives below: only shown when the
+                   administrator actually left a note while approving. -->
+              @if (r.confirmationComment) {
+                <dt class="col-5 text-secondary">Comentario</dt>
+                <dd class="col-7">{{ r.confirmationComment }}</dd>
+              }
             }
 
             @if (r.rejectedAtUtc) {

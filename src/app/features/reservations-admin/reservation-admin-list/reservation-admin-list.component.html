@@ -1,7 +1,26 @@
 <app-page-header title="Reservas" pretitle="Áreas sociales" />
 
 <div class="card">
-  <div class="card-header">
+  <div class="card-header d-block">
+    <!--
+      Shortcuts over the filters below. Each writes the window it means into the
+      date fields, so what it did stays visible — and editable from there.
+    -->
+    <div class="btn-group btn-group-sm mb-3" role="group" aria-label="Filtros rápidos">
+      @for (view of quickViews; track view.key) {
+        <button
+          type="button"
+          class="btn btn-sm"
+          [class.btn-primary]="quickView() === view.key"
+          [attr.aria-pressed]="quickView() === view.key"
+          [title]="view.hint"
+          (click)="toggleQuickView(view.key)"
+        >
+          {{ view.label }}
+        </button>
+      }
+    </div>
+
     <div class="row g-2 w-100">
       <div class="col-6 col-lg-2">
         <label class="form-label mb-1" for="reservations-from">Desde</label>
@@ -43,7 +62,7 @@
   </div>
 
   <app-data-table
-    [columns]="columns"
+    [columns]="columns()"
     [rows]="items()"
     [paging]="paging()"
     [loading]="loading()"
@@ -51,13 +70,21 @@
     [rowKey]="rowKey"
     [actionLink]="detailLink"
     actionIcon="eye"
-    rowActionIcon="message-reply"
-    rowActionLabel="Responder la reserva"
-    [rowActionVisible]="canRespond"
-    (rowAction)="respond.open($event)"
     (pageChange)="onPageChange($event)"
   />
 </div>
 
-<!-- Renders only its dialog; the row action above is its trigger here. -->
+<!--
+  The "Estado" cell. It is a control rather than a value, so it reaches the
+  generic table as a template: picking a state opens the shared dialog with that
+  state already chosen, the reason still to be written there.
+-->
+<ng-template #statusCell let-reservation>
+  <app-reservation-status-select
+    [reservation]="reservation"
+    (actionPicked)="respond.open(reservation, $event)"
+  />
+</ng-template>
+
+<!-- Renders only its dialog; the status select above is its only trigger here. -->
 <app-reservation-respond #respond (responded)="onResponded()" />

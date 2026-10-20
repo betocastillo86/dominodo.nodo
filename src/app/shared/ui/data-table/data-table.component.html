@@ -33,7 +33,12 @@
           <tr>
             @for (col of columns(); track col.header) {
               <td [class]="col.class ?? ''">
-                @if (col.badgeClass?.(row); as badge) {
+                @if (col.cellTemplate; as tpl) {
+                  <ng-container
+                    [ngTemplateOutlet]="tpl"
+                    [ngTemplateOutletContext]="{ $implicit: row }"
+                  />
+                } @else if (col.badgeClass?.(row); as badge) {
                   <span [class]="badge">{{ col.value(row) }}</span>
                 } @else if (col.icon) {
                   <span class="d-inline-flex align-items-center gap-1">
