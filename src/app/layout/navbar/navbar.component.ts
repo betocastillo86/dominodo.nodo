@@ -61,6 +61,13 @@ export class NavbarComponent {
       feature: 'Requests',
     },
     {
+      label: 'Reservas',
+      path: '/reservations',
+      icon: 'calendar-event',
+      permission: 'reservations.view',
+      feature: 'Amenities',
+    },
+    {
       label: 'Anuncios',
       path: '/announcements',
       icon: 'speakerphone',
@@ -75,13 +82,6 @@ export class NavbarComponent {
       path: '/apartments',
       icon: 'building',
       permission: 'apartments.view',
-    },
-    {
-      label: 'Reservas',
-      path: '/reservations',
-      icon: 'calendar-event',
-      permission: 'reservations.view',
-      feature: 'Amenities',
     },
     // `tenant.info` is a single permission covering both read and write of the
     // conjunto's own contact info; no FeatureKey gates it. "Base de
