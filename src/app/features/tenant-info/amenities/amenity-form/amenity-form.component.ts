@@ -22,6 +22,7 @@ import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { TablerIconComponent } from 'angular-tabler-icons';
 import { toMessage } from '../../../../core/http/problem-details';
 import { NotificationService } from '../../../../core/notifications/notification.service';
+import { DurationInputComponent } from '../../../../shared/ui/duration-input/duration-input.component';
 import { richTextToHtml, sanitizeRichText } from '../../../../shared/ui/rich-text/rich-text';
 import { RichTextEditorComponent } from '../../../../shared/ui/rich-text-editor/rich-text-editor.component';
 import { ScheduleEditorComponent } from '../../../../shared/ui/schedule-editor/schedule-editor.component';
@@ -35,6 +36,7 @@ import {
 import {
   AMENITY_DEFAULT_CANCEL_BEFORE_DAYS,
   AMENITY_MAX_CANCEL_BEFORE_DAYS,
+  AMENITY_MAX_PAYMENT_PROOF_EXPIRY_HOURS,
   AMENITY_MIN_PHOTOS,
   AMENITY_NAME_MAX_LENGTH,
   AMENITY_POLICY_TEXT_MAX_LENGTH,
@@ -79,6 +81,7 @@ function hoursRangeValidator(group: AbstractControl): ValidationErrors | null {
     AmenityPhotosEditorComponent,
     ScheduleEditorComponent,
     RichTextEditorComponent,
+    DurationInputComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './amenity-form.component.html',
@@ -111,6 +114,8 @@ export class AmenityFormComponent implements OnInit {
   readonly textMaxLength = AMENITY_POLICY_TEXT_MAX_LENGTH;
   readonly minPhotos = AMENITY_MIN_PHOTOS;
   readonly maxCancelBeforeDays = AMENITY_MAX_CANCEL_BEFORE_DAYS;
+  readonly maxPaymentProofExpiryHours = AMENITY_MAX_PAYMENT_PROOF_EXPIRY_HOURS;
+  readonly maxPaymentProofExpiryDays = AMENITY_MAX_PAYMENT_PROOF_EXPIRY_HOURS / 24;
 
   /**
    * The area's pending-expiry window. This portal does not edit it, but a save
@@ -132,6 +137,12 @@ export class AmenityFormComponent implements OnInit {
       maxHours: this.fb.control<number | null>(null, [Validators.min(1)]),
       paymentRequired: this.fb.nonNullable.control(false),
       price: this.fb.control<number | null>(null),
+      // Typed in days or hours by <app-duration-input>, always held in HOURS.
+      // Empty means the booking is never released for a missing comprobante.
+      paymentProofExpiryHours: this.fb.control<number | null>(null, [
+        Validators.min(1),
+        Validators.max(AMENITY_MAX_PAYMENT_PROOF_EXPIRY_HOURS),
+      ]),
       maxPerDayPerApartment: this.fb.control<number | null>(null, [Validators.min(1)]),
       usageRules: this.fb.nonNullable.control('', [
         Validators.maxLength(AMENITY_POLICY_TEXT_MAX_LENGTH),
@@ -167,7 +178,8 @@ export class AmenityFormComponent implements OnInit {
 
     this.form.controls.paymentRequired.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((required) => this.applyPriceRule(required));
+      .subscribe((required) => this.applyPaymentRules(required));
+    this.applyPaymentRules(this.form.controls.paymentRequired.value);
 
     if (this.mode === 'edit') {
       this.fetch();
@@ -268,14 +280,26 @@ export class AmenityFormComponent implements OnInit {
     }
   }
 
-  private applyPriceRule(required: boolean): void {
-    const control = this.form.controls.price;
+  /**
+   * Both payment fields hang off the switch. The plazo is disabled rather than
+   * merely hidden when payment is off: a leftover invalid value in a field
+   * nobody can see would block the save with no error on screen to fix.
+   */
+  private applyPaymentRules(required: boolean): void {
+    const price = this.form.controls.price;
     if (required) {
-      control.addValidators([Validators.required, Validators.min(0.01)]);
+      price.addValidators([Validators.required, Validators.min(0.01)]);
     } else {
-      control.removeValidators([Validators.required, Validators.min(0.01)]);
+      price.removeValidators([Validators.required, Validators.min(0.01)]);
     }
-    control.updateValueAndValidity({ emitEvent: false });
+    price.updateValueAndValidity({ emitEvent: false });
+
+    const expiry = this.form.controls.paymentProofExpiryHours;
+    if (required) {
+      expiry.enable({ emitEvent: false });
+    } else {
+      expiry.disable({ emitEvent: false });
+    }
   }
 
   private toRequest(): CreateAmenityRequest {
@@ -290,6 +314,7 @@ export class AmenityFormComponent implements OnInit {
         maxHours: v.maxHours,
         price: v.paymentRequired ? v.price : null,
         paymentRequired: v.paymentRequired,
+        paymentProofExpiryHours: v.paymentRequired ? v.paymentProofExpiryHours : null,
         maxPerDayPerApartment: v.maxPerDayPerApartment,
         // Normalized once more on the way out: the control may still hold the
         // plain-text value the API returned if the admin never opened the field.
@@ -323,6 +348,7 @@ export class AmenityFormComponent implements OnInit {
           maxHours: detail.policy.maxHours,
           paymentRequired: detail.policy.paymentRequired,
           price: detail.policy.price,
+          paymentProofExpiryHours: detail.policy.paymentProofExpiryHours,
           maxPerDayPerApartment: detail.policy.maxPerDayPerApartment,
           // A value written before the editor existed is plain text: converted
           // here so the control, the counter and the editor all agree on it.
@@ -334,7 +360,7 @@ export class AmenityFormComponent implements OnInit {
           cancelBeforeTotalDays: detail.policy.cancelBeforeTotalDays ?? 0,
           schedules: slotsToScheduleValue(detail.policy.openingHours),
         });
-        this.applyPriceRule(detail.policy.paymentRequired);
+        this.applyPaymentRules(detail.policy.paymentRequired);
         this.loadingDetail.set(false);
       },
       error: (error: HttpErrorResponse) => {

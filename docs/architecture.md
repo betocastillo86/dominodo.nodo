@@ -257,6 +257,8 @@ src/app/
 │   ├── rich-text-editor/   # cut-down Quill (bold, italic, both lists, link, clear) as a CVA over a
 │   │                       #   plain HTML string — see "Rich text in policy fields" below
 │   ├── rich-text/          # the stored HTML dialect: sanitize/normalize + the `richText` render pipe
+│   ├── duration-input/     # a number + "Horas/Días" select as a CVA over a number of HOURS — the
+│   │                       #   unit is a reinterpretation, so "7 Días" is stored as 168
 │   ├── page-header/  spinner/  empty-state/
 │   └── notifications/      # toast host rendering NotificationService.items()
 └── features/            # lazy domains, each with data-access/ + components
@@ -352,6 +354,9 @@ src/app/
                             #      amenities/data-access/amenity-schedule.ts for the mapping
                             #      "Reglas de uso" / "Servicios adicionales" are rich text
                             #      (shared/ui/rich-text-editor) — see the subsection below
+                            #      "Plazo para enviar el comprobante" (policy.paymentProofExpiryHours)
+                            #      is typed in days or hours via shared/ui/duration-input and always
+                            #      stored in hours; it hangs off the "Requiere pago" switch
                             #    Base de conocimiento (/tenant-info/knowledge-resources): the other
                             #      routed CRUD sub-feature, same shape as Áreas sociales (list/new/
                             #      :id/edit behind TenantInfoKnowledgePageComponent) —
@@ -465,6 +470,15 @@ confirm, read the code — because a resident on a phone should never wonder whi
   immediately only when the area asks for neither approval nor payment (ADR-0018 §2). Saying so
   *before* the resident confirms, and again on the success screen with its deadline, is the difference
   between "reservado" and a slot that silently expires.
+- **A paid area's comprobante has a clock, and the resident is told before they commit.**
+  `ReservationPolicy.PaymentProofExpiryHours` (hours; `null` = no clock) is how long a `Pending`
+  booking waits for the comprobante — or for the resident to pay at the office — before the slot is
+  released. `data-access/payment-proof-window.ts` owns the three wordings of that one rule (reference
+  on the area card, warning in the confirmation dialog, deadline on a booking that already exists), so
+  they cannot drift apart. Once the booking exists the date comes from the server's own
+  `pendingDeadlineUtc` whenever it sent one, and is only derived from `createdAtUtc + the plazo` when
+  it did not — and it **replaces** the generic "si no se confirma antes del…" line rather than joining
+  it: two deadlines for one booking is how a resident picks the wrong one.
 - **The booking's `code` (`R001`) is what the resident is shown, never its GUID.** ADR-0011 created the
   code so a human — and Domi, in the chat — can name the booking out loud.
 - **"Disponible" is not "aceptado", so every rejection has resident copy.** The calendar deliberately

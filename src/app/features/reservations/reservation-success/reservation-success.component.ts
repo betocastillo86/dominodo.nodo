@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { TablerIconComponent } from 'angular-tabler-icons';
+import { paymentProofDeadlineNotice } from '../data-access/payment-proof-window';
 import {
   AmenityDetail,
   BLOCKING_RESERVATION_STATUSES,
@@ -86,6 +87,16 @@ export class ReservationSuccessComponent {
     }
     return 'Queda pendiente de confirmación por parte de la administración.';
   });
+
+  /**
+   * The comprobante's own deadline, when the area puts a clock on it. It is
+   * shown beside the upload button rather than up here, and it REPLACES the
+   * generic expiry line: both answer "until when", and two dates for one
+   * booking is how a resident picks the wrong one.
+   */
+  readonly proofDeadlineNotice = computed(() =>
+    paymentProofDeadlineNotice(this.amenity(), this.reservation()),
+  );
 
   readonly deadlineLabel = computed(() => {
     const deadline = this.reservation().pendingDeadlineUtc;

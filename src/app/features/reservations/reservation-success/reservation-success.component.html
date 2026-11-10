@@ -35,7 +35,7 @@
         @if (priceLabel(); as price) {
           <div class="mt-1">Valor del área: {{ price }}.</div>
         }
-        @if (deadlineLabel(); as deadline) {
+        @if (!proofDeadlineNotice() && deadlineLabel(); as deadline) {
           <div class="mt-1">
             Si no se confirma antes del {{ deadline }}, el horario se libera automáticamente.
           </div>
@@ -50,6 +50,16 @@
   @if (acceptsProofs()) {
     <div class="card-body border-top">
       <h2 class="h4 mb-2">Comprobante de pago</h2>
+
+      <!-- The clock, where the action it limits is: the resident reads it with
+           the upload button already under their thumb. -->
+      @if (proofDeadlineNotice(); as notice) {
+        <div class="alert alert-warning d-flex align-items-start">
+          <tabler-icon name="clock" class="me-2 flex-shrink-0"></tabler-icon>
+          <span>{{ notice }}</span>
+        </div>
+      }
+
       <app-reservation-payment-proof [reservationId]="reservation().id" />
     </div>
   }

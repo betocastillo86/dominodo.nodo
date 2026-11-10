@@ -24,6 +24,11 @@ import { RichTextPipe } from '../../../shared/ui/rich-text/rich-text.pipe';
 import { SpinnerComponent } from '../../../shared/ui/spinner/spinner.component';
 import { formatSchedule, parseSchedule } from '../../../shared/ui/schedule-editor/schedule.model';
 import { slotsToScheduleValue } from '../../tenant-info/amenities/data-access/amenity-schedule';
+import {
+  paymentProofDeadlineNotice,
+  paymentProofWindowNotice,
+  paymentProofWindowText,
+} from '../data-access/payment-proof-window';
 import { ReservationAvailabilityService } from '../data-access/reservation-availability.service';
 import { toBookingFailure } from '../data-access/reservation-errors';
 import {
@@ -335,6 +340,19 @@ export class ReservationAvailabilityComponent implements OnInit {
     }
     return null;
   });
+
+  /**
+   * The area's comprobante plazo, in the three places it has to be said: as
+   * reference on the area card, as a warning before confirming, and as a date
+   * on a booking that is already waiting for it (`payment-proof-window.ts`).
+   */
+  readonly proofWindowText = computed(() => paymentProofWindowText(this.amenity()));
+
+  readonly proofNotice = computed(() => paymentProofWindowNotice(this.amenity()));
+
+  readonly ownProofDeadline = computed(() =>
+    paymentProofDeadlineNotice(this.amenity(), this.ownReservation()),
+  );
 
   /**
    * The notice the holder owes to cancel once the booking is CONFIRMED

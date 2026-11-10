@@ -33,6 +33,7 @@ import {
   IconChevronRight,
   IconChevronUp,
   IconCircleCheck,
+  IconClock,
   IconCopy,
   IconDashboard,
   IconDeviceFloppy,
@@ -166,8 +167,10 @@ export const appConfig: ApplicationConfig = {
       IconBuildingSkyscraper,
       // New-version banner
       IconRefresh,
-      // Resident surface — the way back to Domi's chat after booking
+      // Resident surface — the way back to Domi's chat after booking, and the
+      // clock on the comprobante's plazo
       IconBrandWhatsapp,
+      IconClock,
       // Mi perfil — header user menu + change-password action
       IconUser,
       IconLock,

@@ -62,6 +62,14 @@ export interface AmenityPolicy {
    */
   pendingExpiryHours: number | null;
   /**
+   * How long the holder has to send the comprobante (or pay at the office)
+   * before a booking on a PAID area stops holding its slot. Always stored in
+   * HOURS — the form lets the administrator type it in days and converts — and
+   * `null` means the booking is never released for this reason. Only meaningful
+   * when {@link paymentRequired} is on; the form sends `null` when it is off.
+   */
+  paymentProofExpiryHours: number | null;
+  /**
    * The notice the holder owes to cancel a CONFIRMED booking: it stops being
    * cancellable this many days before it starts, and `0` means no window at
    * all. Read comes back as a number (`0` for a policy written before the rule
@@ -135,3 +143,11 @@ export const AMENITY_POLICY_TEXT_MAX_LENGTH = 2000;
 /** `ReservationPolicy.DefaultCancelBeforeTotalDays` / `MaxCancelBeforeTotalDays`. */
 export const AMENITY_DEFAULT_CANCEL_BEFORE_DAYS = 7;
 export const AMENITY_MAX_CANCEL_BEFORE_DAYS = 365;
+
+/**
+ * Ceiling for {@link AmenityPolicy.paymentProofExpiryHours} — a year, the same
+ * horizon `AMENITY_MAX_CANCEL_BEFORE_DAYS` uses. It exists to stop a typo
+ * ("720" meaning days) from becoming a plazo nobody intended, not to express a
+ * rule of the domain.
+ */
+export const AMENITY_MAX_PAYMENT_PROOF_EXPIRY_HOURS = 365 * 24;

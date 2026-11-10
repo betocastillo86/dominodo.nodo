@@ -326,6 +326,11 @@
                           ({{ formatPrice(amenity.policy.price) }})
                         }
                       </dd>
+
+                      @if (proofWindowText(); as window) {
+                        <dt class="col-5 text-secondary fw-normal">Comprobante</dt>
+                        <dd class="col-7 mb-2">{{ window }}</dd>
+                      }
                     }
 
                     <dt class="col-5 text-secondary fw-normal">Cancelación</dt>
@@ -393,7 +398,14 @@
         </div>
 
         @if (bookingNotice(); as notice) {
-          <div class="alert alert-info mb-0">{{ notice }}</div>
+          <div class="alert alert-info mb-0">
+            {{ notice }}
+            <!-- Same alert, not a second one: the plazo is a condition of the
+                 booking being born pending, not a separate piece of news. -->
+            @if (proofNotice(); as proofLine) {
+              <div class="mt-1">{{ proofLine }}</div>
+            }
+          </div>
         }
 
         @if (cancellationNotice(); as notice) {
@@ -520,7 +532,12 @@
         <dd class="col-7 mb-0">{{ reservation.attendees }}</dd>
       </dl>
 
-      @if (reservation.status === 'Pending' && reservation.pendingDeadlineUtc) {
+      <!-- One deadline on screen, never two: when the comprobante is what the
+           booking is waiting on, the plazo is said below with the action it
+           demands, so the generic line would only repeat the date. -->
+      @if (
+        reservation.status === 'Pending' && reservation.pendingDeadlineUtc && !ownProofDeadline()
+      ) {
         <div class="alert alert-warning mt-3 mb-0">
           Si no se confirma antes del {{ formatInstant(reservation.pendingDeadlineUtc) }}, el
           horario se libera automáticamente.
@@ -530,6 +547,13 @@
       <hr />
 
       <h2 class="h4 mb-2">Comprobante de pago</h2>
+
+      @if (ownProofDeadline(); as notice) {
+        <div class="alert alert-warning d-flex align-items-start">
+          <tabler-icon name="clock" class="me-2 flex-shrink-0"></tabler-icon>
+          <span>{{ notice }}</span>
+        </div>
+      }
 
       @if (ownDetailLoading()) {
         <app-spinner label="Cargando tu comprobante…" />

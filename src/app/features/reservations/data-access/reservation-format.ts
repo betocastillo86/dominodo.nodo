@@ -77,3 +77,11 @@ export function formatInstantAsTimeOfDay(iso: string): string {
   return formatTimeOfDay(BOGOTA_HOUR_MINUTE.format(new Date(iso)));
 }
 
+/**
+ * `iso` + `hours`, as another instant. Used to work out when a plazo expressed
+ * as a duration (the area's `paymentProofExpiryHours`) runs out for a booking
+ * that was created at a known moment.
+ */
+export function addHours(iso: string, hours: number): string {
+  return new Date(new Date(iso).getTime() + hours * 60 * 60 * 1000).toISOString();
+}

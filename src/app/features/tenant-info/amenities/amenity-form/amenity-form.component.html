@@ -271,26 +271,25 @@
           </label>
         </div>
 
-        <!-- Payment last: the price only exists because of this switch, so it
-             sits beside it. Both the switch and the price label stay inline so
-             this row keeps the same left edge as the two switches above. -->
-        <div class="row g-3 align-items-center">
-          <div class="col-12 col-md-4">
-            <div class="form-check form-switch mb-0">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                role="switch"
-                id="paymentRequired"
-                formControlName="paymentRequired"
-              />
-              <label class="form-check-label" for="paymentRequired">Requiere pago</label>
-            </div>
-          </div>
-          @if (form.controls.paymentRequired.value) {
-            <div class="col-12 col-md-5">
-              <div class="d-flex align-items-center gap-2">
-                <label class="form-label required mb-0 text-nowrap" for="price">Precio</label>
+        <!-- Payment last: the price and the plazo only exist because of this
+             switch, so they hang off it — one under the other and in the same
+             column, so the two fields the switch reveals read as one block. -->
+        <div class="form-check form-switch mb-3">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            role="switch"
+            id="paymentRequired"
+            formControlName="paymentRequired"
+          />
+          <label class="form-check-label" for="paymentRequired">Requiere pago</label>
+        </div>
+
+        @if (form.controls.paymentRequired.value) {
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <div class="mb-3">
+                <label class="form-label required" for="price">Precio</label>
                 <input
                   id="price"
                   type="number"
@@ -300,13 +299,46 @@
                   formControlName="price"
                   [class.is-invalid]="form.controls.price.invalid && form.controls.price.touched"
                 />
+                @if (form.controls.price.invalid && form.controls.price.touched) {
+                  <div class="invalid-feedback d-block">Ingresa un precio mayor a cero.</div>
+                }
               </div>
-              @if (form.controls.price.invalid && form.controls.price.touched) {
-                <div class="invalid-feedback d-block">Ingresa un precio mayor a cero.</div>
-              }
+
+              <div>
+                <label class="form-label" for="paymentProofExpiry">
+                  Plazo para enviar el comprobante
+                </label>
+                <app-duration-input
+                  inputId="paymentProofExpiry"
+                  formControlName="paymentProofExpiryHours"
+                  placeholder="Sin plazo"
+                  [maxHours]="maxPaymentProofExpiryHours"
+                  [invalid]="
+                    form.controls.paymentProofExpiryHours.invalid &&
+                    form.controls.paymentProofExpiryHours.touched
+                  "
+                />
+                @if (
+                  form.controls.paymentProofExpiryHours.invalid &&
+                  form.controls.paymentProofExpiryHours.touched
+                ) {
+                  <div class="text-danger small">
+                    Ingresa un plazo entre 1 hora y {{ maxPaymentProofExpiryDays }} días.
+                  </div>
+                }
+                @if (form.controls.paymentProofExpiryHours.getError('server'); as serverError) {
+                  <div class="text-danger small">{{ serverError }}</div>
+                }
+                <small class="form-hint">
+                  Si el residente no envía el comprobante ni paga en la administración dentro de
+                  este plazo, la reserva se libera y el horario vuelve a quedar disponible. Déjalo
+                  vacío para que nunca se libere por este motivo. Escríbelo en días u horas: se
+                  guarda siempre en horas.
+                </small>
+              </div>
             </div>
-          }
-        </div>
+          </div>
+        }
       </div>
     </div>
 
