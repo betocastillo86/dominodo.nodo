@@ -22,6 +22,8 @@ import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { TablerIconComponent } from 'angular-tabler-icons';
 import { toMessage } from '../../../../core/http/problem-details';
 import { NotificationService } from '../../../../core/notifications/notification.service';
+import { richTextToHtml, sanitizeRichText } from '../../../../shared/ui/rich-text/rich-text';
+import { RichTextEditorComponent } from '../../../../shared/ui/rich-text-editor/rich-text-editor.component';
 import { ScheduleEditorComponent } from '../../../../shared/ui/schedule-editor/schedule-editor.component';
 import { SpinnerComponent } from '../../../../shared/ui/spinner/spinner.component';
 import { AmenityPhotosEditorComponent } from '../amenity-photos-editor/amenity-photos-editor.component';
@@ -76,6 +78,7 @@ function hoursRangeValidator(group: AbstractControl): ValidationErrors | null {
     SpinnerComponent,
     AmenityPhotosEditorComponent,
     ScheduleEditorComponent,
+    RichTextEditorComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './amenity-form.component.html',
@@ -288,8 +291,10 @@ export class AmenityFormComponent implements OnInit {
         price: v.paymentRequired ? v.price : null,
         paymentRequired: v.paymentRequired,
         maxPerDayPerApartment: v.maxPerDayPerApartment,
-        usageRules: v.usageRules.trim() ? v.usageRules.trim() : null,
-        additionalServices: v.additionalServices.trim() ? v.additionalServices.trim() : null,
+        // Normalized once more on the way out: the control may still hold the
+        // plain-text value the API returned if the admin never opened the field.
+        usageRules: sanitizeRichText(v.usageRules) || null,
+        additionalServices: sanitizeRichText(v.additionalServices) || null,
         requiresGoodStanding: v.requiresGoodStanding,
         pendingExpiryHours: this.pendingExpiryHours,
         cancelBeforeTotalDays: v.cancelBeforeTotalDays,
@@ -319,8 +324,10 @@ export class AmenityFormComponent implements OnInit {
           paymentRequired: detail.policy.paymentRequired,
           price: detail.policy.price,
           maxPerDayPerApartment: detail.policy.maxPerDayPerApartment,
-          usageRules: detail.policy.usageRules ?? '',
-          additionalServices: detail.policy.additionalServices ?? '',
+          // A value written before the editor existed is plain text: converted
+          // here so the control, the counter and the editor all agree on it.
+          usageRules: richTextToHtml(detail.policy.usageRules),
+          additionalServices: richTextToHtml(detail.policy.additionalServices),
           requiresGoodStanding: detail.policy.requiresGoodStanding,
           // A policy written before the rule existed reads back as null, and
           // that means the same as 0 — no window (`AmenityMappers.ToPolicyDto`).

@@ -1,0 +1,25 @@
+<div
+  class="rich-text-editor"
+  role="group"
+  [attr.aria-labelledby]="labelledBy() || null"
+  [class.rich-text-editor-invalid]="overLimit()"
+>
+  <quill-editor
+    class="d-block"
+    format="html"
+    [modules]="modules"
+    [formats]="formats"
+    [styles]="editorStyles()"
+    [placeholder]="placeholder()"
+    [readOnly]="disabled()"
+    (onEditorCreated)="onEditorCreated($event)"
+    (onContentChanged)="onContentChanged($event)"
+    (onBlur)="onEditorBlur()"
+  />
+</div>
+
+@if (maxLength(); as max) {
+  <small class="form-hint d-block text-end" [class.text-danger]="overLimit()">
+    {{ length() }} / {{ max }}
+  </small>
+}

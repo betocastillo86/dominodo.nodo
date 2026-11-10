@@ -20,6 +20,7 @@ import { toMessage } from '../../../core/http/problem-details';
 import { NotificationService } from '../../../core/notifications/notification.service';
 import { TenantStore } from '../../../core/tenant/tenant.store';
 import { EmptyStateComponent } from '../../../shared/ui/empty-state/empty-state.component';
+import { RichTextPipe } from '../../../shared/ui/rich-text/rich-text.pipe';
 import { SpinnerComponent } from '../../../shared/ui/spinner/spinner.component';
 import { formatSchedule, parseSchedule } from '../../../shared/ui/schedule-editor/schedule.model';
 import { slotsToScheduleValue } from '../../tenant-info/amenities/data-access/amenity-schedule';
@@ -101,6 +102,7 @@ const TIME_OF_DAY_PATTERN = /^(\d{1,2}):(\d{2})(?::\d{2})?$/;
     MonthCalendarComponent,
     ReservationSuccessComponent,
     ReservationPaymentProofComponent,
+    RichTextPipe,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './reservation-availability.component.html',

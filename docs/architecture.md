@@ -53,6 +53,9 @@ Identical to `dominodo.admin` — keep them aligned so patterns, skills and musc
 - **HTTP**: `HttpClient` + functional interceptors (tenant header, Bearer auth, ProblemDetails + refresh
   on 401).
 - **Forms**: Reactive Forms. **JWT**: `jwt-decode` (client reads claims; verification is the server's job).
+- **`ngx-quill` + `quill`** for the one rich-text control (`shared/ui/rich-text-editor`), as in `admin`.
+  Lazy by construction — Quill is imported dynamically, so it only reaches the chunk that mounts the
+  editor; its `snow` theme CSS is the one global stylesheet added in `angular.json`.
 - **Install notes (inherited from `admin`):** a repo-root `.npmrc` with `legacy-peer-deps=true` (stale
   peer range in `angular-tabler-icons`, runtime-compatible); Tabler v1 uses legacy Sass `@import`, so
   build-time `@import` deprecation warnings are expected and originate in Tabler, not our code.
@@ -251,6 +254,9 @@ src/app/
 │   ├── schedule-editor/    # weekly opening-hours control (CVA + Validator over a JSON string)
 │   ├── tower-editor/       # add/remove the conjunto's towers (CVA over string[]; the caller joins
 │   │                       #   them into the comma-separated text /tenants/info stores)
+│   ├── rich-text-editor/   # cut-down Quill (bold, italic, both lists, link, clear) as a CVA over a
+│   │                       #   plain HTML string — see "Rich text in policy fields" below
+│   ├── rich-text/          # the stored HTML dialect: sanitize/normalize + the `richText` render pipe
 │   ├── page-header/  spinner/  empty-state/
 │   └── notifications/      # toast host rendering NotificationService.items()
 └── features/            # lazy domains, each with data-access/ + components
@@ -344,6 +350,8 @@ src/app/
                             #      The schedule REUSES shared/ui/schedule-editor with
                             #      [allowHolidays]="false" + [requireOpenDay]="false" — see
                             #      amenities/data-access/amenity-schedule.ts for the mapping
+                            #      "Reglas de uso" / "Servicios adicionales" are rich text
+                            #      (shared/ui/rich-text-editor) — see the subsection below
                             #    Base de conocimiento (/tenant-info/knowledge-resources): the other
                             #      routed CRUD sub-feature, same shape as Áreas sociales (list/new/
                             #      :id/edit behind TenantInfoKnowledgePageComponent) —
@@ -564,6 +572,43 @@ Report codes are translated in `apartment-import.models.ts`; the server's Englis
 fallback for an unknown code, and is additionally shown for the two file-level codes whose wording names
 the offending unit or rows. Note the import **never sends the welcome message** — the copy says so,
 because it is not configurable.
+
+### Rich text in policy fields
+
+An amenity's **Reglas de uso** and **Servicios adicionales** are free text the resident reads on the
+booking page. They used to be `<textarea>`s rendered with interpolation, which collapses every line
+break: a list of rules arrived as one paragraph. They are now edited with `shared/ui/rich-text-editor`
+— a Quill instance cut down to **bold, italic, bulleted list, numbered list, link and clear
+formatting**, and nothing else. No headings, colors or images: the text lands inside a card on a
+phone, and the API caps the field at 2 000 characters, which markup also spends.
+
+What is stored is **not** Quill's own markup but a small dialect defined in `shared/ui/rich-text/`:
+`<p> <br> <strong> <em> <ul> <ol> <li> <a>`, no attributes but a scheme-checked `href`. The
+normalization runs on the way in *and* on the way out, for two reasons:
+
+- **Quill 2 marks bullets as `<ol><li data-list="bullet">`.** That needs `quill.snow.css` to look
+  like a bullet list, and the resident's page must render with nothing but Tabler. `copyList` rebuilds
+  those as real `<ul>`s, splitting one source list into several when the kinds alternate.
+- **Text pasted from Word is hostile to a phone.** Word writes every space as a
+  non-breaking one and every list marker as a glyph plus a tab. A non-breaking space may not be
+  wrapped at, so a pasted rule becomes one unbreakable word: the browser pushes it to its own line
+  (leaving the bullet alone above it) and then breaks it mid-word at the card's edge. `collapse`
+  turns every whitespace run — `\u00A0` and tabs included — into one ordinary space, and a paragraph
+  that merely *starts* with a bullet glyph becomes a real `<li>`. Only unambiguous glyphs count:
+  `-` and `*` open too many Spanish sentences. The editor normalizes the same way at paste time
+  (a Quill clipboard matcher), so the admin sees the real result while pasting.
+- **The field already holds plain text** written before the editor existed. `richTextToHtml` detects
+  it and turns its line breaks into paragraphs, so an old value renders right, loads into the editor
+  right, and is upgraded the next time the area is saved.
+
+Rendering is `[innerHTML]="value | richText"` with the `RichTextPipe` — never `bypassSecurityTrust*`,
+so Angular's sanitizer still runs over the result. The pipe is also where `target="_blank"` and
+`rel="noopener noreferrer"` are added to links: attributes worth having at render time but not worth
+spending characters on in storage.
+
+> **Outside this repo:** `dominodo.domi` feeds both fields into its `AmenityFactSheet` as plain text
+> for the WhatsApp agent. Markup stored here reaches that prompt verbatim, so the fact sheet should
+> strip tags before using them.
 
 - **`core/`**: single instances and cross-cutting concerns; no business UI. The tenant and authz stores
   live here because they are set once and read everywhere.

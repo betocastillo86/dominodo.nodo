@@ -1,0 +1,77 @@
+// Rich text: the editor (admin side) and the rendered output (resident side).
+//
+// Quill ships its own `snow` theme, registered before this file in angular.json;
+// what follows only reconciles it with Tabler so the editor reads as one more
+// `.form-control` on the amenity form, and gives the rendered HTML the tight
+// rhythm it needs inside a card on a phone.
+
+.rich-text-editor {
+  .ql-toolbar.ql-snow,
+  .ql-container.ql-snow {
+    border-color: var(--tblr-border-color);
+  }
+
+  .ql-toolbar.ql-snow {
+    border-radius: var(--tblr-border-radius) var(--tblr-border-radius) 0 0;
+    background: var(--tblr-bg-surface-secondary);
+    padding: 0.25rem 0.5rem;
+  }
+
+  .ql-container.ql-snow {
+    border-radius: 0 0 var(--tblr-border-radius) var(--tblr-border-radius);
+    // Quill hardcodes Helvetica at 13px; inherit the app's type instead.
+    font-family: inherit;
+    font-size: inherit;
+  }
+
+  .ql-editor {
+    // A link opened from the toolbar needs room; without this the popup is
+    // clipped by the editor's own scroll box.
+    overflow-y: visible;
+  }
+
+  .ql-editor.ql-blank::before {
+    color: var(--tblr-secondary);
+    font-style: normal;
+  }
+
+  // The toolbar's buttons are 24px squares by default — too small to tap.
+  .ql-snow.ql-toolbar button {
+    height: 28px;
+    width: 32px;
+  }
+}
+
+.rich-text-editor-invalid {
+  .ql-toolbar.ql-snow,
+  .ql-container.ql-snow {
+    border-color: var(--tblr-danger);
+  }
+}
+
+// Rendered output. Scoped to the class so it never leaks into the chrome, and
+// deliberately free of Quill's own classes: what we store is plain semantic
+// HTML (`rich-text.ts`), readable with nothing but this.
+.rich-text {
+  > :last-child {
+    margin-bottom: 0;
+  }
+
+  p {
+    margin-bottom: 0.5rem;
+  }
+
+  ul,
+  ol {
+    margin-bottom: 0.5rem;
+    padding-left: 1.25rem;
+  }
+
+  li + li {
+    margin-top: 0.125rem;
+  }
+
+  a {
+    text-decoration: underline;
+  }
+}

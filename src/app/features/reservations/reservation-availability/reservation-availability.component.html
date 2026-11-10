@@ -332,12 +332,16 @@
                     <dd class="col-7 mb-0">{{ cancellationText() }}</dd>
                   </dl>
 
-                  @if (amenity.policy.usageRules) {
+                  <!-- The policy texts carry the admin's formatting (bold, lists, line breaks):
+                       `richText` normalizes them and Angular sanitizes the result at the binding. -->
+                  @if (amenity.policy.usageRules | richText; as usageRules) {
                     <hr />
-                    <p class="text-secondary small mb-0">{{ amenity.policy.usageRules }}</p>
+                    <h4 class="small text-secondary mb-1">Reglas de uso</h4>
+                    <div class="rich-text text-secondary small" [innerHTML]="usageRules"></div>
                   }
-                  @if (amenity.policy.additionalServices) {
-                    <p class="text-secondary small mt-2 mb-0">{{ amenity.policy.additionalServices }}</p>
+                  @if (amenity.policy.additionalServices | richText; as services) {
+                    <h4 class="small text-secondary mt-3 mb-1">Servicios adicionales</h4>
+                    <div class="rich-text text-secondary small" [innerHTML]="services"></div>
                   }
                 </div>
               </div>

@@ -203,24 +203,44 @@
         </div>
 
         <div class="mb-3">
-          <label class="form-label" for="usageRules">Reglas de uso</label>
-          <textarea
-            id="usageRules"
-            class="form-control"
-            rows="3"
+          <label class="form-label" id="usageRulesLabel">Reglas de uso</label>
+          <app-rich-text-editor
             formControlName="usageRules"
-            [maxlength]="textMaxLength"
-          ></textarea>
+            labelledBy="usageRulesLabel"
+            placeholder="Ej.: No se permite música después de las 10 p. m."
+            minHeight="9rem"
+            [maxLength]="textMaxLength"
+          />
+          @if (form.controls.usageRules.hasError('maxlength')) {
+            <div class="text-danger small">
+              El texto con formato supera los {{ textMaxLength }} caracteres.
+            </div>
+          }
+          @if (form.controls.usageRules.getError('server'); as serverError) {
+            <div class="text-danger small">{{ serverError }}</div>
+          }
+          <small class="form-hint">
+            El residente ve este texto tal como queda aquí, con sus negritas, viñetas y saltos de
+            línea.
+          </small>
         </div>
         <div class="mb-3">
-          <label class="form-label" for="additionalServices">Servicios adicionales</label>
-          <textarea
-            id="additionalServices"
-            class="form-control"
-            rows="2"
+          <label class="form-label" id="additionalServicesLabel">Servicios adicionales</label>
+          <app-rich-text-editor
             formControlName="additionalServices"
-            [maxlength]="textMaxLength"
-          ></textarea>
+            labelledBy="additionalServicesLabel"
+            placeholder="Ej.: Sillas y mesas adicionales con costo"
+            minHeight="7rem"
+            [maxLength]="textMaxLength"
+          />
+          @if (form.controls.additionalServices.hasError('maxlength')) {
+            <div class="text-danger small">
+              El texto con formato supera los {{ textMaxLength }} caracteres.
+            </div>
+          }
+          @if (form.controls.additionalServices.getError('server'); as serverError) {
+            <div class="text-danger small">{{ serverError }}</div>
+          }
         </div>
 
         <hr class="my-3" />

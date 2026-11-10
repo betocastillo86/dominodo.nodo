@@ -13,6 +13,9 @@ resolved from the **domain**. Full design: `docs/architecture.md`.
 - **Tabler** (`@tabler/core` v1, SCSS) for the theme — **horizontal top-navbar layout** (not `admin`'s sidebar).
 - **ng-bootstrap** (`^19`) for interactive components (no jQuery, no Bootstrap JS).
 - `angular-tabler-icons` for icons; `jwt-decode` for reading JWT claims.
+- **`ngx-quill`** (as in `admin`) for the single rich-text control, `shared/ui/rich-text-editor` — the
+  amenity's "Reglas de uso"/"Servicios adicionales". What it stores is a small normalized HTML dialect
+  (`shared/ui/rich-text/`), rendered with `[innerHTML]="x | richText"`. See `docs/architecture.md` §5.
 - State: signals + services (no NgRx). Forms: Reactive Forms.
 - **Install note:** `.npmrc` sets `legacy-peer-deps=true` (stale peer range in `angular-tabler-icons@3.26`,
   runtime-compatible with Angular 20). Tabler v1 uses Sass `@import` → expect deprecation warnings from Tabler.
