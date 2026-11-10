@@ -551,35 +551,40 @@
         </div>
       }
 
-      <hr />
+      <!-- Nothing about comprobantes on a free area: asking a resident for the
+           receipt of a payment nobody charged them is how they end up believing
+           the booking owes something. -->
+      @if (ownShowsProofs()) {
+        <hr />
 
-      <h2 class="h4 mb-2">Comprobante de pago</h2>
+        <h2 class="h4 mb-2">Comprobante de pago</h2>
 
-      @if (ownProofDeadline(); as notice) {
-        <div class="alert alert-warning d-flex align-items-start">
-          <tabler-icon name="clock" class="me-2 flex-shrink-0"></tabler-icon>
-          <span>{{ notice }}</span>
-        </div>
-      }
-
-      @if (ownDetailLoading()) {
-        <app-spinner label="Cargando tu comprobante…" />
-      } @else if (ownDetailError(); as message) {
-        <div class="alert alert-danger mb-0" role="alert">
-          {{ message }}
-          <div class="d-grid mt-2">
-            <button type="button" class="btn btn-outline-danger book-btn" (click)="retryOwnReservation()">
-              <tabler-icon name="refresh" class="me-2"></tabler-icon>
-              Reintentar
-            </button>
+        @if (ownProofDeadline(); as notice) {
+          <div class="alert alert-warning d-flex align-items-start">
+            <tabler-icon name="clock" class="me-2 flex-shrink-0"></tabler-icon>
+            <span>{{ notice }}</span>
           </div>
-        </div>
-      } @else if (ownDetail(); as detail) {
-        <app-reservation-payment-proof
-          [reservationId]="detail.id"
-          [initialProofs]="detail.paymentProofs"
-          [canUpload]="ownAcceptsProofs()"
-        />
+        }
+
+        @if (ownDetailLoading()) {
+          <app-spinner label="Cargando tu comprobante…" />
+        } @else if (ownDetailError(); as message) {
+          <div class="alert alert-danger mb-0" role="alert">
+            {{ message }}
+            <div class="d-grid mt-2">
+              <button type="button" class="btn btn-outline-danger book-btn" (click)="retryOwnReservation()">
+                <tabler-icon name="refresh" class="me-2"></tabler-icon>
+                Reintentar
+              </button>
+            </div>
+          </div>
+        } @else if (ownDetail(); as detail) {
+          <app-reservation-payment-proof
+            [reservationId]="detail.id"
+            [initialProofs]="detail.paymentProofs"
+            [canUpload]="ownAcceptsProofs()"
+          />
+        }
       }
     }
   </div>

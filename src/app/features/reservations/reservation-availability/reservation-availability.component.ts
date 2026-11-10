@@ -304,11 +304,31 @@ export class ReservationAvailabilityComponent implements OnInit {
   readonly statusLabel = RESIDENT_RESERVATION_STATUS_LABEL;
   readonly statusBadge = RESIDENT_RESERVATION_STATUS_BADGE;
 
-  /** A booking takes proofs only while it blocks a slot (`Pending`/`Confirmed`). */
+  /**
+   * A booking takes proofs only while it blocks a slot (`Pending`/`Confirmed`)
+   * — and only on an area that charges: a free area has no payment to prove,
+   * so offering the upload there only invents a debt.
+   */
   readonly ownAcceptsProofs = computed(() => {
     const reservation = this.ownReservation();
-    return !!reservation && BLOCKING_RESERVATION_STATUSES.includes(reservation.status);
+    return (
+      !!this.amenity()?.policy.paymentRequired &&
+      !!reservation &&
+      BLOCKING_RESERVATION_STATUSES.includes(reservation.status)
+    );
   });
+
+  /**
+   * Whether the sheet mentions comprobantes at all. A free area says nothing —
+   * unless the booking already carries proofs, which happens when the area
+   * stopped charging after the resident had already sent one: those stay
+   * visible to whoever sent them, with no way to add more.
+   */
+  readonly ownShowsProofs = computed(
+    () =>
+      !!this.amenity()?.policy.paymentRequired ||
+      (this.ownDetail()?.paymentProofs.length ?? 0) > 0,
+  );
 
   readonly maxAttendees = computed(() => this.amenity()?.maxOccupancy ?? 1);
 

@@ -62,12 +62,16 @@ export class ReservationSuccessComponent {
   readonly isConfirmed = computed(() => this.reservation().status === 'Confirmed');
 
   /**
-   * A booking only accepts proofs while it blocks a slot. Always true for a
-   * booking just created — kept as a check anyway, so the block does not have
-   * to assume where it was rendered from.
+   * The comprobante exists only where the payment does: an area that charges
+   * nothing has nothing to prove, and an upload button there tells a resident
+   * they owe money nobody asked them for. The status check stays — a booking
+   * accepts proofs only while it blocks a slot — so the block does not have to
+   * assume where it was rendered from.
    */
-  readonly acceptsProofs = computed(() =>
-    BLOCKING_RESERVATION_STATUSES.includes(this.reservation().status),
+  readonly acceptsProofs = computed(
+    () =>
+      this.amenity().policy.paymentRequired &&
+      BLOCKING_RESERVATION_STATUSES.includes(this.reservation().status),
   );
 
   /** Why it is still pending, in the resident's words. Both reasons can apply. */
