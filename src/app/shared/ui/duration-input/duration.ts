@@ -10,11 +10,24 @@ export type DurationUnit = 'hours' | 'days';
 
 export const HOURS_PER_DAY = 24;
 
-/** `36` → `"36 horas"`, `168` → `"7 días"`. Whole days win whenever they divide. */
+/**
+ * A plazo said the way it would be said out loud: `18` → `"18 horas"`, `48` →
+ * `"2 días"`, `36` → `"1 día y 12 horas"`.
+ *
+ * Days take over past a day, because "36 horas" is arithmetic a resident has to
+ * do while deciding whether to book. The leftover hours stay rather than being
+ * rounded away: a plazo is a deadline, and rounding one in either direction
+ * says something that is not true.
+ */
 export function formatHoursDuration(hours: number): string {
-  if (hours >= HOURS_PER_DAY && hours % HOURS_PER_DAY === 0) {
-    const days = hours / HOURS_PER_DAY;
-    return days === 1 ? '1 día' : `${days} días`;
-  }
+  const days = Math.floor(hours / HOURS_PER_DAY);
+  const rest = hours % HOURS_PER_DAY;
+
+  if (days === 0) return hoursLabel(rest);
+  const daysLabel = days === 1 ? '1 día' : `${days} días`;
+  return rest === 0 ? daysLabel : `${daysLabel} y ${hoursLabel(rest)}`;
+}
+
+function hoursLabel(hours: number): string {
   return hours === 1 ? '1 hora' : `${hours} horas`;
 }

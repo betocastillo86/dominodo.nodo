@@ -397,15 +397,22 @@
           <div class="form-hint">Máximo {{ maxAttendees() }} personas.</div>
         </div>
 
-        @if (bookingNotice(); as notice) {
-          <div class="alert alert-info mb-0">
-            {{ notice }}
-            <!-- Same alert, not a second one: the plazo is a condition of the
-                 booking being born pending, not a separate piece of news. -->
-            @if (proofNotice(); as proofLine) {
-              <div class="mt-1">{{ proofLine }}</div>
-            }
-          </div>
+        <!-- One alert, because the plazo is a condition of the booking being
+             born pending and not a separate piece of news — but one sentence
+             per line: a single warning reads as a paragraph, two or more as a
+             list, which is the only shape in which both get read. -->
+        @if (confirmNotices(); as notices) {
+          @if (notices.length === 1) {
+            <div class="alert alert-info mb-0">{{ notices[0] }}</div>
+          } @else if (notices.length > 1) {
+            <div class="alert alert-info mb-0">
+              <ul class="mb-0 ps-3">
+                @for (notice of notices; track notice) {
+                  <li>{{ notice }}</li>
+                }
+              </ul>
+            </div>
+          }
         }
 
         @if (cancellationNotice(); as notice) {

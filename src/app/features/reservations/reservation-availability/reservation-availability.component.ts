@@ -319,8 +319,13 @@ export class ReservationAvailabilityComponent implements OnInit {
 
   /**
    * What the resident has to know BEFORE confirming: whether the booking is
-   * born `Confirmed` or `Pending` (ADR-0018 §2). Finding that out afterwards is
-   * how a resident walks away believing a slot is theirs when it is not.
+   * born `Confirmed` or `Pending` (ADR-0018 §2), and what it will cost them.
+   * Finding either out afterwards is how a resident walks away believing a slot
+   * is theirs when it is not — or owing an amount they never saw.
+   *
+   * The price is named here rather than left to the card beside the calendar:
+   * this dialog is the last screen before the booking exists, and it is the one
+   * a resident reads.
    */
   readonly bookingNotice = computed(() => {
     const amenity = this.amenity();
@@ -328,18 +333,33 @@ export class ReservationAvailabilityComponent implements OnInit {
 
     const needsApproval = amenity.requiresApproval;
     const needsPayment = amenity.policy.paymentRequired;
+    const price = amenity.policy.price;
+    // An area may require payment without a price on file; then there is only
+    // the obligation to state, and the amount comes from the administration.
+    const cost =
+      needsPayment && price ? `tiene un costo de ${formatCurrencyCOP(price)}` : 'requiere pago';
 
     if (needsApproval && needsPayment) {
-      return 'Esta área requiere pago y aprobación de la administración, así que tu reserva quedará pendiente.';
+      return `Esta área ${cost} y requiere aprobación de la administración, así que tu reserva quedará pendiente.`;
     }
     if (needsPayment) {
-      return 'Esta área requiere pago, así que tu reserva quedará pendiente hasta que la administración lo confirme.';
+      return `Esta área ${cost}, así que tu reserva quedará pendiente hasta que la administración confirme el pago.`;
     }
     if (needsApproval) {
       return 'Esta área requiere aprobación de la administración, así que tu reserva quedará pendiente.';
     }
     return null;
   });
+
+  /**
+   * Everything the confirmation dialog warns about, as separate sentences: one
+   * reads as a paragraph, several as a bullet list. Two conditions run together
+   * in one block of text read as one long excuse and get skimmed — and these
+   * are precisely the lines that must not be.
+   */
+  readonly confirmNotices = computed(() =>
+    [this.bookingNotice(), this.proofNotice()].filter((notice): notice is string => !!notice),
+  );
 
   /**
    * The area's comprobante plazo, in the three places it has to be said: as
