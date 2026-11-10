@@ -23,6 +23,7 @@ import {
 import { apartmentLabel } from '../../apartments/data-access/apartment.models';
 import {
   formatDay,
+  instantToReportDay,
   todayInReportZone,
   toFromUtc,
   toToUtc,
@@ -120,11 +121,11 @@ export class ReservationAdminListComponent {
   readonly quickViews = RESERVATION_TODAY_VIEWS;
 
   /**
-   * The tooltip of every filter, column and control on this screen. Three of
-   * the five columns are read wrong without one: the dates are about the day
-   * the area is USED (never when it was requested), "Pago" reports a soporte
-   * that is in rather than a payment that is verified, and "Estado" is a
-   * control, not a value.
+   * The tooltip of every filter, column and control on this screen. Most of the
+   * columns are read wrong without one: the filter bar is about the day the
+   * area is USED while "Solicitada" is about the day it was asked for, "Pago"
+   * reports a soporte that is in rather than a payment that is verified, and
+   * "Estado" is a control, not a value.
    */
   readonly help = RESERVATIONS_HELP;
 
@@ -202,6 +203,17 @@ export class ReservationAdminListComponent {
         value: (r) => this.windowLabel(r),
         class: 'text-nowrap',
         hint: RESERVATIONS_HELP.window,
+      },
+      // Beside the window it was asked for, because the pair is the question:
+      // a booking requested this morning for tomorrow and one requested a month
+      // ago read the same in every other column. The day alone, in the report's
+      // zone — the same cut «Creadas hoy» filters on, so the column never
+      // disagrees with the shortcut that found the row.
+      {
+        header: 'Solicitada',
+        value: (r) => formatDay(instantToReportDay(r.createdAtUtc)),
+        class: 'text-nowrap',
+        hint: RESERVATIONS_HELP.createdColumn,
       },
       // Interactive when there is something to see: the template turns "Sí" into
       // the trigger of the proof gallery. The badge below is the fallback.
