@@ -35,6 +35,48 @@
           </dl>
         </div>
       </div>
+
+      <!-- Account statement (ADR-0025). Null is "never loaded", not "settled". -->
+      <div class="card mt-3">
+        <div class="card-header">
+          <h3 class="card-title">Estado de cuenta</h3>
+          @if (canEditStatement()) {
+            <div class="card-actions">
+              <button type="button" class="btn btn-sm" (click)="openStatement(statementTpl)">
+                <tabler-icon name="edit" class="me-1" />
+                Actualizar
+              </button>
+            </div>
+          }
+        </div>
+        <div class="card-body">
+          @if (apt.accountStatement; as statement) {
+            <dl class="row mb-0">
+              <dt class="col-5 text-secondary">Saldo en mora</dt>
+              <dd class="col-7 fw-medium">{{ formatMoney(statement.overdueBalance) }}</dd>
+
+              <dt class="col-5 text-secondary">En mora</dt>
+              <dd class="col-7">
+                @if (statement.isOverdue) {
+                  <span class="badge bg-red-lt">Sí</span>
+                } @else {
+                  <span class="badge bg-green-lt">No</span>
+                }
+              </dd>
+
+              <dt class="col-5 text-secondary">Actualizado</dt>
+              <dd class="col-7">{{ formatInstant(statement.updatedAtUtc) }}</dd>
+            </dl>
+          } @else {
+            <p class="text-secondary mb-0">
+              Este apartamento todavía no tiene estado de cuenta.
+              @if (canEditStatement()) {
+                Regístralo con "Actualizar" o con la carga de estados de cuenta.
+              }
+            </p>
+          }
+        </div>
+      </div>
     </div>
 
     <!-- Residents -->
@@ -398,4 +440,56 @@
     <button type="button" class="btn btn-link link-secondary" (click)="modal.dismiss()">Cancelar</button>
     <button type="button" class="btn btn-danger" (click)="modal.close()">Sí, finalizar</button>
   </div>
+</ng-template>
+
+<!-- Account statement ---------------------------------------------------------->
+<ng-template #statementTpl let-modal>
+  <form [formGroup]="statementForm" (ngSubmit)="submitStatement()" novalidate>
+    <div class="modal-header">
+      <h5 class="modal-title">Actualizar estado de cuenta</h5>
+      <button type="button" class="btn-close" aria-label="Cerrar" (click)="modal.dismiss()"></button>
+    </div>
+    <div class="modal-body">
+      @if (statementError(); as message) {
+        <div class="alert alert-danger" role="alert">{{ message }}</div>
+      }
+
+      <div class="mb-3">
+        <label class="form-label required" for="statement-balance">Saldo en mora</label>
+        <div class="input-group">
+          <span class="input-group-text">$</span>
+          <input
+            id="statement-balance"
+            type="number"
+            min="0"
+            step="any"
+            inputmode="decimal"
+            class="form-control"
+            formControlName="overdueBalance"
+            [class.is-invalid]="statementSubmitted() && statementForm.controls.overdueBalance.invalid"
+          />
+          <div class="invalid-feedback">Indica un saldo igual o mayor a cero.</div>
+        </div>
+      </div>
+
+      <label class="form-check">
+        <input type="checkbox" class="form-check-input" formControlName="isOverdue" />
+        <span class="form-check-label">La unidad está en mora</span>
+      </label>
+
+      <p class="form-hint mt-3 mb-0">
+        Son datos independientes: una unidad con saldo puede no estar en mora (por ejemplo, con
+        acuerdo de pago) y una al día puede seguir marcada. Esto reemplaza el estado de cuenta actual.
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-link link-secondary" (click)="modal.dismiss()">Cancelar</button>
+      <button type="submit" class="btn btn-primary" [disabled]="saving()">
+        @if (saving()) {
+          <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        }
+        Guardar
+      </button>
+    </div>
+  </form>
 </ng-template>

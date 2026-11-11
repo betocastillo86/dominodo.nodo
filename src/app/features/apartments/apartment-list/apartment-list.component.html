@@ -1,10 +1,18 @@
 <app-page-header title="Apartamentos" pretitle="Conjunto">
-  @if (canImport()) {
-    <div actions>
-      <a routerLink="/apartments/import" class="btn btn-primary">
-        <tabler-icon name="upload" class="me-1" />
-        Carga masiva
-      </a>
+  @if (canImport() || canImportStatements()) {
+    <div actions class="d-flex flex-wrap gap-2">
+      @if (canImportStatements()) {
+        <a routerLink="/apartments/account-statements/import" class="btn">
+          <tabler-icon name="receipt" class="me-1" />
+          Cargar estados de cuenta
+        </a>
+      }
+      @if (canImport()) {
+        <a routerLink="/apartments/import" class="btn btn-primary">
+          <tabler-icon name="upload" class="me-1" />
+          Carga masiva
+        </a>
+      }
     </div>
   }
 </app-page-header>

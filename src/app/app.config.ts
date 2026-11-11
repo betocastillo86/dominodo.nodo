@@ -59,6 +59,7 @@ import {
   IconPhoto,
   IconPhotoPlus,
   IconPlus,
+  IconReceipt,
   IconRefresh,
   IconSearch,
   IconSend,
@@ -166,6 +167,7 @@ export const appConfig: ApplicationConfig = {
       IconCategory,
       IconBuildingSkyscraper,
       // New-version banner
+      IconReceipt,
       IconRefresh,
       // Resident surface — the way back to Domi's chat after booking, and the
       // clock on the comprobante's plazo

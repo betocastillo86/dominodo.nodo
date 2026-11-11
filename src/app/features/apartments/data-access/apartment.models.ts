@@ -19,6 +19,24 @@ export type ApartmentStatus = 'Occupied' | 'Vacant';
  */
 export type ResidentRelationType = 'Owner' | 'Renter';
 
+/**
+ * `AccountStatementDto` — the unit's morosidad snapshot. The two figures are
+ * INDEPENDENT (ADR-0025 §2): a settled unit can stay flagged and an indebted one
+ * can be exempted, so `isOverdue` is never derived from `overdueBalance`.
+ */
+export interface AccountStatementDto {
+  overdueBalance: number;
+  isOverdue: boolean;
+  updatedAtUtc: string;
+}
+
+/** Body of `PUT /apartments/{id}/account-statement` (requires apartments.edit). */
+export interface UpdateAccountStatementRequest {
+  /** >= 0; the server rounds to 2 decimals. */
+  overdueBalance: number;
+  isOverdue: boolean;
+}
+
 /** List item returned by `GET /apartments` (`ApartmentDto`). */
 export interface ApartmentDto {
   id: string;
@@ -27,6 +45,8 @@ export interface ApartmentDto {
   number: string;
   type: ApartmentType;
   status: ApartmentStatus;
+  /** Null while the unit has never received one — not the same as a zeroed statement. */
+  accountStatement: AccountStatementDto | null;
 }
 
 /** `GET /apartments/{id}` (`ApartmentDetailDto`). Residents are NOT inline. */
@@ -43,6 +63,8 @@ export interface ApartmentDetailDto {
   updatedAtUtc: string | null;
   createdBy: string | null;
   updatedBy: string | null;
+  /** Null while the unit has never received one — not the same as a zeroed statement. */
+  accountStatement: AccountStatementDto | null;
 }
 
 /** Nested profile on `ResidentDto`. Null when Users can't resolve the id. */
@@ -147,4 +169,16 @@ export function apartmentLabel(apartment: {
   number: string;
 }): string {
   return apartment.tower ? `${apartment.tower} · ${apartment.number}` : apartment.number;
+}
+
+const MONEY = new Intl.NumberFormat('es-CO', {
+  style: 'currency',
+  currency: 'COP',
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+});
+
+/** `$ 450.000` in the conjunto's currency; cents only when there are some. */
+export function formatMoney(value: number): string {
+  return MONEY.format(value);
 }

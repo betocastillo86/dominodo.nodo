@@ -297,7 +297,8 @@ src/app/
                             #    data-access/ (apartment.models, apartments.service signals,
                             #    residents-lookup.service, apartment-import.*, apartment.permissions)
                             #    apartment-list / -detail components + apartment-import/ (bulk load
-                            #    wizard, apartments.create AND memberships.manage)
+                            #    wizard, apartments.create AND memberships.manage) +
+                            #    account-statement-import/ (bulk account-statement wizard, see below)
     ├── reservations-admin/ # ✅ READ-ONLY admin view of amenity bookings (permission: reservations.view;
                             #    feature: Amenities). Distinct from `features/reservations/` above, which
                             #    is the RESIDENT handoff booking flow at the standalone `/reservas` route —
@@ -586,6 +587,30 @@ Report codes are translated in `apartment-import.models.ts`; the server's Englis
 fallback for an unknown code, and is additionally shown for the two file-level codes whose wording names
 the offending unit or rows. Note the import **never sends the welcome message** — the copy says so,
 because it is not configurable.
+
+**Apartments — the account statement.** Each apartment carries an optional `accountStatement`
+`{ overdueBalance, isOverdue, updatedAtUtc }` (API ADR-0025); `null` means "never loaded", which is **not**
+the same as a zeroed one. The two figures are **independent on purpose** — a unit with a balance can be
+exempted and a settled one can stay flagged — so the UI never derives `isOverdue` from the balance.
+It is set two ways:
+
+- **Manually**, from the apartment detail: an *Estado de cuenta* card plus an *Actualizar* dialog →
+  `PUT /apartments/{id}/account-statement` (`apartments.edit`), which replaces the current statement.
+- **In bulk**, `features/apartments/account-statement-import/` at
+  `/apartments/account-statements/import[/:importId]`, reached from the list header. Same three-step
+  wizard, polling and report categories as the apartment import, over
+  `/apartments/account-statement-imports` (`POST`, `GET {id}`, `POST {id}/confirm`) and
+  `TenantFilePurpose = 'AccountStatementImport'`. The rules are the **opposite** of the apartment import:
+  it only **updates** units (an unknown unit is a *row* error), the same unit twice is a *file* error, and
+  an already-loaded unit is a *warning* ("will be replaced") rather than silence. The apply is one
+  transaction — all or nothing.
+
+The CSV is Spanish again: `apartamento` (`A-101`; the API also accepts `torre` + `numero`, but the portal does not teach it), `saldo_en_mora`, `en_mora`
+(`si|no`, **required** — an empty cell is a row error, never a "no"). Amounts are read with Colombian
+separators (`450.000,50`). Gating: the three load endpoints need only `apartments.edit`, but the CSV goes
+up through the generic file ticket, which needs `tenant.info` — so the route and button ask for **both**
+(`ACCOUNT_STATEMENT_IMPORT_PERMISSIONS`) rather than let a role with only `apartments.edit` 403 after
+picking a file.
 
 ### Rich text in policy fields
 

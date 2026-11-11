@@ -20,8 +20,12 @@ import {
   APARTMENT_STATUS_LABEL,
   APARTMENT_TYPE_LABEL,
   ApartmentDto,
+  formatMoney,
 } from '../data-access/apartment.models';
-import { APARTMENT_IMPORT_PERMISSIONS } from '../data-access/apartment.permissions';
+import {
+  ACCOUNT_STATEMENT_IMPORT_PERMISSIONS,
+  APARTMENT_IMPORT_PERMISSIONS,
+} from '../data-access/apartment.permissions';
 import { ApartmentsService } from '../data-access/apartments.service';
 import { ResidentsLookupService } from '../data-access/residents-lookup.service';
 
@@ -62,6 +66,13 @@ export class ApartmentListComponent {
     () =>
       !this.permissions.loaded() ||
       APARTMENT_IMPORT_PERMISSIONS.every((code) => this.permissions.has(code)),
+  );
+
+  /** The account-statement load: apartments.edit, plus tenant.info for the file ticket. */
+  readonly canImportStatements = computed(
+    () =>
+      !this.permissions.loaded() ||
+      ACCOUNT_STATEMENT_IMPORT_PERMISSIONS.every((code) => this.permissions.has(code)),
   );
 
   readonly items = this.service.items;
@@ -111,6 +122,25 @@ export class ApartmentListComponent {
       header: 'Estado',
       value: (a) => APARTMENT_STATUS_LABEL[a.status],
       badgeClass: (a) => APARTMENT_STATUS_BADGE[a.status],
+    },
+    // Two columns because the figures are independent (ADR-0025): a unit with a
+    // balance may be exempted, a settled one may stay flagged. "—" = never loaded.
+    {
+      header: 'En mora',
+      value: (a) => (a.accountStatement ? (a.accountStatement.isOverdue ? 'Sí' : 'No') : '—'),
+      badgeClass: (a) =>
+        a.accountStatement
+          ? a.accountStatement.isOverdue
+            ? 'badge bg-red-lt'
+            : 'badge bg-green-lt'
+          : '',
+      class: 'w-1 text-nowrap',
+    },
+    {
+      header: 'Saldo en mora',
+      value: (a) => (a.accountStatement ? formatMoney(a.accountStatement.overdueBalance) : '—'),
+      class: 'w-1 text-nowrap text-end',
+      hint: 'Según el último estado de cuenta cargado. Vacío si la unidad nunca tuvo uno.',
     },
   ];
 

@@ -12,6 +12,7 @@ import {
   InviteResidentRequest,
   InviteResidentResponse,
   ResidentDto,
+  UpdateAccountStatementRequest,
 } from './apartment.models';
 
 /**
@@ -123,5 +124,17 @@ export class ApartmentsService {
     body: EndResidencyRequest,
   ): Observable<void> {
     return this.http.put<void>(`${this.base}/${apartmentId}/residents/${residentId}/end`, body);
+  }
+
+  /**
+   * Set the unit's account statement by hand (`PUT /apartments/{id}/account-statement`,
+   * requires apartments.edit) → 204. Replaces whatever the last bulk load left;
+   * the two fields are independent, so both are always sent.
+   */
+  updateAccountStatement(
+    apartmentId: string,
+    body: UpdateAccountStatementRequest,
+  ): Observable<void> {
+    return this.http.put<void>(`${this.base}/${apartmentId}/account-statement`, body);
   }
 }

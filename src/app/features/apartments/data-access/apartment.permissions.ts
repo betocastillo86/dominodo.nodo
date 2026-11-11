@@ -10,7 +10,18 @@
  */
 export const APARTMENTS_VIEW = 'apartments.view';
 export const APARTMENTS_CREATE = 'apartments.create';
+export const APARTMENTS_EDIT = 'apartments.edit';
 export const MEMBERSHIPS_MANAGE = 'memberships.manage';
+export const TENANT_INFO = 'tenant.info';
 
 /** The pair the bulk import requires. */
 export const APARTMENT_IMPORT_PERMISSIONS = [APARTMENTS_CREATE, MEMBERSHIPS_MANAGE];
+
+/**
+ * The account-statement bulk load (ADR-0025 §4) is gated by `apartments.edit`
+ * alone on its own three endpoints — but the file goes up through the generic
+ * tenant-file ticket, which the API gates with `tenant.info`. Without it the
+ * upload would 403 after the administrator already picked a file, so the portal
+ * asks for both up front.
+ */
+export const ACCOUNT_STATEMENT_IMPORT_PERMISSIONS = [APARTMENTS_EDIT, TENANT_INFO];

@@ -5,7 +5,7 @@
  * prefix and any post-processing. Adding a file kind to the portal therefore
  * costs a purpose here, not a new client.
  */
-export type TenantFilePurpose = 'BrandingLogo' | 'ApartmentImport';
+export type TenantFilePurpose = 'BrandingLogo' | 'ApartmentImport' | 'AccountStatementImport';
 
 /** Body of `POST /tenants/files/upload-url`. Requires `tenant.info`. */
 export interface CreateTenantFileUploadUrlRequest {

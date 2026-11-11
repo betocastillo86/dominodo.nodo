@@ -26,6 +26,7 @@ import {
   APARTMENT_TYPE_LABEL,
   ApartmentDetailDto,
   apartmentLabel,
+  formatMoney,
   RELATION_BADGE,
   RELATION_LABEL,
   RESIDENTE_ROLE_ID,
@@ -61,7 +62,8 @@ const RESIDENT_LINK_POLL_DELAYS_MS = [0, 1000, 2000, 3000];
 
 /**
  * Apartment detail. The apartment itself is read-only; what the administrator
- * manages here is its residents.
+ * manages here is its residents and its account statement (a one-off manual
+ * correction — the monthly figures arrive through the bulk load).
  *
  * Adding a resident takes one of two API paths, chosen by whether the person
  * already belongs to the conjunto:
@@ -125,6 +127,19 @@ export class ApartmentDetailComponent {
 
   readonly dialCodes = DIAL_CODES;
 
+  /**
+   * The account-statement dialog. The two fields are independent on purpose
+   * (ADR-0025 §2): `isOverdue` is a separate decision, never derived from the
+   * balance, so the form carries both and sends both.
+   */
+  readonly statementForm = new FormGroup({
+    overdueBalance: new FormControl<number | null>(null, [Validators.required, Validators.min(0)]),
+    isOverdue: new FormControl(false, { nonNullable: true }),
+  });
+  readonly statementSubmitted = signal(false);
+  readonly statementError = signal<string | null>(null);
+  private statementModal: NgbModalRef | null = null;
+
   /** The residency the end-residency confirmation is currently about. */
   readonly targetResident = signal<ResidentDto | null>(null);
 
@@ -138,6 +153,8 @@ export class ApartmentDetailComponent {
   /** Linking an existing person needs apartments.edit; inviting needs memberships.manage. */
   readonly canEdit = computed(() => this.permissions.has('apartments.edit'));
   readonly canInvite = computed(() => this.permissions.has('memberships.manage'));
+  /** Same permission the API demands for `PUT /apartments/{id}/account-statement`. */
+  readonly canEditStatement = computed(() => this.permissions.has('apartments.edit'));
   readonly canAddResident = computed(() => this.canEdit() || this.canInvite());
   /** The apartment's PQRS card is only fetched (and shown) with requests.view. */
   readonly canViewRequests = computed(() => this.permissions.has('requests.view'));
@@ -263,6 +280,49 @@ export class ApartmentDetailComponent {
     });
   }
 
+  // ── Account statement ──────────────────────────────────────────────────────
+
+  /** Opens the dialog prefilled with the current statement (zero / not overdue if none). */
+  openStatement(tpl: TemplateRef<unknown>): void {
+    const current = this.apartment()?.accountStatement;
+    this.statementForm.reset({
+      overdueBalance: current?.overdueBalance ?? 0,
+      isOverdue: current?.isOverdue ?? false,
+    });
+    this.statementSubmitted.set(false);
+    this.statementError.set(null);
+    this.statementModal = this.modal.open(tpl);
+    this.statementModal.result.then(
+      () => (this.statementModal = null),
+      () => (this.statementModal = null),
+    );
+  }
+
+  submitStatement(): void {
+    this.statementSubmitted.set(true);
+    this.statementError.set(null);
+    if (this.statementForm.invalid) return;
+
+    const { overdueBalance, isOverdue } = this.statementForm.getRawValue();
+    this.saving.set(true);
+    this.service
+      .updateAccountStatement(this.id, { overdueBalance: overdueBalance!, isOverdue })
+      .subscribe({
+        next: () => {
+          this.saving.set(false);
+          this.statementModal?.close();
+          this.notifications.success('Estado de cuenta actualizado.');
+          this.refreshApartment();
+        },
+        error: (error: HttpErrorResponse) => {
+          this.saving.set(false);
+          this.statementError.set(toMessage(error));
+        },
+      });
+  }
+
+  readonly formatMoney = formatMoney;
+
   // ── End residency (double confirmation) ────────────────────────────────────
 
   /**
@@ -352,6 +412,14 @@ export class ApartmentDetailComponent {
         this.error.set(toMessage(error));
         this.loading.set(false);
       },
+    });
+  }
+
+  /** Re-reads the apartment without the page spinner — the card just changes in place. */
+  private refreshApartment(): void {
+    this.service.getById(this.id).subscribe({
+      next: (a) => this.apartment.set(a),
+      error: (error: HttpErrorResponse) => this.notifications.error(toMessage(error)),
     });
   }
 
