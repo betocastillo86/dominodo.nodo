@@ -52,7 +52,10 @@ import {
   deltaIcon,
   formatHours,
   formatNumber,
+  formatPercent,
 } from '../data-access/format';
+import { CHAT_FEEDBACK_PERMISSION } from '../data-access/chat-feedback-summary.models';
+import { ChatFeedbackSummaryService } from '../data-access/chat-feedback-summary.service';
 import { visibleInboxQueues } from '../data-access/attention-inbox';
 import { DASHBOARD_HELP, statusHelp } from '../data-access/help-text';
 import { clipMonthlyFlow } from '../data-access/request-report.models';
@@ -91,6 +94,29 @@ interface StatusTile {
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './dashboard-page.component.html',
+  styles: `
+    /* The two halves of the period row, each in a faint wash built from Tabler's
+       own tokens so they hold in dark mode too: «Tu gestión» in the conjunto's
+       theme colour (it follows the tenant's branding), «Respuestas de Domi» in
+       yellow so it stands apart from the PQRS figures beside it. */
+    .card-gestion {
+      background-color: rgba(var(--tblr-primary-rgb), 0.05);
+      border-color: rgba(var(--tblr-primary-rgb), 0.25);
+    }
+
+    .card-gestion .card-header {
+      border-bottom-color: rgba(var(--tblr-primary-rgb), 0.18);
+    }
+
+    .card-domi {
+      background-color: rgba(var(--tblr-yellow-rgb), 0.08);
+      border-color: rgba(var(--tblr-yellow-rgb), 0.35);
+    }
+
+    .card-domi .card-header {
+      border-bottom-color: rgba(var(--tblr-yellow-rgb), 0.25);
+    }
+  `,
 })
 export class DashboardPageComponent {
   private readonly route = inject(ActivatedRoute);
@@ -123,6 +149,7 @@ export class DashboardPageComponent {
 
   protected readonly formatNumber = formatNumber;
   protected readonly formatHours = formatHours;
+  protected readonly formatPercent = formatPercent;
   protected readonly formatRange = formatRange;
   protected readonly deltaClass = deltaClass;
   protected readonly deltaIcon = deltaIcon;
@@ -176,8 +203,33 @@ export class DashboardPageComponent {
     };
   });
 
+  // ── Domi's answers ─────────────────────────────────────────────────────────
+
+  private readonly chatFeedback = inject(ChatFeedbackSummaryService);
+
+  /** Gated by permission only: an administrator without it gets no block at all. */
+  protected readonly showChatFeedback = computed(() =>
+    this.permissions.has(CHAT_FEEDBACK_PERMISSION),
+  );
+
+  /**
+   * «Tu gestión» shares its row with «Respuestas de Domi», so its four figures
+   * go 2×2 there; alone, they take the full width and run 4 across on desktop.
+   */
+  protected readonly kpiColumn = computed(() =>
+    this.showChatFeedback() ? 'col-6' : 'col-6 col-lg-3',
+  );
+
+  protected readonly chatSummary = this.chatFeedback.summary;
+  protected readonly chatLoading = this.chatFeedback.loading;
+  protected readonly chatError = this.chatFeedback.error;
+
   constructor() {
     effect(() => this.service.load(this.range()));
+
+    effect(() => {
+      if (this.showChatFeedback()) this.chatFeedback.load(this.range());
+    });
 
     // Only the «Cerrado» hint needs this, and the route already demands
     // `tenant.info` — the same permission the endpoint checks — so it can be
@@ -197,6 +249,7 @@ export class DashboardPageComponent {
 
   protected refresh(): void {
     this.service.load(this.range());
+    if (this.showChatFeedback()) this.chatFeedback.load(this.range());
     this.inbox()?.reload();
   }
 

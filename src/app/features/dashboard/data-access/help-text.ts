@@ -27,6 +27,25 @@ export const DASHBOARD_HELP = {
     'resolvió más rápido que esto y la otra mitad se demoró más. Si sube, las ' +
     'PQRS se están quedando más tiempo sin salida.',
 
+  // ── Domi's answers ───────────────────────────────────────────────────────
+  chatFeedback:
+    'Las preguntas que Domi, el asistente de WhatsApp, respondió por su cuenta ' +
+    'con la información del conjunto, sin que tuvieran que llegar a la ' +
+    'administración, y lo que dijeron los residentes de esas respuestas.',
+  chatDeflections:
+    'Cuántas preguntas respondió Domi en estas fechas. Cada una es una consulta ' +
+    'que la administración no tuvo que contestar.',
+  chatResponseRate:
+    'De los residentes a los que Domi les preguntó si la respuesta les sirvió, ' +
+    'cuántos contestaron. Domi pregunta una sola vez por conversación, así que ' +
+    'no todas las respuestas llevan esta pregunta.',
+  chatHelpfulRate:
+    'De los residentes que contestaron, cuántos dijeron que la respuesta sí les ' +
+    'sirvió. Con pocas opiniones un solo caso mueve mucho el porcentaje.',
+  chatNotHelpful:
+    'Cuántos residentes dijeron que la respuesta no les sirvió. Suelen señalar ' +
+    'información que falta o está desactualizada en los documentos del conjunto.',
+
   // ── Time to resolve ──────────────────────────────────────────────────────
   resolutionMedian:
     'El tiempo normal de una PQRS, desde que el residente la radica hasta que ' +

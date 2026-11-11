@@ -8,6 +8,15 @@ export function formatNumber(value: number): string {
 }
 
 /**
+ * A 0–1 ratio as a whole percentage. A null rate means its denominator was
+ * zero — nobody to measure — and shows as an em dash, never as `0 %`.
+ */
+export function formatPercent(ratio: number | null | undefined): string {
+  if (ratio === null || ratio === undefined) return '—';
+  return `${INTEGER.format(Math.round(ratio * 100))} %`;
+}
+
+/**
  * A duration in hours, in the unit a human would use for its magnitude.
  * The API can report a null median when nothing was measured — that is an
  * absence, not a zero, and shows as an em dash.

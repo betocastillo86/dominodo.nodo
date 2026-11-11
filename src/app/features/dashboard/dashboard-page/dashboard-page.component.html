@@ -109,94 +109,203 @@
       }
     </div>
 
+    <!--
+      ── One row, two halves: the administration's own work on the left, the
+      questions Domi took off its plate on the right. Without the chat.feedback
+      permission «Tu gestión» takes the full width back.
+    -->
     <div class="row row-cards row-deck mb-3">
-      <div class="col-6 col-lg-3">
-        <div class="card">
-          <div class="card-body">
-            <div class="subheader d-flex align-items-center gap-2">
-              Creadas
-              <app-help-hint [text]="help.created" label="Qué significa Creadas" />
+      <div [class]="showChatFeedback() ? 'col-12 col-lg-6' : 'col-12'">
+        <div class="card card-gestion">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title">Tu gestión</h3>
+              <p class="card-subtitle">PQRS en el rango, comparadas con el período anterior</p>
             </div>
-            <div class="d-flex align-items-baseline gap-2 my-1">
-              <div class="h1 mb-0">{{ formatNumber(created()) }}</div>
-              <span
-                class="d-inline-flex align-items-center lh-1"
-                [class]="deltaClass(createdDelta())"
-              >
-                {{ createdDelta().label }}
-                <tabler-icon [name]="deltaIcon(createdDelta())" class="icon icon-sm ms-1" />
-              </span>
-            </div>
-            <div class="text-secondary">antes {{ formatNumber(report.comparison.created) }}</div>
           </div>
-        </div>
-      </div>
-
-      <div class="col-6 col-lg-3">
-        <div class="card">
           <div class="card-body">
-            <div class="subheader d-flex align-items-center gap-2">
-              Gestionadas
-              <app-help-hint [text]="help.managed" label="Qué significa Gestionadas" />
-            </div>
-            <div class="d-flex align-items-baseline gap-2 my-1">
-              <div class="h1 mb-0">{{ formatNumber(managed()) }}</div>
-              <span
-                class="d-inline-flex align-items-center lh-1"
-                [class]="deltaClass(managedDelta())"
-              >
-                {{ managedDelta().label }}
-                <tabler-icon [name]="deltaIcon(managedDelta())" class="icon icon-sm ms-1" />
-              </span>
-            </div>
-            <div class="text-secondary">antes {{ formatNumber(report.comparison.managed) }}</div>
-          </div>
-        </div>
-      </div>
+            <div class="row g-4">
+              <div [class]="kpiColumn()">
+                <div class="subheader d-flex align-items-center gap-2">
+                  Creadas
+                  <app-help-hint [text]="help.created" label="Qué significa Creadas" />
+                </div>
+                <div class="d-flex align-items-baseline gap-2 my-1">
+                  <div class="h1 mb-0">{{ formatNumber(created()) }}</div>
+                  <span
+                    class="d-inline-flex align-items-center lh-1"
+                    [class]="deltaClass(createdDelta())"
+                  >
+                    {{ createdDelta().label }}
+                    <tabler-icon [name]="deltaIcon(createdDelta())" class="icon icon-sm ms-1" />
+                  </span>
+                </div>
+                <div class="text-secondary">antes {{ formatNumber(report.comparison.created) }}</div>
+              </div>
 
-      <div class="col-6 col-lg-3">
-        <div class="card">
-          <div class="card-body">
-            <div class="subheader d-flex align-items-center gap-2">
-              Balance
-              <app-help-hint [text]="help.balance" label="Qué significa Balance" />
-            </div>
-            <div class="d-flex align-items-baseline gap-2 my-1">
-              <div class="h1 mb-0" [class.text-red]="netInRange() > 0">
-                {{ netInRange() > 0 ? '+' : '' }}{{ formatNumber(netInRange()) }}
+              <div [class]="kpiColumn()">
+                <div class="subheader d-flex align-items-center gap-2">
+                  Gestionadas
+                  <app-help-hint [text]="help.managed" label="Qué significa Gestionadas" />
+                </div>
+                <div class="d-flex align-items-baseline gap-2 my-1">
+                  <div class="h1 mb-0">{{ formatNumber(managed()) }}</div>
+                  <span
+                    class="d-inline-flex align-items-center lh-1"
+                    [class]="deltaClass(managedDelta())"
+                  >
+                    {{ managedDelta().label }}
+                    <tabler-icon [name]="deltaIcon(managedDelta())" class="icon icon-sm ms-1" />
+                  </span>
+                </div>
+                <div class="text-secondary">antes {{ formatNumber(report.comparison.managed) }}</div>
+              </div>
+
+              <div [class]="kpiColumn()">
+                <div class="subheader d-flex align-items-center gap-2">
+                  Balance
+                  <app-help-hint [text]="help.balance" label="Qué significa Balance" />
+                </div>
+                <div class="d-flex align-items-baseline gap-2 my-1">
+                  <div class="h1 mb-0" [class.text-red]="netInRange() > 0">
+                    {{ netInRange() > 0 ? '+' : '' }}{{ formatNumber(netInRange()) }}
+                  </div>
+                </div>
+                <div class="text-secondary">{{ netCaption() }}</div>
+              </div>
+
+              <div [class]="kpiColumn()">
+                <div class="subheader d-flex align-items-center gap-2">
+                  Mediana de resolución
+                  <app-help-hint
+                    [text]="help.resolutionSummary"
+                    label="Qué significa la mediana de resolución"
+                  />
+                </div>
+                <div class="d-flex align-items-baseline gap-2 my-1">
+                  <div class="h1 mb-0">{{ formatHours(report.current.resolutionMedianHours) }}</div>
+                  <span
+                    class="d-inline-flex align-items-center lh-1"
+                    [class]="deltaClass(resolutionDelta())"
+                  >
+                    {{ resolutionDelta().label }}
+                    <tabler-icon [name]="deltaIcon(resolutionDelta())" class="icon icon-sm ms-1" />
+                  </span>
+                </div>
+                <div class="text-secondary">
+                  antes {{ formatHours(report.comparison.resolutionMedianHours) }}
+                </div>
               </div>
             </div>
-            <div class="text-secondary">{{ netCaption() }}</div>
           </div>
         </div>
       </div>
 
-      <div class="col-6 col-lg-3">
-        <div class="card">
-          <div class="card-body">
-            <div class="subheader d-flex align-items-center gap-2">
-              Mediana de resolución
-              <app-help-hint
-                [text]="help.resolutionSummary"
-                label="Qué significa la mediana de resolución"
-              />
+      <!--
+        Same range, its own load and its own error: the API only relays this
+        from Domi, so Domi being down must not cost the report.
+      -->
+      @if (showChatFeedback()) {
+        <div class="col-12 col-lg-6">
+          <div class="card card-domi">
+            <div class="card-header">
+              <div>
+                <h3 class="card-title d-flex align-items-center gap-2">
+                  Respuestas de Domi
+                  <app-help-hint
+                    [text]="help.chatFeedback"
+                    label="Qué muestran las respuestas de Domi"
+                  />
+                </h3>
+                <p class="card-subtitle">Preguntas que Domi respondió en el rango</p>
+              </div>
             </div>
-            <div class="d-flex align-items-baseline gap-2 my-1">
-              <div class="h1 mb-0">{{ formatHours(report.current.resolutionMedianHours) }}</div>
-              <span
-                class="d-inline-flex align-items-center lh-1"
-                [class]="deltaClass(resolutionDelta())"
-              >
-                {{ resolutionDelta().label }}
-                <tabler-icon [name]="deltaIcon(resolutionDelta())" class="icon icon-sm ms-1" />
-              </span>
-            </div>
-            <div class="text-secondary">
-              antes {{ formatHours(report.comparison.resolutionMedianHours) }}
+            <div class="card-body">
+              @if (chatError(); as message) {
+                <div class="alert alert-warning mb-0" role="alert">
+                  <div class="d-flex">
+                    <div><tabler-icon name="alert-triangle" class="icon alert-icon" /></div>
+                    <div>
+                      <h4 class="alert-title">No se pudieron cargar las respuestas de Domi</h4>
+                      <div class="text-secondary">{{ message }}</div>
+                    </div>
+                  </div>
+                </div>
+              } @else if (chatSummary(); as chat) {
+                @if (chat.deflections === 0) {
+                  <app-empty-state
+                    icon="message"
+                    title="Domi no respondió preguntas en el rango"
+                    subtitle="Cuando un residente pregunte algo por WhatsApp y Domi lo responda, aparecerá aquí."
+                  />
+                } @else {
+                  <div class="row g-4">
+                    <div class="col-6">
+                      <div class="subheader d-flex align-items-center gap-2">
+                        Respondidas
+                        <app-help-hint
+                          [text]="help.chatDeflections"
+                          label="Qué significa Respondidas"
+                        />
+                      </div>
+                      <div class="h1 my-1">{{ formatNumber(chat.deflections) }}</div>
+                      <div class="text-secondary">sin pasar a la administración</div>
+                    </div>
+
+                    <div class="col-6">
+                      <div class="subheader d-flex align-items-center gap-2">
+                        Contestaron
+                        <app-help-hint
+                          [text]="help.chatResponseRate"
+                          label="Qué significa Contestaron"
+                        />
+                      </div>
+                      <div class="h1 my-1">{{ formatPercent(chat.responseRate) }}</div>
+                      <div class="text-secondary">
+                        {{ formatNumber(chat.answered) }} de {{ formatNumber(chat.asked) }}
+                        consultados
+                      </div>
+                    </div>
+
+                    <div class="col-6">
+                      <div class="subheader d-flex align-items-center gap-2">
+                        Les sirvió
+                        <app-help-hint
+                          [text]="help.chatHelpfulRate"
+                          label="Qué significa Les sirvió"
+                        />
+                      </div>
+                      <div class="h1 my-1">{{ formatPercent(chat.helpfulRate) }}</div>
+                      <div class="text-secondary">
+                        {{ formatNumber(chat.helpful) }} de {{ formatNumber(chat.answered) }}
+                        opiniones
+                      </div>
+                    </div>
+
+                    <div class="col-6">
+                      <div class="subheader d-flex align-items-center gap-2">
+                        No les sirvió
+                        <app-help-hint
+                          [text]="help.chatNotHelpful"
+                          label="Qué significa No les sirvió"
+                        />
+                      </div>
+                      <div class="h1 my-1" [class.text-red]="chat.notHelpful > 0">
+                        {{ formatNumber(chat.notHelpful) }}
+                      </div>
+                      <div class="text-secondary">
+                        {{ formatNumber(chat.unanswered) }} sin contestar
+                      </div>
+                    </div>
+                  </div>
+                }
+              } @else if (chatLoading()) {
+                <app-spinner label="Cargando las respuestas de Domi…" />
+              }
             </div>
           </div>
         </div>
-      </div>
+      }
     </div>
 
     <!-- ── Durations ── -->
