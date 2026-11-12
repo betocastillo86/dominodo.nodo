@@ -13,6 +13,7 @@ import { map } from 'rxjs';
 import {
   DataTableComponent,
   TableColumn,
+  TableSort,
 } from '../../../shared/ui/data-table/data-table.component';
 import { PageHeaderComponent } from '../../../shared/ui/page-header/page-header.component';
 import {
@@ -38,6 +39,8 @@ import {
   RESERVATION_STATUS_LABEL,
   RESERVATION_STATUSES,
   ReservationDto,
+  ReservationSort,
+  ReservationSortBy,
   ReservationStatus,
 } from '../data-access/reservation.models';
 import {
@@ -132,6 +135,13 @@ export class ReservationAdminListComponent {
   /** The shortcut currently applied, or null for the plain filter bar. */
   readonly quickView = signal<ReservationTodayView | null>(null);
 
+  /**
+   * The order the table shows, driven by the "Fecha de reserva" and
+   * "Solicitada" headers. A quick view resets it to the order it is about, so
+   * the arrow always tells the truth about the rows.
+   */
+  readonly sort = signal<TableSort>(toTableSort(RESERVATION_WINDOW_SORT));
+
   /** `yyyy-MM-dd` in the conjunto's reporting zone — never the browser's own. */
   readonly fromControl = new FormControl(todayInReportZone(), { nonNullable: true });
   readonly toControl = new FormControl('', { nonNullable: true });
@@ -202,6 +212,7 @@ export class ReservationAdminListComponent {
         header: 'Fecha de reserva',
         value: (r) => this.windowLabel(r),
         class: 'text-nowrap',
+        sortKey: 'StartDate' satisfies ReservationSortBy,
         hint: RESERVATIONS_HELP.window,
       },
       // Beside the window it was asked for, because the pair is the question:
@@ -213,6 +224,7 @@ export class ReservationAdminListComponent {
         header: 'Solicitada',
         value: (r) => formatDay(instantToReportDay(r.createdAtUtc)),
         class: 'text-nowrap',
+        sortKey: 'CreatedDate' satisfies ReservationSortBy,
         hint: RESERVATIONS_HELP.createdColumn,
       },
       // Interactive when there is something to see: the template turns "Sí" into
@@ -278,6 +290,12 @@ export class ReservationAdminListComponent {
     this.reload(page);
   }
 
+  /** A header sort click reorders from the first page; the filters stay as they are. */
+  onSortChange(sort: TableSort): void {
+    this.sort.set(sort);
+    this.reload(1);
+  }
+
   /**
    * Quick views are shortcuts OVER the filter bar, not a mode beside it: each
    * writes the date window it means, so the administrator sees what it did and
@@ -298,6 +316,7 @@ export class ReservationAdminListComponent {
 
     this.fromControl.setValue(from, { emitEvent: false });
     this.toControl.setValue(to, { emitEvent: false });
+    this.sort.set(toTableSort(next ? todayViewSort(next) : RESERVATION_WINDOW_SORT));
     this.reload(1);
   }
 
@@ -341,9 +360,22 @@ export class ReservationAdminListComponent {
         paymentUploaded: null,
         ...dates,
       },
-      view ? todayViewSort(view) : RESERVATION_WINDOW_SORT,
+      fromTableSort(this.sort()),
       page,
       this.pageSize,
     );
   }
+}
+
+/** The API's sort as the table's header state (`Asc` → `asc`). */
+function toTableSort(sort: ReservationSort): TableSort {
+  return { key: sort.sortBy, direction: sort.direction === 'Asc' ? 'asc' : 'desc' };
+}
+
+/** The table's header state back to what `GET /reservations` accepts. */
+function fromTableSort(sort: TableSort): ReservationSort {
+  return {
+    sortBy: sort.key as ReservationSortBy,
+    direction: sort.direction === 'asc' ? 'Asc' : 'Desc',
+  };
 }

@@ -73,6 +73,8 @@
     [loading]="loading()"
     [error]="error()"
     [rowKey]="rowKey"
+    [sort]="sort()"
+    (sortChange)="onSortChange($event)"
     [actionLink]="detailLink"
     actionIcon="eye"
     [actionLabel]="help.detail"
