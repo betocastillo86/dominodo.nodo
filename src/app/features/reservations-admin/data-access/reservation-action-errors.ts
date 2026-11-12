@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ProblemDetails } from '../../../core/http/problem-details';
+import { errorCode, knownApiMessage } from '../../../core/http/problem-details';
 
 /**
  * Error codes of the three state-change endpoints (`confirm`, `reject`,
@@ -9,6 +9,9 @@ import { ProblemDetails } from '../../../core/http/problem-details';
  * the CODE in ProblemDetails' `title` and an English sentence in `detail`, so
  * the code is what we switch on and the `detail` is never shown — UI copy is
  * Spanish.
+ *
+ * Codes not listed here fall back to the portal-wide catalog
+ * (`core/http/api-error-messages.ts`), which also translates field errors.
  *
  * Most of these mean the row on screen is stale (someone else already acted, or
  * the window passed), which is why the caller reloads the page after showing
@@ -35,12 +38,5 @@ export function toReservationActionMessage(error: unknown): string {
   if (!(error instanceof HttpErrorResponse)) return UNEXPECTED;
   if (error.status === 0) return OFFLINE;
 
-  const problem = error.error as ProblemDetails | undefined;
-  const mapped = MESSAGES[problem?.title ?? ''];
-  if (mapped) return mapped;
-
-  // Field-level validation still carries usable text; anything else is noise.
-  if (problem?.errors?.length) return problem.errors.map((e) => e.message).join(' ');
-
-  return UNEXPECTED;
+  return MESSAGES[errorCode(error)] ?? knownApiMessage(error) ?? UNEXPECTED;
 }

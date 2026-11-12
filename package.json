@@ -8,7 +8,8 @@
     "build:stage": "ng build --configuration stage",
     "build:prod": "ng build --configuration production",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "check:error-codes": "node scripts/check-api-error-codes.mjs"
   },
   "prettier": {
     "printWidth": 100,

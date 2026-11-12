@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ProblemDetails } from '../../../core/http/problem-details';
+import { errorCode, knownApiMessage } from '../../../core/http/problem-details';
 
 export interface BookingFailure {
   /** Resident-facing Spanish copy. Never the API's own `detail`, which is English. */
@@ -15,6 +15,11 @@ export interface BookingFailure {
  * `detail` (`ErrorResults.ToProblem`), so the code is what we switch on and the
  * `detail` is never shown — this audience is a resident on WhatsApp, not an
  * administrator.
+ *
+ * A code not listed here falls back to the portal-wide catalog
+ * (`core/http/api-error-messages.ts`) before the generic sentence, so a new API
+ * code is never silent — but a code the resident can actually hit deserves its
+ * own resident-voiced entry here.
  *
  * `staleAvailability` marks the failures that mean the calendar the resident is
  * looking at no longer matches the server: someone else took the slot, or the
@@ -43,6 +48,15 @@ const MESSAGES: Record<string, BookingFailure> = {
   'Reservation.ApartmentAmbiguous': {
     message:
       'Figuras como residente en más de un apartamento, así que no podemos saber a nombre de cuál reservar. Escríbele a la administración de tu conjunto.',
+    staleAvailability: false,
+  },
+  'Reservation.ApartmentOverdue': {
+    message:
+      'Tu apartamento tiene saldos pendientes y esta área solo se puede reservar estando al día. Comunícate con la administración de tu conjunto.',
+    staleAvailability: false,
+  },
+  'Reservation.ApartmentNotFound': {
+    message: 'No encontramos tu apartamento en este conjunto. Escríbele a la administración de tu conjunto.',
     staleAvailability: false,
   },
   'Reservation.NoResidency': {
@@ -115,11 +129,17 @@ export function toBookingFailure(error: unknown): BookingFailure {
     return OFFLINE;
   }
 
-  const code = (error.error as ProblemDetails | undefined)?.title ?? '';
+  const code = errorCode(error);
 
   if (WINDOW_CODES.includes(code)) {
     return WINDOW_FAILURE;
   }
 
-  return MESSAGES[code] ?? UNEXPECTED;
+  const known = MESSAGES[code];
+  if (known) {
+    return known;
+  }
+
+  const message = knownApiMessage(error);
+  return message ? { message, staleAvailability: false } : UNEXPECTED;
 }

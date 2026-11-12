@@ -26,6 +26,8 @@ resolved from the **domain**. Full design: `docs/architecture.md`.
 - `npm run build:prod` / `npm run build:stage` — the prod and stage bundles. These no longer map to branches: `main` is the only branch and **CI builds both bundles from the same commit** (prod is then deployed by a manual pipeline stage). See `docs/deployment.md`.
 - API base URL + tenant config live in `src/environments/` (`environment.ts` = prod, `environment.stage.ts` = stage, `environment.development.ts` = dev).
 - API Swagger: `http://localhost:5083/swagger/index.html`.
+- `npm run check:error-codes` — lists API error codes with no Spanish message in
+  `core/http/api-error-messages.ts` (needs `dominodo.api` checked out next to this repo). An audit, not a test.
 - Deployment: Azure DevOps FTP pipeline (`pipelines/build-ftp-pipeline.yaml`) → Windows/IIS. See `docs/deployment.md`.
 - **Caching (do not regress):** the hosting caches every static file for a year, so
   `public/web.config` carves out `index.html` as `no-cache` — otherwise deploys stay invisible to
@@ -101,7 +103,12 @@ files.
     `400 Tenant.Unknown` → not-found page. Remove the fallback once confirmed stable.
 - PQRS/announcements: `GET/PUT /requests*`, `GET/POST/PUT /announcements*` (verify against Swagger).
 - Paged: `PagedResult<T> = { items, page, pageSize, totalCount, totalPages }`.
-- Errors: RFC 9457 `ProblemDetails` — `{ type, title, status, detail, errors? }`.
+- Errors: RFC 9457 `ProblemDetails` — `{ type, title, status, detail, errors? }`. **`title` is the error
+  code, `detail` is English and is never shown.** Every code maps to Spanish in
+  `core/http/api-error-messages.ts` (field `errors[]` via `validation-messages.ts`); always surface errors
+  through `toMessage` / `knownApiMessage`, never `detail`. **Whenever a change consumes a new or changed
+  API endpoint**, read the codes its handlers/domain return and add any new one to the catalog, then run
+  `npm run check:error-codes` (scans `../dominodo.api/src`; must report nothing missing).
 
 ## Authorization in the client
 - The JWT has no permissions. `GET /auth/current` → `PermissionStore` drives nav, guards, and buttons.

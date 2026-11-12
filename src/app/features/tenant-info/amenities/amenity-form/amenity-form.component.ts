@@ -20,7 +20,7 @@ import {
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { TablerIconComponent } from 'angular-tabler-icons';
-import { toMessage } from '../../../../core/http/problem-details';
+import { toMessage, translateFieldError } from '../../../../core/http/problem-details';
 import { NotificationService } from '../../../../core/notifications/notification.service';
 import { DurationInputComponent } from '../../../../shared/ui/duration-input/duration-input.component';
 import { richTextToHtml, sanitizeRichText } from '../../../../shared/ui/rich-text/rich-text';
@@ -276,7 +276,7 @@ export class AmenityFormComponent implements OnInit {
       const segment = fieldError.property.split('.').pop() ?? fieldError.property;
       const controlName = segment.charAt(0).toLowerCase() + segment.slice(1);
       const control = this.form.get(controlName);
-      control?.setErrors({ server: fieldError.message });
+      control?.setErrors({ server: translateFieldError(fieldError) });
     }
   }
 

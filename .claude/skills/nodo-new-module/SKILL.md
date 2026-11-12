@@ -23,7 +23,8 @@ scaffold (shared/ui, layout, guards, tenant/authz stores).
 - Nodo scaffold to reuse (this repo):
   - `src/app/shared/ui/data-table/data-table.component.{ts,html}` — generic paged table
   - `src/app/shared/ui/{page-header,spinner,empty-state}/` — presentational pieces
-  - `src/app/core/http/problem-details.ts` — `ProblemDetails` + shared `toMessage(err)`
+  - `src/app/core/http/problem-details.ts` — `ProblemDetails` + shared `toMessage(err)` / `knownApiMessage(err)`
+  - `src/app/core/http/api-error-messages.ts` — **every API error code → Spanish** (the catalog Step 1b extends)
   - `src/app/core/models/paged-result.ts` — `PagedResult<T>`
   - `src/app/core/notifications/notification.service.ts` — toast bus
   - `src/app/core/guards/permission.guard.ts` — `permissionGuard('<code>')` factory
@@ -41,6 +42,8 @@ scaffold (shared/ui, layout, guards, tenant/authz stores).
 - kebab-case filenames; `.component.ts` / `.service.ts` / `.store.ts` / `.guard.ts` suffixes.
 - DTOs typed **exactly** as the API returns them (camelCase); do not rename.
 - **UI copy in Spanish**; code, identifiers, comments, and docs in English.
+- **Never show the API's `detail`** — it is English. `title` is the error code; errors reach the user only
+  through `toMessage` (catalog + translated `errors[]` + status fallback).
 - List state lives in the service as **signals**; write operations return **Observables** the component
   subscribes to and manages locally (loading/error). Do not push writes through the list signals.
 - Extend shared components (e.g. `DataTable`) only in a **backward-compatible** way (new inputs optional).
@@ -73,7 +76,8 @@ collect, in order:
    supports it and the user wants it.
 4. **API contract** — per operation: endpoint, request body, response. Capture exact DTOs (list item DTO,
    detail DTO if different, create/update requests, any catalog/lookup for selects). Note error codes
-   (`400`/`404`/`409` → `ProblemDetails`).
+   (`400`/`404`/`409` → `ProblemDetails`) — Step 1b reads them from the API source, so you do not need
+   the user to list them.
 5. **List filters** — enumerate the list endpoint's query params; **present them and ask which to expose**.
    Default to debounced text for free-text and `select` for enums.
 6. **Create/edit rules** — per field: required?, max length / pattern / min-max, enum options,
@@ -95,6 +99,26 @@ Summarize the gathered contract back and get confirmation before scaffolding.
   - `getById(id)`, `create(body)`, `update(id, body)`, and `remove(id)` **only if delete applies** — all
     returning Observables.
 - Any lookup/catalog for a select → a small read-only service.
+
+## Step 1b — Map the module's API error codes to Spanish (do not skip)
+
+Every endpoint the module consumes can answer with ProblemDetails whose `title` is a code
+(`<Aggregate>.<Reason>`) and whose `detail` is English. The UI must show Spanish for every one of them.
+
+1. **Find the codes.** In `../dominodo.api/src`, read the handlers of the endpoints from Step 0 and the
+   domain/aggregate they call: every `Error.Validation|NotFound|Conflict|Forbidden|Unauthorized|Failure(
+   "<Code>", "<English>")` they can return (also shared ones such as `Residency.*`, `Tenant.*`).
+2. **Add each missing code** to `src/app/core/http/api-error-messages.ts`, in its prefix group,
+   alphabetically: a plain Spanish sentence (tú, matching the portal's tone), or `(p) => …` with
+   `firstNumber(p)` when the English `detail` carries a limit worth keeping (max length, capacity, days).
+3. **New validator field?** If the API validator names a property missing from `FIELD_LABELS` in
+   `core/http/validation-messages.ts`, add its Spanish label; a new custom `WithMessage` goes to
+   `CUSTOM_MESSAGES` / `CUSTOM_PATTERNS`.
+4. **Audience-specific copy** (e.g. the resident handoff surface) goes in a feature mapper like
+   `features/reservations/data-access/reservation-errors.ts`, which overrides a few codes and then falls
+   back to `knownApiMessage(err)` — never to the English `detail`.
+5. Run **`npm run check:error-codes`** — it must end with "Every API error code has a Spanish message."
+   (it also lists catalog entries the API no longer returns, to prune).
 
 ## Step 2 — List component (`<singular>-list/`)
 
@@ -118,7 +142,8 @@ Mirror admin's `RoleFormComponent` — **one component for both modes**:
 - Signals: `loadingDetail`, catalog `loading`, `saving`, `error`, `submitted`.
 - Success → `NotificationService.success('<Entidad> creado' | 'actualizado')` + navigate to `/<plural>`.
 - Error → map `ProblemDetails` via `toMessage` / `errors[]`: `409` → conflicting control; `errors[]` →
-  per-control `setErrors({ server })` (PascalCase property → camelCase control); fallback global alert.
+  per-control `setErrors({ server: translateFieldError(e) })` (PascalCase property → camelCase control;
+  never the raw English `message`); fallback global alert.
   `saving.set(false)` in `finalize`.
 - Template: Tabler markup with `is-invalid`/`invalid-feedback`, `required` labels, spinner while loading,
   inline spinner on Save while `saving()`, Cancel link back to the list.
@@ -144,6 +169,8 @@ code + Swagger are the source of truth.
 ## Closing
 
 - `npm run build` must pass with no type errors (Tabler Sass `@import` deprecation warnings are expected).
+- `npm run check:error-codes` reports no missing code (Step 1b).
 - Give the user a short **manual verification** checklist (create happy path, a required-field validation,
-  edit prefills + immutable disabled, delete confirm if applicable, any read-only/at-least-one rule, **and
-  that the nav item hides when the permission/feature is absent**), since the project has no automated tests.
+  edit prefills + immutable disabled, delete confirm if applicable, any read-only/at-least-one rule, **one
+  business error (e.g. a `409`) shows Spanish copy, not the API's English**, **and that the nav item hides
+  when the permission/feature is absent**), since the project has no automated tests.

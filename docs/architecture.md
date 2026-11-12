@@ -68,6 +68,13 @@ Identical to `dominodo.admin` — keep them aligned so patterns, skills and musc
   `/swagger/index.html`.
 - **Paged responses:** `PagedResult<T> = { items, page, pageSize, totalCount, totalPages }`.
 - **Errors:** RFC 9457 `ProblemDetails` → `{ type, title, status, detail, errors?: [{ property, message }] }`.
+  `title` is the error **code** (`Reservation.ApartmentOverdue`) and `detail` an **English** sentence, so
+  the UI never shows `detail`: `core/http/api-error-messages.ts` maps **every** code the API can return
+  to Spanish, `validation-messages.ts` translates `errors[]` (FluentValidation's English), and `toMessage`
+  falls back by HTTP status for an unknown code (warning in dev). Feature mappers
+  (`reservation-errors.ts`, `reservation-action-errors.ts`) override a code only for audience-specific
+  copy, then fall back to the catalog. `npm run check:error-codes` scans `../dominodo.api/src` and lists
+  codes missing from the catalog — run it whenever a change consumes a new or changed endpoint.
 - **Multi-tenancy (the defining trait):** **every** request carries `X-Tenant: <slug>`. The slug is
   resolved from the domain at bootstrap (§4). There is no cross-tenant read in this portal.
 - **Auth:** `POST /auth/login` (`{phone,password}` → `{accessToken, refreshToken, expiresAt}`),
@@ -232,7 +239,8 @@ src/app/
 │   │                       #   (POST /auth/handoff/redeem) + handoff.context (HANDOFF_REQUEST: the
 │   │                       #   per-request opt-in) + domi-whatsapp (the wa.me deep link back to the
 │   │                       #   chat; the number is per-environment). ADR-0017 — see §5.1 below.
-│   ├── http/               # tenant + auth + error interceptors (functional) + problem-details (+ toMessage).
+│   ├── http/               # tenant + auth + error interceptors (functional) + problem-details (+ toMessage)
+│   │                       #   + api-error-messages (every API error code → Spanish) + validation-messages.
 │   │                       #   authInterceptor sends the handoff token ONLY for requests flagged
 │   │                       #   HANDOFF_REQUEST, with no fallback between the two sessions;
 │   │                       #   errorInterceptor treats a 401 on such a request as "link expired",
@@ -485,7 +493,8 @@ confirm, read the code — because a resident on a phone should never wonder whi
 - **"Disponible" is not "aceptado", so every rejection has resident copy.** The calendar deliberately
   does not apply `MaxPerDayPerApartment` (ADR-0018 §8: availability is the same answer for the whole
   conjunto), and the overlap check has no lock behind it (§11), so a slot drawn as free can still be
-  refused. `data-access/reservation-errors.ts` maps each `Reservation.*` code to Spanish and flags the
+  refused. `data-access/reservation-errors.ts` maps each `Reservation.*` code to resident Spanish (falling
+  back to the portal-wide catalog, `core/http/api-error-messages.ts`) and flags the
   ones that mean *the calendar on screen is stale* — those close the dialog, toast, and refetch, so the
   resident sees the corrected calendar instead of arguing with the old one. The rest stay inside the
   dialog, where the resident can act on them.
@@ -695,7 +704,8 @@ into `PermissionStore` + `AuthStore` (so the nav renders correctly and the heade
 and enters the portal. On a hard refresh, `authBootstrap` re-runs the same load for the rehydrated session. The login screen reads the
 tenant name/logo/loginText from `TenantStore` for branding. `tenantInterceptor` adds `X-Tenant` on every
 request; `authInterceptor` attaches the Bearer token (except `/auth/login`, `/auth/refresh`);
-`errorInterceptor` attempts a single refresh-and-retry on 401 and maps `ProblemDetails` to messages.
+`errorInterceptor` attempts a single refresh-and-retry on 401 and maps `ProblemDetails` to Spanish messages
+(by error code, §3).
 
 **PQRS (Requests)** — the primary module. A **list** with server-side filters (status / type / priority /
 category / free-text search) using the shared `DataTable`, and a **detail/manage page** at
