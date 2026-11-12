@@ -55,26 +55,22 @@
         @for (range of rangesFor(day.key); track $index) {
           <div class="row g-2 align-items-center mb-2">
             <div class="col">
-              <input
-                type="time"
-                class="form-control"
+              <app-time-input
                 [value]="range.from"
                 [disabled]="disabled()"
-                [class.is-invalid]="showErrors() && isRangeInvalid(day.key, $index)"
-                (change)="updateRange(day.key, $index, 'from', $any($event.target).value)"
-                [attr.aria-label]="day.label + ' — hora de inicio'"
+                [invalid]="showErrors() && isRangeInvalid(day.key, $index)"
+                (valueChange)="updateRange(day.key, $index, 'from', $event)"
+                [ariaLabel]="day.label + ' — hora de inicio'"
               />
             </div>
             <div class="col-auto text-secondary small">a</div>
             <div class="col">
-              <input
-                type="time"
-                class="form-control"
+              <app-time-input
                 [value]="range.to"
                 [disabled]="disabled()"
-                [class.is-invalid]="showErrors() && isRangeInvalid(day.key, $index)"
-                (change)="updateRange(day.key, $index, 'to', $any($event.target).value)"
-                [attr.aria-label]="day.label + ' — hora de fin'"
+                [invalid]="showErrors() && isRangeInvalid(day.key, $index)"
+                (valueChange)="updateRange(day.key, $index, 'to', $event)"
+                [ariaLabel]="day.label + ' — hora de fin'"
               />
             </div>
             <div class="col-auto">

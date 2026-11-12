@@ -16,6 +16,7 @@ import {
 } from '@angular/forms';
 import { NgbDropdownModule, NgbTooltipModule } from '@ng-bootstrap/ng-bootstrap';
 import { TablerIconComponent } from 'angular-tabler-icons';
+import { TimeInputComponent } from '../time-input/time-input.component';
 import {
   formatRanges,
   formatSchedule,
@@ -53,7 +54,7 @@ const DEFAULT_RANGE: TimeRange = { from: '08:00', to: '17:00' };
 @Component({
   selector: 'app-schedule-editor',
   standalone: true,
-  imports: [TablerIconComponent, NgbDropdownModule, NgbTooltipModule],
+  imports: [TablerIconComponent, NgbDropdownModule, NgbTooltipModule, TimeInputComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './schedule-editor.component.html',
   providers: [
