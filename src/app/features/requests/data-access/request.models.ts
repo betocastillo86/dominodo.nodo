@@ -47,6 +47,12 @@ export interface RequestDto {
   participantsCount: number;
   /** Number of updates (comments, progress, evidence, resolution) on the request. */
   updatesCount: number;
+  /**
+   * The apartment the REPORTER filed from — not the destination (`apartmentId`).
+   * Only filled when the list asks for it with `includeApartment=true`; null when
+   * the reporter filed without one. Optional: the board and other callers don't ask.
+   */
+  apartment?: RequestParticipantApartmentDto | null;
 }
 
 /** Ordered list of statuses for the board view columns. */

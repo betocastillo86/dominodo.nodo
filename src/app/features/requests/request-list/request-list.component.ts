@@ -28,6 +28,7 @@ import { NotificationService } from '../../../core/notifications/notification.se
 import { toMessage } from '../../../core/http/problem-details';
 import { RequestsService } from '../data-access/requests.service';
 import { ApartmentsLookupService } from '../data-access/apartments-lookup.service';
+import { apartmentLabel } from '../../apartments/data-access/apartment.models';
 import { MembershipsLookupService } from '../data-access/memberships-lookup.service';
 import {
   BOARD_STATUSES,
@@ -213,6 +214,12 @@ export class RequestListComponent {
       value: (r) => this.truncate(r.title),
       class: 'table-cell-wrap',
       link: (r) => this.detailLink(r),
+    },
+    {
+      // The reporter's apartment (where they filed from), not the destination.
+      header: 'Apto',
+      value: (r) => (r.apartment ? apartmentLabel(r.apartment) : '—'),
+      class: 'text-nowrap',
     },
     {
       header: 'Estado',

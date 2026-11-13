@@ -93,7 +93,9 @@ export class RequestsService {
       .set('page', page)
       .set('pageSize', pageSize)
       .set('sortBy', sort.sortBy)
-      .set('direction', sort.direction);
+      .set('direction', sort.direction)
+      // Embeds the reporter's apartment in each row, for the list's "Apto" column.
+      .set('includeApartment', true);
     for (const status of statuses) {
       params = params.append('statuses', status);
     }
