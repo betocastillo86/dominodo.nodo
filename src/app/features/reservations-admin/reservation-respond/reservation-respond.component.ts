@@ -2,21 +2,31 @@ import { ChangeDetectionStrategy, Component, computed, inject, output, signal, T
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
-import { finalize, Observable } from 'rxjs';
+import { TablerIconComponent } from 'angular-tabler-icons';
+import { catchError, finalize, map, Observable, of, switchMap, tap, throwError } from 'rxjs';
 import { PermissionStore } from '../../../core/authz/permission.store';
 import { NotificationService } from '../../../core/notifications/notification.service';
+import {
+  RESERVATION_PROOF_IMAGE_CONTENT_TYPES,
+  RESERVATION_PROOF_MAX_BYTES,
+} from '../../reservations/data-access/reservation-availability.models';
 import { toReservationActionMessage } from '../data-access/reservation-action-errors';
 import {
   acceptsComment,
   availableReservationActions,
+  isPaidReservation,
   RESERVATION_ACTION_LABEL,
   RESERVATION_COMMENT_MAX_LENGTH,
   RESERVATION_REASON_MAX_LENGTH,
   requiresReason,
   RespondableReservation,
   ReservationAction,
+  ReservationPaymentProofUpload,
 } from '../data-access/reservation.models';
 import { ReservationsAdminService } from '../data-access/reservations-admin.service';
+
+/** The comprobante's PUT to Blob Storage failed — nothing reached the API. */
+class ProofUploadError extends Error {}
 
 /**
  * The "responder" dialog of the Reservas module: pick the booking's new state
@@ -34,11 +44,17 @@ import { ReservationsAdminService } from '../data-access/reservations-admin.serv
  * whatever trigger it wants on screen and calls `open()`, then reacts to
  * `responded` by reloading, because answering changes the booking's state and
  * every caller shows that state somewhere.
+ *
+ * Confirming also lets the approver mark the payment as verified and,
+ * optionally, attach the comprobante themselves — the case of a resident who
+ * paid at the office or sent the receipt by other means. The image goes
+ * straight to Blob first and rides on the confirm call as a key, which the API
+ * applies all-or-nothing with the confirmation (ADR-0018 §5).
  */
 @Component({
   selector: 'app-reservation-respond',
   standalone: true,
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, TablerIconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './reservation-respond.component.html',
 })
@@ -68,7 +84,21 @@ export class ReservationRespondComponent {
     }),
     reason: new FormControl('', { nonNullable: true }),
     comment: new FormControl('', { nonNullable: true }),
+    paymentValidated: new FormControl(false, { nonNullable: true }),
   });
+
+  /** The optional comprobante picked for the confirmation. Not a form control: a File has no value to bind. */
+  readonly proofFile = signal<File | null>(null);
+  readonly proofError = signal<string | null>(null);
+  readonly acceptedProofTypes = RESERVATION_PROOF_IMAGE_CONTENT_TYPES.join(',');
+  readonly proofMaxBytesLabel = `${RESERVATION_PROOF_MAX_BYTES / (1024 * 1024)} MB`;
+
+  /**
+   * The blob already PUT for {@link proofFile}, so a confirm that fails AFTER
+   * the upload (a 409 race, a network blip) retries without sending the bytes
+   * again. Its key stays valid for this booking: nothing adopted it.
+   */
+  private uploadedProof: { file: File; proof: ReservationPaymentProofUpload } | null = null;
 
   /**
    * Permissive only while `GET /auth/current` is still in flight, as everywhere
@@ -85,6 +115,12 @@ export class ReservationRespondComponent {
   readonly actionOptions = computed<ReservationAction[]>(() => {
     const row = this.target();
     return row ? availableReservationActions(row, this.canEdit(), this.canCancel()) : [];
+  });
+
+  /** A free area has no payment to verify nor a comprobante to attach. */
+  readonly paymentRequired = computed(() => {
+    const row = this.target();
+    return !!row && isPaidReservation(row);
   });
 
   /** Drives the reason textarea; recomputed from the control so the template stays dumb. */
@@ -124,7 +160,8 @@ export class ReservationRespondComponent {
     this.target.set(reservation);
     this.submitted.set(false);
     this.formError.set(null);
-    this.form.reset({ action, reason: '', comment: '' });
+    this.form.reset({ action, reason: '', comment: '', paymentValidated: false });
+    this.clearProof();
     this.applyActionValidators(action);
 
     this.respondModal = this.modal.open(this.tpl());
@@ -140,10 +177,19 @@ export class ReservationRespondComponent {
     if (this.form.invalid) return;
 
     const row = this.target();
-    const { action, reason, comment } = this.form.getRawValue();
+    const { action, reason, comment, paymentValidated } = this.form.getRawValue();
     if (!row || !action) return;
 
-    const request = this.requestFor(row.id, action, reason.trim(), comment.trim());
+    // Belt and braces: the fields are hidden on a free area, and nothing they
+    // held may ride along with its confirmation.
+    const paid = this.paymentRequired();
+    const request = this.requestFor(
+      row.id,
+      action,
+      reason.trim(),
+      comment.trim(),
+      paid && paymentValidated,
+    );
 
     this.saving.set(true);
     request.pipe(finalize(() => this.saving.set(false))).subscribe({
@@ -152,7 +198,12 @@ export class ReservationRespondComponent {
         this.notifications.success(`Reserva ${row.code}: ${this.pastTense(action)}.`);
         this.responded.emit(action);
       },
-      error: (error: unknown) => this.formError.set(toReservationActionMessage(error)),
+      error: (error: unknown) =>
+        this.formError.set(
+          error instanceof ProofUploadError
+            ? 'No pudimos subir el comprobante. Verifica tu conexión e inténtalo de nuevo.'
+            : toReservationActionMessage(error),
+        ),
     });
   }
 
@@ -161,16 +212,71 @@ export class ReservationRespondComponent {
     action: ReservationAction,
     reason: string,
     comment: string,
+    paymentValidated: boolean,
   ): Observable<void> {
     switch (action) {
       case 'confirm':
         // No `amountPaid`: this dialog records the note, not the money.
-        return this.service.confirm(id, null, comment);
+        return this.uploadProof(id).pipe(
+          switchMap((paymentProof) =>
+            this.service.confirm(id, { amountPaid: null, comment, paymentValidated, paymentProof }),
+          ),
+        );
       case 'reject':
         return this.service.reject(id, reason);
       case 'cancel':
         return this.service.cancel(id, reason);
     }
+  }
+
+  // ── Payment proof ──────────────────────────────────────────────────────────
+
+  onProofSelected(event: Event): void {
+    const target = event.target as HTMLInputElement;
+    const file = target.files?.[0];
+    // Cleared right away so the same file can be re-picked after removing it.
+    target.value = '';
+    if (!file) return;
+
+    this.proofError.set(null);
+    if (!RESERVATION_PROOF_IMAGE_CONTENT_TYPES.includes(file.type)) {
+      this.proofError.set('Solo puedes subir imágenes (JPG, PNG, WEBP o GIF).');
+      return;
+    }
+    if (file.size > RESERVATION_PROOF_MAX_BYTES) {
+      this.proofError.set(`La imagen supera ${this.proofMaxBytesLabel}. Intenta con una más liviana.`);
+      return;
+    }
+    this.proofFile.set(file);
+  }
+
+  clearProof(): void {
+    this.proofFile.set(null);
+    this.proofError.set(null);
+    this.uploadedProof = null;
+  }
+
+  /**
+   * Steps 1 and 2 of the direct-to-blob upload; step 3 — adopting the key — is
+   * the confirm call itself. Emits null when no comprobante was picked.
+   */
+  private uploadProof(id: string): Observable<ReservationPaymentProofUpload | null> {
+    const file = this.paymentRequired() ? this.proofFile() : null;
+    if (!file) return of(null);
+    if (this.uploadedProof?.file === file) return of(this.uploadedProof.proof);
+
+    const meta = { fileName: file.name, contentType: file.type };
+    return this.service.createPaymentProofUploadUrl(id, meta).pipe(
+      switchMap((ticket) =>
+        this.service.uploadPaymentProof(ticket.uploadUrl, file).pipe(
+          map((): ReservationPaymentProofUpload => ({ key: ticket.key, ...meta })),
+          // The PUT to Blob fails as a status-0/opaque error with no
+          // ProblemDetails behind it, so it gets its own message.
+          catchError(() => throwError(() => new ProofUploadError())),
+        ),
+      ),
+      tap((proof) => (this.uploadedProof = { file, proof })),
+    );
   }
 
   /**
@@ -206,6 +312,10 @@ export class ReservationRespondComponent {
     } else {
       comment.clearValidators();
       comment.setValue('', { emitEvent: false });
+      // Same for the payment mark and the comprobante: they belong to the
+      // confirmation and must not ride along with anything else.
+      this.form.controls.paymentValidated.setValue(false, { emitEvent: false });
+      this.clearProof();
     }
     comment.updateValueAndValidity({ emitEvent: false });
   }

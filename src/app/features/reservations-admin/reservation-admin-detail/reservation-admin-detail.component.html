@@ -93,6 +93,16 @@
             @if (r.confirmedAtUtc) {
               <dt class="col-5 text-secondary">Confirmada</dt>
               <dd class="col-7">{{ formatInstant(r.confirmedAtUtc) }}</dd>
+              <!-- Only meaningful once confirmed (it is set at confirmation and
+                   nowhere else), and only on an area that charges. -->
+              @if (r.policy.paymentRequired) {
+                <dt class="col-5 text-secondary">Pago verificado</dt>
+                <dd class="col-7">
+                  <span class="badge" [class]="r.paymentValidated ? 'bg-green-lt' : 'bg-secondary-lt'">
+                    {{ r.paymentValidated ? 'Sí' : 'No' }}
+                  </span>
+                </dd>
+              }
               <!-- Optional, unlike the two motives below: only shown when the
                    administrator actually left a note while approving. -->
               @if (r.confirmationComment) {
@@ -189,7 +199,7 @@
           <app-empty-state
             icon="file"
             title="Sin comprobantes"
-            subtitle="El residente no ha subido comprobantes de pago para esta reserva."
+            subtitle="Aún no hay comprobantes de pago para esta reserva."
           />
         } @else {
           <!-- The proof itself, not a row naming it: what this card is for is

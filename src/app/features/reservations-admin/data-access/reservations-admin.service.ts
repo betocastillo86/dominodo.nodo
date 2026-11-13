@@ -3,7 +3,12 @@ import { inject, Injectable, signal } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { toMessage } from '../../../core/http/problem-details';
+import { TenantFilesService } from '../../../core/files/tenant-files.service';
 import { PagedResult } from '../../../core/models/paged-result';
+import type {
+  CreateReservationPaymentProofUploadUrlRequest,
+  ReservationPaymentProofUploadTicket,
+} from '../../reservations/data-access/reservation-availability.models';
 import {
   AttachmentDownloadUrl,
   ConfirmReservationRequest,
@@ -17,10 +22,9 @@ import {
 const DEFAULT_PAGE_SIZE = 20;
 
 /**
- * Data-access for the admin Reservations module. Read-only (list + detail) —
- * there is no create/edit/cancel/confirm here, that lifecycle lives elsewhere.
- * List state lives as signals; `X-Tenant` is attached globally by
- * `tenantInterceptor`.
+ * Data-access for the admin Reservations module: list + detail, and the three
+ * staff moves (confirm / reject / cancel). List state lives as signals;
+ * `X-Tenant` is attached globally by `tenantInterceptor`.
  *
  * The API defaults to the latest window first, so the sort is always sent
  * explicitly: this screen is about what is coming up next.
@@ -28,6 +32,7 @@ const DEFAULT_PAGE_SIZE = 20;
 @Injectable({ providedIn: 'root' })
 export class ReservationsAdminService {
   private readonly http = inject(HttpClient);
+  private readonly files = inject(TenantFilesService);
   private readonly base = `${environment.apiBaseUrl}/reservations`;
 
   private readonly _items = signal<ReservationDto[]>([]);
@@ -111,15 +116,36 @@ export class ReservationsAdminService {
    * `reservations.edit`). `amountPaid` is optional and merely RECORDED — this
    * screen does not collect it, so it always goes null. `comment` is the
    * approver's optional note: an empty one goes as null rather than `''`, which
-   * is what the domain stores for it anyway.
+   * is what the domain stores for it anyway. `paymentProof` is a blob already
+   * PUT through {@link createPaymentProofUploadUrl}; the API attaches it in the
+   * same all-or-nothing step as the confirmation.
    */
-  confirm(
+  confirm(id: string, body: ConfirmReservationRequest): Observable<void> {
+    return this.http.post<void>(`${this.base}/${id}/confirm`, {
+      ...body,
+      comment: body.comment?.trim() || null,
+    });
+  }
+
+  /**
+   * Step 1 of the direct-to-blob upload of a payment proof
+   * (`POST /reservations/{id}/payment-proofs/upload-url`). Dual-mode on the
+   * API — the holder or `reservations.edit` — and here it runs as the portal's
+   * own session, unlike the resident screen's handoff one.
+   */
+  createPaymentProofUploadUrl(
     id: string,
-    amountPaid: number | null = null,
-    comment: string | null = null,
-  ): Observable<void> {
-    const body: ConfirmReservationRequest = { amountPaid, comment: comment?.trim() || null };
-    return this.http.post<void>(`${this.base}/${id}/confirm`, body);
+    body: CreateReservationPaymentProofUploadUrlRequest,
+  ): Observable<ReservationPaymentProofUploadTicket> {
+    return this.http.post<ReservationPaymentProofUploadTicket>(
+      `${this.base}/${id}/payment-proofs/upload-url`,
+      body,
+    );
+  }
+
+  /** Step 2: PUT the bytes straight to Blob Storage — the SAS in the URL is the credential. */
+  uploadPaymentProof(uploadUrl: string, file: File): Observable<void> {
+    return this.files.upload(uploadUrl, file, file.type);
   }
 
   /**

@@ -35,6 +35,7 @@ import { AmenityOptionsService } from '../data-access/amenity-options.service';
 import { ApartmentOptionsService } from '../data-access/apartment-options.service';
 import { RESERVATIONS_HELP } from '../data-access/help-text';
 import {
+  isPaidReservation,
   RESERVATION_STATUS_BADGE,
   RESERVATION_STATUS_LABEL,
   RESERVATION_STATUSES,
@@ -131,6 +132,7 @@ export class ReservationAdminListComponent {
    * "Estado" is a control, not a value.
    */
   readonly help = RESERVATIONS_HELP;
+  readonly isPaid = isPaidReservation;
 
   /** The shortcut currently applied, or null for the plain filter bar. */
   readonly quickView = signal<ReservationTodayView | null>(null);
@@ -185,8 +187,8 @@ export class ReservationAdminListComponent {
    * receipt opens from the row itself. Optional for the same reason as the one
    * above: the badge is what shows until the query resolves.
    */
-  private readonly paymentCell =
-    viewChild<TemplateRef<{ $implicit: ReservationDto }>>('paymentCell');
+  private readonly proofCell =
+    viewChild<TemplateRef<{ $implicit: ReservationDto }>>('proofCell');
 
   readonly columns = computed<readonly TableColumn<ReservationDto>[]>(() => {
     const areaNames = this.areaNames();
@@ -227,17 +229,31 @@ export class ReservationAdminListComponent {
         sortKey: 'CreatedDate' satisfies ReservationSortBy,
         hint: RESERVATIONS_HELP.createdColumn,
       },
+      // The two payment columns only mean something on an area that charges;
+      // on a free one they read "—" rather than a "No" nobody has to act on.
       // Interactive when there is something to see: the template turns "Sí" into
       // the trigger of the proof gallery. The badge below is the fallback.
       {
+        header: 'Comprobante',
+        value: (r) => (!isPaidReservation(r) ? '—' : r.paymentUploaded ? 'Sí' : 'No'),
+        badgeClass: (r) =>
+          !isPaidReservation(r) ? '' : r.paymentUploaded ? 'badge bg-green-lt' : 'badge bg-red-lt',
+        cellTemplate: this.proofCell(),
+        class: 'text-center',
+        hint: RESERVATIONS_HELP.proofColumn,
+      },
+      // What the approver marked when confirming — recorded, never processed,
+      // so a pending booking on a paid area always reads "No" here.
+      {
         header: 'Pago',
-        value: (r) => (r.paymentUploaded ? 'Sí' : 'No'),
-        badgeClass: (r) => (r.paymentUploaded ? 'badge bg-green-lt' : 'badge bg-red-lt'),
-        cellTemplate: this.paymentCell(),
-        hint: RESERVATIONS_HELP.payment,
+        value: (r) => (!isPaidReservation(r) ? '—' : r.paymentValidated ? 'Sí' : 'No'),
+        badgeClass: (r) =>
+          !isPaidReservation(r) ? '' : r.paymentValidated ? 'badge bg-green-lt' : 'badge bg-red-lt',
+        class: 'text-center',
+        hint: RESERVATIONS_HELP.paymentColumn,
       },
       {
-        header: 'Apartamento',
+        header: 'Apto',
         value: (r) => apartmentLabel(r.apartment),
         hint: RESERVATIONS_HELP.apartmentColumn,
       },

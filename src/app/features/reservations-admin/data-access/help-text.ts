@@ -30,13 +30,15 @@ export const RESERVATIONS_HELP = {
   areaColumn: 'El área social que se reservó',
   window: 'Día y franja en que el residente usa el área, no cuándo la pidió',
   createdColumn: 'Día en que el residente pidió la reserva, no el día de uso',
-  payment: 'Si el residente ya subió el soporte de su pago',
+  proofColumn: 'Si ya hay un soporte de pago subido para la reserva',
+  paymentColumn: 'Si quien confirmó la reserva verificó que el pago fue realizado',
   apartmentColumn: 'Torre y número del apartamento que hizo la reserva',
   statusColumn: 'En qué va la reserva; se cambia desde la misma celda',
 
   // ── What each control in a row does ──────────────────────────────────────
   paymentYes: 'Dar clic para ver el soporte',
-  paymentNo: 'El residente todavía no ha subido el soporte',
+  paymentNo: 'Todavía no hay un soporte subido',
+  paymentNotApplicable: 'Esta área no requiere pago',
   statusSelect: 'Elegir un estado para cambiar la reserva',
   statusLocked: 'Esta reserva ya está cerrada: no admite cambios de estado',
   detail: 'Ver detalle',

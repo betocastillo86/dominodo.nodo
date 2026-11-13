@@ -83,12 +83,15 @@
 </div>
 
 <!--
-  The "Pago" cell. "Sí" is a button rather than a badge: a proof that is in can
-  be read right here, and the row is where an administrator is already looking.
-  "No" stays a plain badge — there is nothing to open.
+  The "Comprobante" cell. "Sí" is a button rather than a badge: a proof that is
+  in can be read right here, and the row is where an administrator is already
+  looking. "No" stays a plain badge — there is nothing to open — and a free
+  area reads "—": it takes no proof at all.
 -->
-<ng-template #paymentCell let-reservation>
-  @if (reservation.paymentUploaded) {
+<ng-template #proofCell let-reservation>
+  @if (!isPaid(reservation)) {
+    <span class="text-secondary" [title]="help.paymentNotApplicable">—</span>
+  } @else if (reservation.paymentUploaded) {
     <button
       type="button"
       class="badge bg-green-lt border-0 payment-badge"

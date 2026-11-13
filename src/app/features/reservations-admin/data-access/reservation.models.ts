@@ -108,6 +108,8 @@ export interface ReservationDto {
   price: number | null;
   /** Whether a payment proof is already in. Not the same as "fully paid". */
   paymentUploaded: boolean;
+  /** Whether the staff marked the payment as verified when confirming. Recorded, not processed. */
+  paymentValidated: boolean;
   pendingDeadlineUtc: string | null;
   createdAtUtc: string;
   updatedAtUtc: string | null;
@@ -162,6 +164,11 @@ export interface ReservationDetailDto {
   amountPaid: number | null;
   /** The approver's optional note, written when the booking was confirmed. */
   confirmationComment: string | null;
+  /**
+   * Whether the approver checked "pago verificado" when confirming. Only set
+   * at confirmation, recorded and never processed — false on anything else.
+   */
+  paymentValidated: boolean;
   rejectedBy: string | null;
   rejectedAtUtc: string | null;
   rejectionReason: string | null;
@@ -232,6 +239,20 @@ export interface RespondableReservation {
   code: string;
   status: ReservationStatus;
   startsAtUtc: string;
+  /** The list row's area price — all it carries to tell a paid area apart. */
+  price?: number | null;
+  /** The detail's area policy, which says it outright. */
+  policy?: { paymentRequired: boolean };
+}
+
+/**
+ * Whether the booking's area charges for its use, which is what decides if
+ * confirming it offers the payment mark and the comprobante. The detail knows
+ * from the policy; the list row only has the price, which the domain demands
+ * on a paid area and this portal's amenity form clears on a free one.
+ */
+export function isPaidReservation(reservation: RespondableReservation): boolean {
+  return reservation.policy ? reservation.policy.paymentRequired : reservation.price != null;
 }
 
 /**
@@ -269,11 +290,26 @@ export function availableReservationActions(
 /**
  * Body of `POST /reservations/{id}/confirm`. `amountPaid` is recorded, not
  * processed; `comment` is the approver's optional note, read back on the detail
- * as `confirmationComment`.
+ * as `confirmationComment`; `paymentValidated` is the approver's "pago
+ * verificado" mark, equally recorded and never processed.
+ *
+ * `paymentProof` attaches a proof the approver uploaded in the same move: its
+ * `key` comes from `payment-proofs/upload-url` for THIS booking, and the API
+ * applies it atomically with the confirmation — a refused proof leaves the
+ * booking pending with nothing attached.
  */
 export interface ConfirmReservationRequest {
   amountPaid: number | null;
   comment: string | null;
+  paymentValidated: boolean;
+  paymentProof: ReservationPaymentProofUpload | null;
+}
+
+/** An uploaded blob handed to the confirm call (`ConfirmReservationPaymentProofRequest`). */
+export interface ReservationPaymentProofUpload {
+  key: string;
+  fileName: string;
+  contentType: string;
 }
 
 /** Body of `POST /reservations/{id}/reject` and `.../cancel`. */

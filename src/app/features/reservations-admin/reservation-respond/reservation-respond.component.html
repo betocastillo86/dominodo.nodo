@@ -47,6 +47,50 @@
         </div>
       }
 
+      @if (allowsComment() && paymentRequired()) {
+        <div class="mb-3">
+          <label class="form-check mb-0">
+            <input type="checkbox" class="form-check-input" formControlName="paymentValidated" />
+            <span class="form-check-label">Confirmo que el pago fue realizado</span>
+          </label>
+          <small class="form-hint">Queda registrado en la reserva; no procesa ningún cobro.</small>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label" for="respond-proof">Comprobante de pago</label>
+          @if (proofFile(); as file) {
+            <div class="d-flex align-items-center gap-2 border rounded px-2 py-1">
+              <tabler-icon name="photo" class="text-secondary flex-shrink-0" />
+              <span class="text-truncate flex-grow-1 small" [title]="file.name">{{ file.name }}</span>
+              <button
+                type="button"
+                class="btn btn-icon btn-sm btn-ghost-secondary flex-shrink-0"
+                title="Quitar"
+                aria-label="Quitar el comprobante"
+                [disabled]="saving()"
+                (click)="clearProof()"
+              >
+                <tabler-icon name="x" />
+              </button>
+            </div>
+          } @else {
+            <input
+              id="respond-proof"
+              type="file"
+              class="form-control"
+              [accept]="acceptedProofTypes"
+              (change)="onProofSelected($event)"
+            />
+          }
+          @if (proofError(); as message) {
+            <div class="text-danger small mt-1">{{ message }}</div>
+          }
+          <small class="form-hint">
+            Opcional. Una imagen (JPG, PNG, WEBP o GIF) de hasta {{ proofMaxBytesLabel }}.
+          </small>
+        </div>
+      }
+
       @if (allowsComment()) {
         <div class="mb-0">
           <label class="form-label" for="respond-comment">Comentario</label>
