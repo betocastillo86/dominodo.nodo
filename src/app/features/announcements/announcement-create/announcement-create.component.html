@@ -51,13 +51,21 @@
         </div>
 
         <div class="col-12 col-md-4">
-          <label class="form-label" for="categoryId">Categoría</label>
-          <select id="categoryId" class="form-select" formControlName="categoryId">
-            <option value="">Sin categoría</option>
+          <label class="form-label required" for="categoryId">Categoría</label>
+          <select
+            id="categoryId"
+            class="form-select"
+            formControlName="categoryId"
+            [class.is-invalid]="form.controls.categoryId.invalid && form.controls.categoryId.touched"
+          >
+            <option value="" disabled>Selecciona una categoría</option>
             @for (cat of categoriesService.categories(); track cat.id) {
               <option [value]="cat.id">{{ cat.name }}</option>
             }
           </select>
+          @if (form.controls.categoryId.invalid && form.controls.categoryId.touched) {
+            <div class="invalid-feedback">La categoría es obligatoria.</div>
+          }
         </div>
 
         <div class="col-12 col-md-4">

@@ -52,7 +52,7 @@ export interface CreateAnnouncementRequest {
   priority: AnnouncementPriority;
   audienceType: AudienceType;
   audienceFilter: string | null;
-  categoryId: string | null;
+  categoryId: string;
   expiresAtUtc: string | null;
 }
 
@@ -63,7 +63,7 @@ export interface UpdateAnnouncementRequest {
   priority: AnnouncementPriority;
   audienceType: AudienceType;
   audienceFilter: string | null;
-  categoryId: string | null;
+  categoryId: string;
   expiresAtUtc: string | null;
 }
 

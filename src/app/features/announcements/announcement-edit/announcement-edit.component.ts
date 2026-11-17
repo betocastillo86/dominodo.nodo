@@ -88,7 +88,7 @@ export class AnnouncementEditComponent implements OnInit {
     ]),
     audienceType: this.fb.nonNullable.control<AudienceType>('AllTenant', [Validators.required]),
     audienceFilter: this.fb.control<string>(''),
-    categoryId: this.fb.control<string>(''),
+    categoryId: this.fb.nonNullable.control('', [Validators.required]),
     expiresAtLocal: this.fb.control<string>(''),
   });
 
@@ -138,7 +138,7 @@ export class AnnouncementEditComponent implements OnInit {
       priority: v.priority,
       audienceType: v.audienceType,
       audienceFilter: v.audienceFilter?.trim() ? v.audienceFilter.trim() : null,
-      categoryId: v.categoryId || null,
+      categoryId: v.categoryId,
       expiresAtUtc: fromDatetimeLocal(v.expiresAtLocal),
     };
   }
