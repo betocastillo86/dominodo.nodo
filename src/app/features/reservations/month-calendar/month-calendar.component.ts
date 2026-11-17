@@ -36,6 +36,10 @@ const WEEKDAY_LABELS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
       border: 1px solid var(--tblr-border-color);
       border-radius: var(--tblr-border-radius);
       background: none;
+      /* Explicit, or iOS Safari paints a <button>'s text in system blue — an
+         unavailable day then reads as "Tu reserva". The bg-*-lt / text-*
+         utilities are !important, so they still win for tinted days. */
+      color: var(--tblr-body-color);
       display: flex;
       align-items: center;
       justify-content: center;
