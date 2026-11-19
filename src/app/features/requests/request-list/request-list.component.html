@@ -61,7 +61,15 @@
               <option value="Low">Baja</option>
             </select>
           </div>
-          <div class="col-12 col-sm-6 col-lg-5">
+          <div class="col-12 col-sm-6 col-lg-4">
+            <app-multi-select
+              [formControl]="categoryControl"
+              [options]="categoryOptions()"
+              placeholder="Todas las categorías"
+              emptyText="No hay categorías disponibles"
+            />
+          </div>
+          <div class="col-12 col-sm-6 col-lg-3">
             <app-search-select
               [formControl]="apartmentControl"
               [search]="searchApartments"
@@ -70,7 +78,7 @@
               clearLabel="Quitar filtro de apartamento"
             />
           </div>
-          <div class="col-12 col-sm-6 col-lg-5">
+          <div class="col-12 col-sm-6 col-lg-3">
             <app-search-select
               [formControl]="residentControl"
               [search]="searchResidents"
@@ -79,7 +87,7 @@
               clearLabel="Quitar filtro de residente"
             />
           </div>
-          <div class="col-12 col-lg-2 d-flex align-items-center">
+          <div class="col-12 col-sm-6 col-lg-2 d-flex align-items-center">
             <button
               type="button"
               class="btn btn-link px-0"

@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, ParamMap, Params, Router, RouterLink } from '@angular/router';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import {
   CdkDrag,
   CdkDragDrop,
@@ -23,6 +23,10 @@ import {
   SearchSelectFn,
   SearchSelectResolveFn,
 } from '../../../shared/ui/search-select/search-select.component';
+import {
+  MultiSelectComponent,
+  MultiSelectOption,
+} from '../../../shared/ui/multi-select/multi-select.component';
 import { PermissionStore } from '../../../core/authz/permission.store';
 import { NotificationService } from '../../../core/notifications/notification.service';
 import { toMessage } from '../../../core/http/problem-details';
@@ -30,6 +34,7 @@ import { RequestsService } from '../data-access/requests.service';
 import { ApartmentsLookupService } from '../data-access/apartments-lookup.service';
 import { apartmentLabel } from '../../apartments/data-access/apartment.models';
 import { MembershipsLookupService } from '../data-access/memberships-lookup.service';
+import { CategoriesLookupService } from '../data-access/categories-lookup.service';
 import {
   BOARD_STATUSES,
   PRIORITY_BADGE,
@@ -74,6 +79,7 @@ function asKeyOf<K extends string>(value: string | null, known: Record<K, unknow
     DataTableComponent,
     SpinnerComponent,
     SearchSelectComponent,
+    MultiSelectComponent,
     ReactiveFormsModule,
     RouterLink,
     TablerIconComponent,
@@ -125,6 +131,7 @@ export class RequestListComponent {
   private readonly notifications = inject(NotificationService);
   private readonly apartmentsLookup = inject(ApartmentsLookupService);
   private readonly membershipsLookup = inject(MembershipsLookupService);
+  private readonly categoriesLookup = inject(CategoriesLookupService);
 
   // ── List view ────────────────────────────────────────────────────────────
   readonly items = this.service.items;
@@ -156,10 +163,20 @@ export class RequestListComponent {
   readonly searchControl = new FormControl('', { nonNullable: true });
   readonly statusControl = new FormControl<RequestStatus | ''>('', { nonNullable: true });
   readonly priorityControl = new FormControl<RequestPriority | ''>('', { nonNullable: true });
+  /** Selected category ids → sent as repeated `categoryIds` (the API ORs them). */
+  readonly categoryControl = new FormControl<string[]>([], { nonNullable: true });
   /** Holds the selected apartment id → sent as `apartmentId` to `GET /requests`. */
   readonly apartmentControl = new FormControl<string | null>(null);
   /** Holds the selected resident's userId → sent as `participantUserId`. */
   readonly residentControl = new FormControl<string | null>(null);
+
+  /** Active categories, loaded once; the list is small and stable. */
+  readonly categoryOptions = toSignal(
+    this.categoriesLookup
+      .getActive()
+      .pipe(map((items) => items.map<MultiSelectOption>((c) => ({ value: c.id, label: c.name })))),
+    { initialValue: [] },
+  );
 
   /** Remote lookups for the two `app-search-select` filters (id-by-text-search). */
   readonly searchApartments: SearchSelectFn = (term) =>
@@ -298,6 +315,10 @@ export class RequestListComponent {
       .pipe(distinctUntilChanged(), takeUntilDestroyed())
       .subscribe((value) => this.patchQuery({ priority: value || null }));
 
+    this.categoryControl.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe((value) => this.patchQuery({ categoryIds: value.length ? value : null }));
+
     this.apartmentControl.valueChanges
       .pipe(distinctUntilChanged(), takeUntilDestroyed())
       .subscribe((value) => this.patchQuery({ apartmentId: value }));
@@ -330,6 +351,7 @@ export class RequestListComponent {
       search: null,
       status: null,
       priority: null,
+      categoryIds: null,
       apartmentId: null,
       residentId: null,
     });
@@ -368,6 +390,7 @@ export class RequestListComponent {
     const search = params.get('search') ?? '';
     const status = asKeyOf<RequestStatus>(params.get('status'), STATUS_LABEL);
     const priority = asKeyOf<RequestPriority>(params.get('priority'), PRIORITY_LABEL);
+    const categoryIds = params.getAll('categoryIds');
     const apartmentId = params.get('apartmentId');
     const residentId = params.get('residentId');
     const page = Math.max(1, Math.trunc(Number(params.get('page'))) || 1);
@@ -382,15 +405,29 @@ export class RequestListComponent {
     }
     setSilently(this.statusControl, status);
     setSilently(this.priorityControl, priority);
+    this.categoryControl.setValue(categoryIds, { emitEvent: false });
     setSilently(this.apartmentControl, apartmentId);
     setSilently(this.residentControl, residentId);
 
     this.sort.set({ key: sortBy, direction });
     this.view.set(view);
-    this.appliedFilters.set({ search, status, priority, apartmentId, residentId });
+    this.appliedFilters.set({
+      search,
+      status,
+      priority,
+      categoryIds: categoryIds.join(',') || null,
+      apartmentId,
+      residentId,
+    });
     // Replayed by the detail's "Volver" link; the browser's back button reads the URL itself.
     this.service.setLastListQuery(
-      Object.fromEntries(params.keys.map((key) => [key, params.get(key)!])),
+      // getAll: `categoryIds` repeats in the query string and must come back whole.
+      Object.fromEntries(
+        params.keys.map((key) => {
+          const values = params.getAll(key);
+          return [key, values.length > 1 ? values : values[0]];
+        }),
+      ),
     );
 
     // The board shows every status in its own column, so it ignores the filters.
@@ -407,6 +444,7 @@ export class RequestListComponent {
       page,
       this.pageSize,
       status ? [status] : [],
+      categoryIds,
       priority || null,
       search,
       apartmentId,

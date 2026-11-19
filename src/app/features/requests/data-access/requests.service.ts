@@ -68,10 +68,10 @@ export class RequestsService {
    * replays it so filters, page and sort survive the round trip — the browser's
    * own back button needs nothing, since the list writes them to the URL.
    */
-  private readonly _lastListQuery = signal<Record<string, string>>({});
+  private readonly _lastListQuery = signal<Record<string, string | string[]>>({});
   readonly lastListQuery = this._lastListQuery.asReadonly();
 
-  setLastListQuery(query: Record<string, string>): void {
+  setLastListQuery(query: Record<string, string | string[]>): void {
     this._lastListQuery.set(query);
   }
 
@@ -80,6 +80,7 @@ export class RequestsService {
     page: number,
     pageSize: number,
     statuses: RequestStatus[],
+    categoryIds: string[],
     priority: RequestPriority | null,
     search: string,
     apartmentId: string | null,
@@ -98,6 +99,9 @@ export class RequestsService {
       .set('includeApartment', true);
     for (const status of statuses) {
       params = params.append('statuses', status);
+    }
+    for (const categoryId of categoryIds) {
+      params = params.append('categoryIds', categoryId);
     }
     if (priority) params = params.set('priority', priority);
     if (search.trim()) params = params.set('search', search.trim());
