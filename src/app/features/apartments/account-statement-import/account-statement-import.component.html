@@ -45,8 +45,9 @@
         </div>
         <div class="card-body">
           <p>
-            Sube un archivo <strong>CSV</strong> con <strong>una fila por unidad</strong>: la
-            unidad, su saldo en mora y si está en mora. Es el archivo que exporta tu software
+            Sube un archivo <strong>CSV</strong> con <strong>una fila por unidad</strong>: su
+            torre y su número <strong>en columnas separadas</strong>, si está en mora y su saldo en
+            mora. Es el archivo que exporta tu software
             contable cada mes.
           </p>
 
@@ -85,8 +86,9 @@
           <h4>Columnas del archivo</h4>
           <p class="text-secondary">
             La primera fila debe ser el encabezado, con los nombres tal como aparecen aquí. El orden
-            de las columnas no importa, y las mayúsculas y las tildes tampoco: <code>Número</code> y
-            <code>NUMERO</code> se leen igual.
+            de las columnas no importa, y las mayúsculas y las tildes tampoco: <code>Torre</code> y
+            <code>TORRE</code> se leen igual. La unidad ya no va en una sola columna
+            (<code>A-101</code>): la torre va en <code>torre</code> y el número en <code>apto</code>.
           </p>
           <div class="table-responsive">
             <table class="table table-sm table-vcenter">
@@ -123,6 +125,11 @@
           <p class="text-secondary">
             Tres filas de ejemplo: una unidad con saldo y en mora, una con saldo pero sin marcar
             (por ejemplo, con acuerdo de pago) y una al día.
+          </p>
+          <p class="text-secondary">
+            También puedes partir del <strong>reporte de apartamentos</strong> (botón «Descargar
+            reporte» en el listado): trae todas las unidades con estas mismas columnas, listo para
+            actualizar los saldos y volver a subirlo.
           </p>
           <button type="button" class="btn btn-outline-primary w-100" (click)="downloadTemplate()">
             <tabler-icon name="download" class="me-1" />

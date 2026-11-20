@@ -81,22 +81,24 @@ export const ACCOUNT_STATEMENT_MAX_BYTES = 5 * 1024 * 1024;
 /**
  * Header read by the server (`AccountStatementImportVocabulary`). Spanish, like
  * the apartment file: the person filling it in is an administrator in Excel.
- * The unit goes in ONE `apartamento` column ("A-101"). The server still reads
- * `torre` + `numero` as an alternative, but the portal teaches only the single
- * column — one way to write a unit, the way the conjunto already writes it.
- * Matching ignores case, accents and a space or hyphen typed for an underscore.
+ * The unit is the pair `torre` + `apto` (ADR-0025, 2026-11-20 amendment) — the
+ * old combined `apartamento` column ("A-101") is rejected at the header with
+ * `HeaderLegacyApartment`. Same columns, order and `;` dialect as
+ * `GET /apartments/export`, so the list's "Descargar reporte" is a pre-filled
+ * template. Matching ignores case, accents and a space or hyphen typed for an
+ * underscore; the server accepts `,` or `;` between columns.
  */
-export const ACCOUNT_STATEMENT_CSV_HEADER = 'apartamento,saldo_en_mora,en_mora';
+export const ACCOUNT_STATEMENT_CSV_HEADER = 'torre;apto;en_mora;saldo_en_mora';
 
 /**
  * Three rows covering the cases the format exists for — and the one people trip
  * on: a unit that owes and is flagged, a unit that owes but is deliberately NOT
- * flagged (payment agreement), and a settled unit.
+ * flagged (payment agreement), and a settled unit of a conjunto without towers.
  */
 export const ACCOUNT_STATEMENT_CSV_SAMPLE_ROWS = [
-  'A-101,450000,si',
-  'A-102,1.250.000,no',
-  '305,0,no',
+  'A;101;si;450000',
+  'A;102;no;1.250.000',
+  ';305;no;0',
 ];
 
 /** Prefixed with a UTF-8 BOM so Excel opens the file correctly; the server skips it. */
@@ -113,19 +115,24 @@ export interface AccountStatementColumnHelp {
 
 export const ACCOUNT_STATEMENT_COLUMNS: readonly AccountStatementColumnHelp[] = [
   {
-    name: 'apartamento',
-    required: 'Sí',
-    rule: 'La unidad completa con la torre, así: A-101. Sin torre basta el número: 101. Debe existir en el conjunto.',
+    name: 'torre',
+    required: 'No',
+    rule: 'La torre o bloque de la unidad, por ejemplo A. Déjala vacía (o quita la columna) si el conjunto no tiene torres.',
   },
   {
-    name: 'saldo_en_mora',
+    name: 'apto',
     required: 'Sí',
-    rule: 'Saldo adeudado, cero o mayor. Se leen los formatos de Excel en Colombia: 450.000,50 o 450000.',
+    rule: 'El número de la unidad, sin la torre: 101, no A-101. Junto con la torre debe existir en el conjunto.',
   },
   {
     name: 'en_mora',
     required: 'Sí',
     rule: 'si o no. Es independiente del saldo: una unidad con saldo puede quedar sin marcar, y no se asume nada si la celda está vacía.',
+  },
+  {
+    name: 'saldo_en_mora',
+    required: 'Sí',
+    rule: 'Saldo adeudado, cero o mayor. Se leen los formatos de Excel en Colombia: 450.000,50 o 450000.',
   },
 ];
 
@@ -138,14 +145,16 @@ const ISSUE_TEXT: Record<string, string> = {
   'AccountStatementImport.FileUnreadable': 'No se pudo leer el archivo. Vuelve a subirlo.',
   'AccountStatementImport.FileTooLarge': 'El archivo supera el máximo de 5 MB.',
   'AccountStatementImport.HeaderInvalid':
-    'Falta el encabezado. La primera fila debe traer las columnas "apartamento", "saldo_en_mora" y "en_mora".',
+    'Falta el encabezado. La primera fila debe traer las columnas "torre", "apto", "en_mora" y "saldo_en_mora".',
+  'AccountStatementImport.HeaderLegacyApartment':
+    'El archivo usa la columna "apartamento" (por ejemplo A-101), que ya no se lee. Sepárala en dos columnas: "torre" (A) y "apto" (101). Descarga la plantilla o el reporte de apartamentos para ver el formato.',
   'AccountStatementImport.DuplicateApartment':
     'Una misma unidad aparece más de una vez. Deja una sola fila por unidad.',
   'AccountStatementImport.NoValidRows': 'Ninguna fila del archivo pasó la validación.',
 
   // Row-level.
   'AccountStatementImport.ApartmentRequired':
-    'Falta la unidad. Indica la columna "apartamento", por ejemplo A-101.',
+    'Falta la unidad: la columna "apto" está vacía. Escribe el número sin la torre, por ejemplo 101.',
   'AccountStatementImport.NumberTooLong': 'El número de la unidad supera los 50 caracteres.',
   'AccountStatementImport.TowerTooLong': 'La torre supera los 50 caracteres.',
   'AccountStatementImport.ApartmentNotFound':

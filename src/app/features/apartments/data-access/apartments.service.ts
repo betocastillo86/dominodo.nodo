@@ -1,4 +1,4 @@
-import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpParams, HttpResponse } from '@angular/common/http';
 import { inject, Injectable, signal } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
@@ -77,6 +77,30 @@ export class ApartmentsService {
         this._error.set(toMessage(error));
         this._loading.set(false);
       },
+    });
+  }
+
+  /**
+   * Every apartment matching the list filters as a CSV (`GET /apartments/export`,
+   * requires apartments.view) — unpaged, `torre;apto;en_mora;saldo_en_mora`,
+   * the same header the account-statement load reads, so the download doubles
+   * as a pre-filled template. Fetched through HttpClient (not a plain link) so
+   * the interceptors attach X-Tenant and the bearer token.
+   */
+  export(
+    search: string,
+    residentUserId: string | null,
+    tower: string | null,
+  ): Observable<HttpResponse<Blob>> {
+    let params = new HttpParams();
+    if (search.trim()) params = params.set('search', search.trim());
+    if (residentUserId) params = params.set('residentUserId', residentUserId);
+    if (tower) params = params.set('tower', tower);
+
+    return this.http.get(`${this.base}/export`, {
+      params,
+      responseType: 'blob',
+      observe: 'response',
     });
   }
 

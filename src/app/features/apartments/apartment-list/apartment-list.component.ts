@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -79,6 +79,9 @@ export class ApartmentListComponent {
   readonly paging = this.service.paging;
   readonly loading = this.service.loading;
   readonly error = this.service.error;
+
+  /** True while the export is in flight — disables the button against double clicks. */
+  readonly exporting = signal(false);
 
   /** Free text → `search`, which the API matches against the apartment NUMBER only. */
   readonly searchControl = new FormControl('', { nonNullable: true });
@@ -181,6 +184,25 @@ export class ApartmentListComponent {
     this.reload(page);
   }
 
+  /**
+   * Downloads every apartment matching the CURRENT filters (not just the page
+   * on screen). A failure is already toasted by the error interceptor.
+   */
+  exportCsv(): void {
+    this.exporting.set(true);
+    this.service
+      .export(this.searchControl.value, this.residentControl.value, this.towerControl.value || null)
+      .subscribe({
+        next: (response) => {
+          this.exporting.set(false);
+          if (response.body) {
+            saveBlob(response.body, exportFileName(response.headers.get('Content-Disposition')));
+          }
+        },
+        error: () => this.exporting.set(false),
+      });
+  }
+
   private reload(page: number): void {
     this.service.list(
       page,
@@ -190,4 +212,26 @@ export class ApartmentListComponent {
       this.towerControl.value || null,
     );
   }
+}
+
+/**
+ * The server's own name when CORS exposes `Content-Disposition`; otherwise the
+ * same `apartamentos-yyyyMMdd.csv` it would have sent, dated locally.
+ */
+function exportFileName(contentDisposition: string | null): string {
+  const match = contentDisposition && /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(contentDisposition);
+  if (match) return decodeURIComponent(match[1]);
+
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `apartamentos-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}.csv`;
+}
+
+function saveBlob(blob: Blob, fileName: string): void {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
 }

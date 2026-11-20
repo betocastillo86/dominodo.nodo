@@ -8,9 +8,9 @@
         </a>
       }
       @if (canImport()) {
-        <a routerLink="/apartments/import" class="btn btn-primary">
+        <a routerLink="/apartments/import" class="btn">
           <tabler-icon name="upload" class="me-1" />
-          Carga masiva
+          Cargar residentes
         </a>
       }
     </div>
@@ -52,6 +52,24 @@
           placeholder="Filtrar por teléfono o nombre del residente…"
           clearLabel="Quitar filtro de residente"
         />
+      </div>
+      <!-- Downloads every unit matching the filters above, not only this page.
+           Same columns as the account-statement load, so it is re-uploadable. -->
+      <div class="col-12 col-lg-auto">
+        <button
+          type="button"
+          class="btn w-100"
+          [disabled]="exporting()"
+          (click)="exportCsv()"
+          title="Descarga torre, apartamento, en mora y saldo en mora de los apartamentos filtrados"
+        >
+          @if (exporting()) {
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+          } @else {
+            <tabler-icon name="download" class="me-1" />
+          }
+          Descargar reporte
+        </button>
       </div>
     </div>
   </div>

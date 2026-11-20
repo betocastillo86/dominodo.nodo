@@ -146,6 +146,8 @@ export const API_ERROR_MESSAGES: Record<string, ApiErrorMessage> = {
   'AccountStatementImport.FileEmpty': 'El archivo está vacío.',
   'AccountStatementImport.HeaderInvalid':
     'La primera fila del archivo debe ser el encabezado con las columnas esperadas.',
+  'AccountStatementImport.HeaderLegacyApartment':
+    'La columna «apartamento» ya no se usa: separa la unidad en las columnas «torre» y «apto».',
 
   // ── Requests (PQRS) ────────────────────────────────────────────────────────
   'Request.ApartmentAmbiguous':

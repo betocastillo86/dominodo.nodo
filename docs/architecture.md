@@ -614,9 +614,12 @@ It is set two ways:
   an already-loaded unit is a *warning* ("will be replaced") rather than silence. The apply is one
   transaction — all or nothing.
 
-The CSV is Spanish again: `apartamento` (`A-101`; the API also accepts `torre` + `numero`, but the portal does not teach it), `saldo_en_mora`, `en_mora`
-(`si|no`, **required** — an empty cell is a row error, never a "no"). Amounts are read with Colombian
-separators (`450.000,50`). Gating: the three load endpoints need only `apartments.edit`, but the CSV goes
+The CSV is Spanish again: `torre` (optional) + `apto` (the unit is that pair — the old combined
+`apartamento` column, `A-101`, fails at the header with `HeaderLegacyApartment`), `en_mora`
+(`si|no`, **required** — an empty cell is a row error, never a "no"), `saldo_en_mora`. Amounts are read
+with Colombian separators (`450.000,50`). The list's **"Descargar reporte"** (`GET /apartments/export`,
+`apartments.view`, the list's current filters, unpaged) returns exactly this header in the `;` es-CO
+dialect, so a downloaded report is a pre-filled file to edit and re-upload; the static template matches it. Gating: the three load endpoints need only `apartments.edit`, but the CSV goes
 up through the generic file ticket, which needs `tenant.info` — so the route and button ask for **both**
 (`ACCOUNT_STATEMENT_IMPORT_PERMISSIONS`) rather than let a role with only `apartments.edit` 403 after
 picking a file.
