@@ -6,6 +6,7 @@ import { toMessage } from '../../../core/http/problem-details';
 import { TenantFilesService } from '../../../core/files/tenant-files.service';
 import { PagedResult } from '../../../core/models/paged-result';
 import type {
+  ConfirmReservationPaymentProofRequest,
   CreateReservationPaymentProofUploadUrlRequest,
   ReservationPaymentProofUploadTicket,
 } from '../../reservations/data-access/reservation-availability.models';
@@ -14,6 +15,7 @@ import {
   ConfirmReservationRequest,
   ReservationDetailDto,
   ReservationDto,
+  ReservationPaymentProofDto,
   ReservationFilters,
   ReservationReasonRequest,
   ReservationSort,
@@ -146,6 +148,19 @@ export class ReservationsAdminService {
   /** Step 2: PUT the bytes straight to Blob Storage — the SAS in the URL is the credential. */
   uploadPaymentProof(uploadUrl: string, file: File): Observable<void> {
     return this.files.upload(uploadUrl, file, file.type);
+  }
+
+  /**
+   * Step 3 outside a confirmation: adopt an uploaded blob as one more proof
+   * (`POST /reservations/{id}/payment-proofs`). Dual-mode on the API — here it
+   * rides on `reservations.edit`. Only a pending or confirmed booking, up to
+   * `RESERVATION_MAX_PAYMENT_PROOFS`; it never changes the state.
+   */
+  attachPaymentProof(
+    id: string,
+    body: ConfirmReservationPaymentProofRequest,
+  ): Observable<ReservationPaymentProofDto> {
+    return this.http.post<ReservationPaymentProofDto>(`${this.base}/${id}/payment-proofs`, body);
   }
 
   /**

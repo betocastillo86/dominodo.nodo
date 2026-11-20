@@ -10,7 +10,7 @@ import {
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { TablerIconComponent } from 'angular-tabler-icons';
-import { catchError, finalize, forkJoin, map, Observable, of, tap } from 'rxjs';
+import { catchError, finalize, forkJoin, map, Observable, of, switchMap, tap, throwError } from 'rxjs';
 import { PermissionStore } from '../../../core/authz/permission.store';
 import { toMessage } from '../../../core/http/problem-details';
 import { NotificationService } from '../../../core/notifications/notification.service';
@@ -28,6 +28,11 @@ import {
   formatInstant,
   formatInstantAsTimeOfDay,
 } from '../../reservations/data-access/reservation-format';
+import {
+  RESERVATION_MAX_PAYMENT_PROOFS,
+  RESERVATION_PROOF_IMAGE_CONTENT_TYPES,
+  RESERVATION_PROOF_MAX_BYTES,
+} from '../../reservations/data-access/reservation-availability.models';
 import { RESERVATIONS_HELP } from '../data-access/help-text';
 import { ResidentInfo, ResidentInfoService } from '../data-access/resident-info.service';
 import {
@@ -267,8 +272,80 @@ export class ReservationAdminDetailComponent {
     return count > 1 ? `${this.viewerIndex() + 1} de ${count}` : null;
   });
 
+  // ── Payment proof upload ───────────────────────────────────────────────────
+
+  readonly uploadingProof = signal(false);
+  readonly acceptedProofTypes = RESERVATION_PROOF_IMAGE_CONTENT_TYPES.join(',');
+  readonly proofMaxBytesLabel = `${RESERVATION_PROOF_MAX_BYTES / (1024 * 1024)} MB`;
+
+  /**
+   * The administrator attaching a comprobante the resident sent by other means
+   * (WhatsApp, at the office). Offered on EVERY booking, whatever its state or
+   * area — the owner's call; the server stays authoritative and its refusal is
+   * toasted. Only the permission hides it (permissive while `GET /auth/current`
+   * is in flight, as everywhere else).
+   */
+  readonly canUploadProof = computed(
+    () =>
+      !!this.reservation() &&
+      (!this.permissions.loaded() || this.permissions.has('reservations.edit')),
+  );
+
+  /** At the API's cap the button stays visible but disabled, saying why. */
+  readonly proofCapReached = computed(
+    () => (this.reservation()?.paymentProofs.length ?? 0) >= RESERVATION_MAX_PAYMENT_PROOFS,
+  );
+
   constructor() {
     this.fetch();
+  }
+
+  /**
+   * Upload-url → PUT to Blob → adopt the key, then refetch so the new proof
+   * shows with its preview. Images only, like the respond dialog: every proof
+   * this card shows can then be previewed. API failures are already toasted by
+   * the error interceptor; the Blob PUT is not an API call, so it gets its own.
+   */
+  onProofSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = ''; // allow re-picking the same file after an error
+    if (!file || this.uploadingProof()) return;
+
+    if (!RESERVATION_PROOF_IMAGE_CONTENT_TYPES.includes(file.type)) {
+      this.notifications.error('Solo puedes subir imágenes (JPG, PNG, WEBP o GIF).');
+      return;
+    }
+    if (file.size > RESERVATION_PROOF_MAX_BYTES) {
+      this.notifications.error(`La imagen supera ${this.proofMaxBytesLabel}. Intenta con una más liviana.`);
+      return;
+    }
+
+    const meta = { fileName: file.name, contentType: file.type };
+    this.uploadingProof.set(true);
+    this.service
+      .createPaymentProofUploadUrl(this.id, meta)
+      .pipe(
+        switchMap((ticket) =>
+          this.service.uploadPaymentProof(ticket.uploadUrl, file).pipe(
+            catchError((error) => {
+              this.notifications.error(
+                'No pudimos subir el comprobante. Verifica tu conexión e inténtalo de nuevo.',
+              );
+              return throwError(() => error);
+            }),
+            switchMap(() => this.service.attachPaymentProof(this.id, { key: ticket.key, ...meta })),
+          ),
+        ),
+        finalize(() => this.uploadingProof.set(false)),
+      )
+      .subscribe({
+        next: () => {
+          this.notifications.success('Comprobante agregado.');
+          this.fetch();
+        },
+        error: () => undefined,
+      });
   }
 
   /**

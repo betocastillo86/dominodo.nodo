@@ -194,6 +194,36 @@
       <div class="card mt-3">
         <div class="card-header">
           <h3 class="card-title">Comprobantes de pago</h3>
+          <!-- For a receipt the resident sent another way (WhatsApp, the
+               office). A label over a hidden input, so the button IS the picker. -->
+          @if (canUploadProof()) {
+            <div class="card-actions">
+              <label
+                class="btn btn-sm mb-0"
+                [class.disabled]="uploadingProof() || proofCapReached()"
+                [title]="
+                  proofCapReached()
+                    ? 'La reserva ya tiene el máximo de comprobantes de pago.'
+                    : 'Una imagen (JPG, PNG, WEBP o GIF) de hasta ' + proofMaxBytesLabel
+                "
+              >
+                @if (uploadingProof()) {
+                  <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                  Subiendo…
+                } @else {
+                  <tabler-icon name="upload" class="me-1" />
+                  Subir comprobante
+                }
+                <input
+                  type="file"
+                  class="d-none"
+                  [accept]="acceptedProofTypes"
+                  [disabled]="uploadingProof() || proofCapReached()"
+                  (change)="onProofSelected($event)"
+                />
+              </label>
+            </div>
+          }
         </div>
         @if (r.paymentProofs.length === 0) {
           <app-empty-state
