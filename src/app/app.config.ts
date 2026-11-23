@@ -70,6 +70,7 @@ import {
   IconTrendingUp,
   IconUpload,
   IconUser,
+  IconUserCheck,
   IconUserCircle,
   IconUserMinus,
   IconUserPlus,
@@ -99,6 +100,7 @@ export const appConfig: ApplicationConfig = {
     // (every `<tabler-icon name="x">` requires its IconX registered here, or it renders blank).
     provideTablerIcons({
       IconBuildingCommunity,
+      IconUserCheck,
       IconUserCircle,
       IconLogout,
       IconEdit,

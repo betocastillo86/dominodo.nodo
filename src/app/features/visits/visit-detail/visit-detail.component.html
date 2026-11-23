@@ -1,0 +1,176 @@
+<app-page-header [title]="title()" pretitle="Visitantes">
+  <div actions class="btn-list">
+    <a routerLink="/visits" class="btn btn-link link-secondary">
+      <tabler-icon name="arrow-left" class="me-1" />
+      Volver al listado
+    </a>
+    @if (visit(); as v) {
+      @if (checkIn.canCheckIn(v)) {
+        <button type="button" class="btn btn-primary" (click)="checkIn.open(v)">
+          <tabler-icon name="user-check" class="me-1" />
+          Registrar ingreso
+        </button>
+      }
+    }
+  </div>
+</app-page-header>
+
+@if (loading()) {
+  <app-spinner />
+} @else if (error()) {
+  <div class="alert alert-danger" role="alert">{{ error() }}</div>
+} @else if (visit(); as v) {
+  <div class="row row-cards">
+    <div class="col-12 col-lg-5">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Información de la visita</h3>
+          <div class="card-actions">
+            <span [class]="statusBadge[v.status]">{{ statusLabel[v.status] }}</span>
+          </div>
+        </div>
+        <div class="card-body">
+          @if (v.photoUrl) {
+            <img [src]="v.photoUrl" alt="Foto del visitante" class="img-fluid rounded mb-3" style="max-height: 16rem; object-fit: contain" />
+          }
+          <dl class="row mb-0">
+            <dt class="col-5 text-secondary">Tipo</dt>
+            <dd class="col-7">{{ kindLabel[v.kind] }}</dd>
+
+            @if (v.visitorName) {
+              <dt class="col-5 text-secondary">Visitante</dt>
+              <dd class="col-7 fw-medium">{{ v.visitorName }}</dd>
+            }
+            @if (v.visitorDocument) {
+              <dt class="col-5 text-secondary">Documento</dt>
+              <dd class="col-7">{{ v.visitorDocument }}</dd>
+            }
+            @if (v.companyName) {
+              <dt class="col-5 text-secondary">Empresa</dt>
+              <dd class="col-7 fw-medium">{{ v.companyName }}</dd>
+            }
+            @if (v.phone) {
+              <dt class="col-5 text-secondary">Teléfono</dt>
+              <dd class="col-7">{{ v.phone }}</dd>
+            }
+
+            <dt class="col-5 text-secondary">Placa</dt>
+            <dd class="col-7">
+              @if (editingPlate()) {
+                <div class="d-flex flex-wrap gap-2">
+                  <input
+                    type="text"
+                    class="form-control form-control-sm text-uppercase"
+                    style="max-width: 10rem"
+                    aria-label="Placa del vehículo"
+                    placeholder="Ej. ABC123"
+                    [formControl]="plateControl"
+                    [class.is-invalid]="plateControl.invalid && plateControl.touched"
+                    autocomplete="off"
+                    (keydown.enter)="savePlate()"
+                    (keydown.escape)="cancelPlateEdit()"
+                  />
+                  <button type="button" class="btn btn-sm btn-primary" [disabled]="savingPlate()" (click)="savePlate()">
+                    @if (savingPlate()) {
+                      <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                    }
+                    Guardar
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-link link-secondary"
+                    [disabled]="savingPlate()"
+                    (click)="cancelPlateEdit()"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+                @if (plateControl.invalid && plateControl.touched) {
+                  <div class="text-danger small mt-1">Máximo {{ plateMaxLength }} caracteres, sin contar espacios ni guiones.</div>
+                }
+                @if (plateError(); as message) {
+                  <div class="text-danger small mt-1">{{ message }}</div>
+                }
+                <small class="form-hint">Déjala vacía para quitarla. Se guarda en mayúsculas, sin espacios ni guiones.</small>
+              } @else {
+                <span class="d-inline-flex align-items-center gap-1">
+                  <span [class.fw-medium]="v.vehiclePlate">{{ v.vehiclePlate ?? '—' }}</span>
+                  @if (canEditPlate()) {
+                    <button
+                      type="button"
+                      class="btn btn-icon btn-sm btn-ghost-secondary"
+                      title="Editar placa"
+                      aria-label="Editar la placa del vehículo"
+                      (click)="startPlateEdit()"
+                    >
+                      <tabler-icon name="edit" />
+                    </button>
+                  }
+                </span>
+              }
+            </dd>
+
+            <dt class="col-5 text-secondary">Apartamento</dt>
+            <dd class="col-7">{{ apartment() }}</dd>
+
+            <dt class="col-5 text-secondary">Vigencia</dt>
+            <dd class="col-7">{{ validity(v) }}</dd>
+
+            @if (v.kind === 'Frequent') {
+              <dt class="col-5 text-secondary">Habilitada</dt>
+              <dd class="col-7">{{ v.isEnabled ? 'Sí' : 'No' }}</dd>
+            }
+
+            <dt class="col-5 text-secondary">Creada</dt>
+            <dd class="col-7">{{ formatInstant(v.createdAtUtc) }}</dd>
+
+            @if (v.updatedAtUtc) {
+              <dt class="col-5 text-secondary">Actualizada</dt>
+              <dd class="col-7">{{ formatInstant(v.updatedAtUtc) }}</dd>
+            }
+          </dl>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-lg-7">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Ingresos</h3>
+          <div class="card-actions">
+            <span class="badge bg-secondary-lt">{{ entries().length }}</span>
+          </div>
+        </div>
+        @if (entries().length === 0) {
+          <div class="card-body text-secondary">Esta visita aún no registra ingresos.</div>
+        } @else {
+          <div class="table-responsive">
+            <table class="table table-vcenter card-table">
+              <thead>
+                <tr>
+                  <th>Fecha y hora</th>
+                  <th>Nombre</th>
+                  <th>Placa</th>
+                  <th>Nota de portería</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (entry of entries(); track entry.id) {
+                  <tr>
+                    <td class="text-nowrap">{{ formatInstant(entry.enteredAtUtc) }}</td>
+                    <td>{{ entry.displayName }}</td>
+                    <td class="text-nowrap">{{ entry.vehiclePlate ?? '—' }}</td>
+                    <td>{{ entry.guardNote ?? '—' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Renders only its dialog; the header button above is its trigger. -->
+<app-visit-check-in #checkIn (checkedIn)="onCheckedIn()" />

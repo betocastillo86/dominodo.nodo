@@ -74,6 +74,13 @@ export class NavbarComponent {
       permission: 'announcements.view',
       feature: 'Announcements',
     },
+    {
+      label: 'Visitantes',
+      path: '/visits',
+      icon: 'user-check',
+      permission: 'visits.view',
+      feature: 'Visits',
+    },
     // No FeatureKey.Apartments exists server-side (the enum only has Requests,
     // Deliveries, Visits, Announcements, WhatsApp), so this item is gated by
     // permission alone.

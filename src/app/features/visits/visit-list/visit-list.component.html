@@ -1,0 +1,77 @@
+<app-page-header title="Visitantes" pretitle="Portería">
+  @if (canCreate()) {
+    <div actions>
+      <a routerLink="/visits/new" class="btn btn-primary">
+        <tabler-icon name="plus" class="me-1" />
+        Nuevo visitante
+      </a>
+    </div>
+  }
+</app-page-header>
+
+<div class="card">
+  <div class="card-header d-block">
+    <div class="row g-2 w-100">
+      <div class="col-12 col-lg-3">
+        <label class="form-label mb-1" for="visits-search">Buscar</label>
+        <input
+          id="visits-search"
+          type="search"
+          class="form-control"
+          placeholder="Nombre, documento, empresa o placa"
+          [formControl]="searchControl"
+        />
+      </div>
+      <div class="col-6 col-lg-2">
+        <label class="form-label mb-1" for="visits-kind">Tipo</label>
+        <select id="visits-kind" class="form-select" [formControl]="kindControl">
+          <option value="">Todos</option>
+          @for (kind of kinds; track kind) {
+            <option [value]="kind">{{ kindLabel[kind] }}</option>
+          }
+        </select>
+      </div>
+      <div class="col-6 col-lg-2">
+        <label class="form-label mb-1" for="visits-status">Estado</label>
+        <select id="visits-status" class="form-select" [formControl]="statusControl">
+          <option value="">Todos</option>
+          @for (status of statuses; track status) {
+            <option [value]="status">{{ statusLabel[status] }}</option>
+          }
+        </select>
+      </div>
+      <div class="col-12 col-lg-2" title="Visitas cuya vigencia incluye este día">
+        <label class="form-label mb-1" for="visits-valid-on">Vigente el</label>
+        <input id="visits-valid-on" type="date" class="form-control" [formControl]="validOnControl" />
+      </div>
+      <div class="col-12 col-lg">
+        <label class="form-label mb-1">Apartamento</label>
+        <app-search-select
+          [formControl]="apartmentControl"
+          [search]="searchApartments"
+          [resolve]="resolveApartment"
+          placeholder="Buscar por apartamento"
+          clearLabel="Quitar filtro de apartamento"
+        />
+      </div>
+    </div>
+    <div class="mt-2">
+      <button type="button" class="btn btn-link btn-sm p-0" (click)="clearFilters()">
+        Limpiar filtros
+      </button>
+    </div>
+  </div>
+
+  <app-data-table
+    [columns]="columns()"
+    [rows]="items()"
+    [paging]="paging()"
+    [loading]="loading()"
+    [error]="error()"
+    [rowKey]="rowKey"
+    [actionLink]="detailLink"
+    actionIcon="eye"
+    actionLabel="Ver detalle de la visita"
+    (pageChange)="onPageChange($event)"
+  />
+</div>

@@ -336,6 +336,10 @@ src/app/
                             #    data-access/ (reservation.models, reservations-admin.service signals,
                             #    amenity-options.service for the filter dropdown, resident-info.service)
                             #    reservation-admin-list / -detail components
+    ├── visits/             # ✅ Visitantes (ADR-0027): list (kind/status/apartment/validOn/search filters;
+                            #    API order = newest validFrom) + detail with its entries (check-ins) and a
+                            #    "Registrar ingreso" dialog (POST /visits/{id}/entries, `visits.checkin`).
+                            #    Gated by `visits.view` + tenant feature `Visits`. No approval flow exists.
     ├── tenant-info/        # ✅ "Mi Conjunto": five tabs, one URL each (see §6) —
                             #    Contacto (/tenant-info/contact): the contactInfo block of
                             #      GET/PUT /tenants/info

@@ -1,0 +1,173 @@
+<app-page-header title="Nuevo visitante" pretitle="Visitantes">
+  <div actions>
+    <a routerLink="/visits" class="btn btn-link link-secondary">
+      <tabler-icon name="arrow-left" class="me-1" />
+      Volver al listado
+    </a>
+  </div>
+</app-page-header>
+
+<form [formGroup]="form" (ngSubmit)="submit()" class="card">
+  <div class="card-body">
+    @if (error(); as message) {
+      <div class="alert alert-danger" role="alert">{{ message }}</div>
+    }
+
+    <div class="row g-3">
+      <div class="col-12 col-md-6">
+        <label class="form-label required">Apartamento</label>
+        <app-search-select
+          formControlName="apartmentId"
+          [search]="searchApartments"
+          placeholder="Buscar por apartamento"
+          clearLabel="Quitar apartamento"
+        />
+        @if (invalid('apartmentId')) {
+          <div class="text-danger small mt-1">{{ message('apartmentId') }}</div>
+        }
+      </div>
+
+      <div class="col-12 col-md-6">
+        <label class="form-label required" for="visit-kind">Tipo de visita</label>
+        <select id="visit-kind" class="form-select" formControlName="kind">
+          @for (kind of kinds; track kind) {
+            <option [value]="kind">{{ kindLabel[kind] }}</option>
+          }
+        </select>
+        <small class="form-hint">
+          @switch (kind()) {
+            @case ('Frequent') { Una persona que entra varias veces durante un periodo (máximo un año). }
+            @case ('OneTime') { Una persona que entra una sola vez, el día indicado. }
+            @case ('Delivery') { Un domicilio de una empresa, el día indicado. No se registra la persona. }
+          }
+        </small>
+      </div>
+
+      @if (isDelivery()) {
+        <div class="col-12 col-md-6">
+          <label class="form-label required" for="visit-company">Empresa</label>
+          <input
+            id="visit-company"
+            type="text"
+            class="form-control"
+            formControlName="companyName"
+            [class.is-invalid]="invalid('companyName')"
+            [maxlength]="companyMax"
+            placeholder="Ej. Rappi"
+          />
+          <div class="invalid-feedback">{{ message('companyName') }}</div>
+        </div>
+      } @else {
+        <div class="col-12 col-md-6">
+          <label class="form-label required" for="visit-name">Nombre del visitante</label>
+          <input
+            id="visit-name"
+            type="text"
+            class="form-control"
+            formControlName="visitorName"
+            [class.is-invalid]="invalid('visitorName')"
+            [maxlength]="nameMax"
+          />
+          <div class="invalid-feedback">{{ message('visitorName') }}</div>
+        </div>
+        <div class="col-12 col-md-6">
+          <label class="form-label required" for="visit-document">Documento</label>
+          <input
+            id="visit-document"
+            type="text"
+            class="form-control"
+            formControlName="visitorDocument"
+            [class.is-invalid]="invalid('visitorDocument')"
+            [maxlength]="documentMax"
+          />
+          <div class="invalid-feedback">{{ message('visitorDocument') }}</div>
+        </div>
+      }
+
+      <div class="col-12 col-md-6">
+        <label class="form-label" for="visit-phone">Teléfono</label>
+        <input
+          id="visit-phone"
+          type="tel"
+          class="form-control"
+          formControlName="phone"
+          [class.is-invalid]="invalid('phone')"
+          [maxlength]="phoneMax"
+        />
+        <div class="invalid-feedback">{{ message('phone') }}</div>
+      </div>
+
+      <div class="col-6 col-md-3">
+        <label class="form-label required" for="visit-from">
+          {{ isFrequent() ? 'Desde' : 'Fecha' }}
+        </label>
+        <input
+          id="visit-from"
+          type="date"
+          class="form-control"
+          formControlName="validFrom"
+          [class.is-invalid]="invalid('validFrom')"
+          [min]="today"
+        />
+        <div class="invalid-feedback">{{ message('validFrom') }}</div>
+      </div>
+
+      @if (isFrequent()) {
+        <div class="col-6 col-md-3">
+          <label class="form-label required" for="visit-until">Hasta</label>
+          <input
+            id="visit-until"
+            type="date"
+            class="form-control"
+            formControlName="validUntil"
+            [class.is-invalid]="invalid('validUntil') || !!rangeError()"
+            [min]="form.controls.validFrom.value || today"
+          />
+          <div class="invalid-feedback">{{ rangeError() ?? message('validUntil') }}</div>
+        </div>
+      }
+
+      <div class="col-12 col-md-6">
+        <label class="form-label" for="visit-photo">Foto</label>
+        @if (photoPreview(); as preview) {
+          <div class="d-flex align-items-center gap-2 border rounded p-2">
+            <img [src]="preview" alt="Foto del visitante" class="rounded" style="height: 4rem; width: 4rem; object-fit: cover" />
+            <span class="text-truncate flex-grow-1 small">{{ photoFile()?.name }}</span>
+            <button
+              type="button"
+              class="btn btn-icon btn-sm btn-ghost-secondary"
+              aria-label="Quitar la foto"
+              title="Quitar"
+              [disabled]="saving()"
+              (click)="clearPhoto()"
+            >
+              <tabler-icon name="x" />
+            </button>
+          </div>
+        } @else {
+          <input
+            id="visit-photo"
+            type="file"
+            class="form-control"
+            [accept]="acceptedPhotoTypes"
+            (change)="onPhotoSelected($event)"
+          />
+        }
+        @if (photoError(); as message) {
+          <div class="text-danger small mt-1">{{ message }}</div>
+        }
+        <small class="form-hint">Opcional. JPG, PNG o WEBP de hasta {{ photoMaxLabel }}.</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-footer d-flex justify-content-end gap-2">
+    <a routerLink="/visits" class="btn btn-link link-secondary">Cancelar</a>
+    <button type="submit" class="btn btn-primary" [disabled]="saving()">
+      @if (saving()) {
+        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+      }
+      Crear visitante
+    </button>
+  </div>
+</form>

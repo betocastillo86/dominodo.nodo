@@ -1,0 +1,44 @@
+<ng-template #checkInTpl let-modal>
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <div class="modal-header">
+      <h5 class="modal-title">Registrar ingreso</h5>
+      <button type="button" class="btn-close" aria-label="Cerrar" (click)="modal.dismiss()"></button>
+    </div>
+
+    <div class="modal-body">
+      @if (formError(); as message) {
+        <div class="alert alert-danger" role="alert">{{ message }}</div>
+      }
+
+      @if (target(); as visit) {
+        <p class="mb-3">
+          Vas a registrar que <strong>{{ visitorName() }}</strong>
+          ({{ kindLabel[visit.kind] }}) está ingresando ahora. Se avisará a los residentes del apartamento.
+        </p>
+      }
+
+      <div class="mb-0">
+        <label class="form-label" for="check-in-note">Nota de portería</label>
+        <textarea
+          id="check-in-note"
+          class="form-control"
+          rows="3"
+          formControlName="guardNote"
+          [maxlength]="noteMaxLength"
+          placeholder="Si quieres, deja una observación sobre el ingreso."
+        ></textarea>
+        <small class="form-hint">Opcional. Máximo {{ noteMaxLength }} caracteres.</small>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn btn-link link-secondary" (click)="modal.dismiss()">Cerrar</button>
+      <button type="submit" class="btn btn-primary" [disabled]="saving()">
+        @if (saving()) {
+          <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        }
+        Registrar ingreso
+      </button>
+    </div>
+  </form>
+</ng-template>

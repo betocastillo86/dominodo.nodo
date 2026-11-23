@@ -88,6 +88,11 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'visits',
+        canActivate: [permissionGuard('visits.view')],
+        loadChildren: () => import('./features/visits/visits.routes').then((m) => m.visitsRoutes),
+      },
+      {
         path: 'tenant-info',
         canActivate: [permissionGuard('tenant.info')],
         loadChildren: () =>
