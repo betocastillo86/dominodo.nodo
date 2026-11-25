@@ -168,6 +168,12 @@ export class ReservationAdminDetailComponent {
   readonly resident = signal<ResidentInfo | null>(null);
   readonly residentLoading = signal(true);
 
+  /**
+   * Who registered the booking, when that is NOT its holder — staff booking on
+   * a resident's behalf (ADR-0028). Null otherwise, and the row stays out.
+   */
+  readonly registeredBy = signal<string | null>(null);
+
   readonly apartment = signal<ApartmentDetailDto | null>(null);
 
   /**
@@ -487,6 +493,7 @@ export class ReservationAdminDetailComponent {
         this.reservation.set(reservation);
         this.loading.set(false);
         this.fetchResident(reservation.userId);
+        this.fetchRegisteredBy(reservation);
         this.fetchApartment(reservation.apartmentId);
         this.fetchAmenity(reservation.amenityId);
         this.loadPreviews(reservation.paymentProofs);
@@ -510,6 +517,23 @@ export class ReservationAdminDetailComponent {
         this.resident.set(null);
         this.residentLoading.set(false);
       },
+    });
+  }
+
+  private fetchRegisteredBy(reservation: ReservationDetailDto): void {
+    const author = reservation.createdBy;
+    if (!author || author === reservation.userId) {
+      this.registeredBy.set(null);
+      return;
+    }
+    // Shown even when the name does not resolve: that someone else booked it is the point.
+    this.registeredBy.set('La administración');
+    this.residentInfo.getById(author).subscribe({
+      next: (user) => {
+        const name = `${user.firstName} ${user.lastName}`.trim();
+        if (name) this.registeredBy.set(`${name} (administración)`);
+      },
+      error: () => undefined,
     });
   }
 

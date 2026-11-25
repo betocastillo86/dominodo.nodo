@@ -1,0 +1,168 @@
+<app-page-header title="Nueva reserva" pretitle="Reservas">
+  <div actions>
+    <a routerLink="/reservations" class="btn btn-link link-secondary">
+      <tabler-icon name="arrow-left" class="me-1" />
+      Volver al listado
+    </a>
+  </div>
+</app-page-header>
+
+<form [formGroup]="form" (ngSubmit)="submit()" class="card">
+  <div class="card-body">
+    @if (error(); as message) {
+      <div class="alert alert-danger" role="alert">{{ message }}</div>
+    }
+
+    <div class="row g-3">
+      <div class="col-12 col-md-6">
+        <label class="form-label required" for="reservation-amenity">Área social</label>
+        <select
+          id="reservation-amenity"
+          class="form-select"
+          formControlName="amenityId"
+          [class.is-invalid]="invalid('amenityId')"
+        >
+          <option [ngValue]="null" disabled>
+            {{ areas() === null ? 'Cargando…' : 'Selecciona un área' }}
+          </option>
+          @for (area of areas() ?? []; track area.id) {
+            <option [ngValue]="area.id">{{ area.name }}</option>
+          }
+        </select>
+        <div class="invalid-feedback">{{ message('amenityId') }}</div>
+        @if (amenity(); as a) {
+          <small class="form-hint">
+            Aforo: {{ a.maxOccupancy }} personas
+            @if (priceLabel(); as price) {
+              · Valor: {{ price }}
+            }
+            · La reserva quedará <strong>{{ outcome() }}</strong>
+            @if (a.policy.paymentRequired) {
+              hasta recibir el pago.
+            } @else if (a.requiresApproval) {
+              hasta que se apruebe.
+            }
+          </small>
+        }
+      </div>
+
+      <div class="col-12 col-md-6">
+        <label class="form-label required">Apartamento</label>
+        <app-search-select
+          formControlName="apartmentId"
+          [search]="searchApartments"
+          placeholder="Buscar por apartamento"
+          clearLabel="Quitar apartamento"
+        />
+        @if (invalid('apartmentId')) {
+          <div class="text-danger small mt-1">{{ message('apartmentId') }}</div>
+        }
+      </div>
+
+      <div class="col-12 col-md-6">
+        <label class="form-label required" for="reservation-holder">Titular</label>
+        @if (residentsLoading()) {
+          <app-spinner />
+        } @else {
+          <select
+            id="reservation-holder"
+            class="form-select"
+            formControlName="holder"
+            [class.is-invalid]="invalid('holder')"
+          >
+            <option [ngValue]="null" disabled>
+              {{ hasApartment() ? 'Selecciona quién queda como titular' : 'Primero elige el apartamento' }}
+            </option>
+            @for (resident of residents(); track resident.id) {
+              <option [ngValue]="resident.userId" [disabled]="!resident.livesHere">
+                {{ residentLabel(resident) }}
+              </option>
+            }
+            @if (hasApartment()) {
+              <option [ngValue]="noHolder">Nadie — queda a nombre de la administración</option>
+            }
+          </select>
+          <div class="invalid-feedback">{{ message('holder') }}</div>
+        }
+        @if (residentsError(); as message) {
+          <div class="text-danger small mt-1">{{ message }}</div>
+        }
+        <small class="form-hint">
+          El titular ve la reserva en Domi, recibe sus avisos y puede cancelarla o enviar el
+          comprobante. Solo puede serlo un residente que vive en el apartamento.
+        </small>
+      </div>
+
+      <div class="col-6 col-md-3">
+        <label class="form-label required" for="reservation-date">Fecha</label>
+        <input
+          id="reservation-date"
+          type="date"
+          class="form-control"
+          formControlName="date"
+          [class.is-invalid]="invalid('date')"
+          [min]="today"
+        />
+        <div class="invalid-feedback">{{ message('date') }}</div>
+      </div>
+
+      <div class="col-6 col-md-3">
+        <label class="form-label required" for="reservation-attendees">Asistentes</label>
+        <input
+          id="reservation-attendees"
+          type="number"
+          inputmode="numeric"
+          class="form-control"
+          formControlName="attendees"
+          [class.is-invalid]="invalid('attendees')"
+          min="1"
+          [attr.max]="maxOccupancy()"
+        />
+        <div class="invalid-feedback">{{ message('attendees') }}</div>
+      </div>
+
+      <div class="col-12">
+        <label class="form-label required">Horario</label>
+        @if (!canPickSlots()) {
+          <p class="text-secondary mb-0">Elige el área social y la fecha para ver los horarios.</p>
+        } @else if (slotsLoading()) {
+          <app-spinner />
+        } @else if (slotsError(); as message) {
+          <div class="text-danger small">{{ message }}</div>
+        } @else if (slots().length === 0) {
+          <p class="text-secondary mb-0">El área no abre el {{ dateLabel() }}.</p>
+        } @else {
+          <div class="d-flex flex-wrap gap-2" role="group" aria-label="Horarios disponibles">
+            @for (slot of slots(); track slot.startsAtUtc) {
+              <button
+                type="button"
+                class="btn"
+                [class.btn-primary]="isSelected(slot)"
+                [class.btn-outline-secondary]="!isSelected(slot)"
+                [disabled]="!slot.isAvailable"
+                [attr.aria-pressed]="isSelected(slot)"
+                [title]="slot.reason ? unavailableReason[slot.reason] : ''"
+                (click)="selectSlot(slot)"
+              >
+                {{ formatTime(slot.startsAtLocal) }} – {{ formatTime(slot.endsAtLocal) }}
+              </button>
+            }
+          </div>
+          @if (slotMissing()) {
+            <div class="text-danger small mt-1">Elige un horario.</div>
+          }
+        }
+      </div>
+    </div>
+  </div>
+
+  <div class="card-footer d-flex justify-content-end gap-2">
+    <a routerLink="/reservations" class="btn btn-link link-secondary">Cancelar</a>
+    <button type="submit" class="btn btn-primary" [disabled]="saving()">
+      @if (saving()) {
+        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+      }
+      Crear reserva
+    </button>
+  </div>
+</form>

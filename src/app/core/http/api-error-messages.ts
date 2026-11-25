@@ -162,6 +162,7 @@ export const API_ERROR_MESSAGES: Record<string, ApiErrorMessage> = {
   'Request.InvalidTransition':
     'La solicitud no puede pasar a ese estado desde el estado actual. Actualiza la página.',
   'Request.NotAMember': 'No eres miembro activo de este conjunto.',
+  'Request.NotAResidentOfApartment': 'La persona no es residente activa de ese apartamento.',
   'Request.NotFound': 'La solicitud no existe.',
   'Request.NotResolved': 'Solo se puede cerrar automáticamente una solicitud resuelta.',
   'Request.ReporterRequired': 'Quien reporta es obligatorio.',
@@ -273,6 +274,8 @@ export const API_ERROR_MESSAGES: Record<string, ApiErrorMessage> = {
       : 'El número de asistentes supera el aforo del área.';
   },
   'Reservation.AttendeesRequired': 'Indica cuántas personas asistirán.',
+  'Reservation.BeneficiaryNotResident':
+    'La persona elegida no es residente activa de ese apartamento.',
   'Reservation.CancellationWindowClosed': (p) => {
     const days = firstNumber(p);
     return days
@@ -302,6 +305,8 @@ export const API_ERROR_MESSAGES: Record<string, ApiErrorMessage> = {
   'Reservation.NotFound': 'La reserva no existe.',
   'Reservation.NotPending': 'Esta reserva ya no está pendiente. Actualiza la página.',
   'Reservation.NotReschedulable': 'Solo se puede reprogramar una reserva pendiente o confirmada.',
+  'Reservation.OnBehalfNotAllowed':
+    'Solo la administración puede reservar a nombre de otro residente.',
   'Reservation.OutsideOpeningHours': 'El horario elegido está por fuera del horario de atención del área.',
   'Reservation.ProofsNotAllowed':
     'Solo se pueden adjuntar comprobantes a una reserva pendiente o confirmada.',

@@ -92,7 +92,14 @@ export interface ReservationDto {
   tenantId: string;
   amenityId: string;
   code: string;
+  /** The holder: who sees it in `/reservations/mine` and can manage it. */
   userId: string;
+  /**
+   * Who registered it (the audit interceptor's `CreatedBy`). Differs from
+   * `userId` when staff booked on a resident's behalf (ADR-0028); null only on
+   * a row written without a session.
+   */
+  createdBy: string | null;
   apartmentId: string;
   apartment: ReservationApartmentDto;
   startsAtUtc: string;
@@ -150,7 +157,14 @@ export interface ReservationDetailDto {
   tenantId: string;
   amenityId: string;
   code: string;
+  /** The holder: who sees it in `/reservations/mine` and can manage it. */
   userId: string;
+  /**
+   * Who registered it (the audit interceptor's `CreatedBy`). Differs from
+   * `userId` when staff booked on a resident's behalf (ADR-0028); null only on
+   * a row written without a session.
+   */
+  createdBy: string | null;
   apartmentId: string;
   startsAtUtc: string;
   endsAtUtc: string;
@@ -310,6 +324,24 @@ export interface ReservationPaymentProofUpload {
   key: string;
   fileName: string;
   contentType: string;
+}
+
+/**
+ * Body of `POST /reservations` on the STAFF branch (`reservations.create`,
+ * ADR-0018 §4 + ADR-0028): the apartment is mandatory, and `onBehalfOfUserId`
+ * makes that resident the holder — they must have an active residency in the
+ * apartment AND live there. Left null, the administrator is the holder.
+ *
+ * The window is one availability slot echoed back verbatim, as on the
+ * resident screen.
+ */
+export interface CreateStaffReservationRequest {
+  amenityId: string;
+  startsAtUtc: string;
+  endsAtUtc: string;
+  attendees: number;
+  apartmentId: string;
+  onBehalfOfUserId: string | null;
 }
 
 /** Body of `POST /reservations/{id}/reject` and `.../cancel`. */

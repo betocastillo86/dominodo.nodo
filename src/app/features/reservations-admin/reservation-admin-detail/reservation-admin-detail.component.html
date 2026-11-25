@@ -90,6 +90,11 @@
             <dt class="col-5 text-secondary">Fecha de solicitud</dt>
             <dd class="col-7">{{ formatInstant(r.createdAtUtc) }}</dd>
 
+            @if (registeredBy(); as author) {
+              <dt class="col-5 text-secondary">Registrada por</dt>
+              <dd class="col-7">{{ author }}</dd>
+            }
+
             @if (r.confirmedAtUtc) {
               <dt class="col-5 text-secondary">Confirmada</dt>
               <dd class="col-7">{{ formatInstant(r.confirmedAtUtc) }}</dd>

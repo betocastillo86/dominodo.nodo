@@ -9,7 +9,10 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
+import { TablerIconComponent } from 'angular-tabler-icons';
 import { map } from 'rxjs';
+import { PermissionStore } from '../../../core/authz/permission.store';
 import {
   DataTableComponent,
   TableColumn,
@@ -76,6 +79,8 @@ import { ReservationStatusSelectComponent } from '../reservation-status-select/r
   imports: [
     PageHeaderComponent,
     DataTableComponent,
+    RouterLink,
+    TablerIconComponent,
     ReactiveFormsModule,
     SearchSelectComponent,
     ReservationRespondComponent,
@@ -105,6 +110,9 @@ export class ReservationAdminListComponent {
   private readonly service = inject(ReservationsAdminService);
   private readonly amenityOptions = inject(AmenityOptionsService);
   private readonly apartmentOptions = inject(ApartmentOptionsService);
+  private readonly permissions = inject(PermissionStore);
+
+  readonly canCreate = computed(() => this.permissions.has('reservations.create'));
 
   readonly items = this.service.items;
   readonly paging = this.service.paging;

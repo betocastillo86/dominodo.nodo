@@ -72,6 +72,8 @@ export interface MyReservation {
   amenityId: string;
   code: string;
   userId: string;
+  /** Who registered it — the administration, when it was booked on the resident's behalf (ADR-0028). */
+  createdBy: string | null;
   apartmentId: string;
   startsAtUtc: string;
   endsAtUtc: string;

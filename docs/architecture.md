@@ -307,7 +307,7 @@ src/app/
                             #    apartment-list / -detail components + apartment-import/ (bulk load
                             #    wizard, apartments.create AND memberships.manage) +
                             #    account-statement-import/ (bulk account-statement wizard, see below)
-    ├── reservations-admin/ # ✅ READ-ONLY admin view of amenity bookings (permission: reservations.view;
+    ├── reservations-admin/ # ✅ admin view of amenity bookings (permission: reservations.view;
                             #    feature: Amenities). Distinct from `features/reservations/` above, which
                             #    is the RESIDENT handoff booking flow at the standalone `/reservas` route —
                             #    this one lives under the shell at `/reservations`. List defaults to
@@ -333,9 +333,17 @@ src/app/
                             #    pending/confirmed and not yet started, and with reservations.cancel — a
                             #    DIFFERENT permission. Failures map to Spanish by CODE in
                             #    reservation-action-errors.ts (never the API's English `detail`).
+                            #    "Nueva reserva" (/reservations/new, reservations.create): POST /reservations
+                            #    on the STAFF branch — área + apartamento (mandatory) + one slot of
+                            #    GET /amenities/{id}/availability for the chosen day, echoed verbatim — and
+                            #    the TITULAR (`onBehalfOfUserId`, ADR-0028): an active resident who LIVES in
+                            #    the apartment (the rest are listed disabled), or explicitly "nadie", which
+                            #    leaves the administrator as holder. Residents come from
+                            #    GET /apartments/{id}/residents (apartments.view). The detail shows
+                            #    "Registrada por" when `createdBy` ≠ `userId`.
                             #    data-access/ (reservation.models, reservations-admin.service signals,
                             #    amenity-options.service for the filter dropdown, resident-info.service)
-                            #    reservation-admin-list / -detail components
+                            #    reservation-admin-list / -detail / -create components
     ├── visits/             # ✅ Visitantes (ADR-0027): list (kind/status/apartment/validOn/search filters;
                             #    API order = newest validFrom) + detail with its entries (check-ins) and a
                             #    "Registrar ingreso" dialog (POST /visits/{id}/entries, `visits.checkin`).

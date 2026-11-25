@@ -6,6 +6,7 @@ import { toMessage } from '../../../core/http/problem-details';
 import { TenantFilesService } from '../../../core/files/tenant-files.service';
 import { PagedResult } from '../../../core/models/paged-result';
 import type {
+  AmenityAvailability,
   ConfirmReservationPaymentProofRequest,
   CreateReservationPaymentProofUploadUrlRequest,
   ReservationPaymentProofUploadTicket,
@@ -13,6 +14,7 @@ import type {
 import {
   AttachmentDownloadUrl,
   ConfirmReservationRequest,
+  CreateStaffReservationRequest,
   ReservationDetailDto,
   ReservationDto,
   ReservationPaymentProofDto,
@@ -24,8 +26,8 @@ import {
 const DEFAULT_PAGE_SIZE = 20;
 
 /**
- * Data-access for the admin Reservations module: list + detail, and the three
- * staff moves (confirm / reject / cancel). List state lives as signals;
+ * Data-access for the admin Reservations module: list + detail, the three
+ * staff moves (confirm / reject / cancel), and booking on an apartment's behalf. List state lives as signals;
  * `X-Tenant` is attached globally by `tenantInterceptor`.
  *
  * The API defaults to the latest window first, so the sort is always sent
@@ -106,6 +108,31 @@ export class ReservationsAdminService {
         this._loading.set(false);
       },
     });
+  }
+
+  /**
+   * One area's bookable slots for a single local day
+   * (`GET /amenities/{id}/availability?from=&to=`), read as the portal's own
+   * session — `amenities.view` skips the dwelling rule the membership branch
+   * applies. Same engine `POST /reservations` runs, so a slot offered here is
+   * one the API accepts (bar a race, or the per-apartment daily limit, which
+   * availability deliberately does not apply).
+   */
+  getDayAvailability(amenityId: string, day: string): Observable<AmenityAvailability> {
+    const params = new HttpParams().set('from', day).set('to', day);
+    return this.http.get<AmenityAvailability>(
+      `${environment.apiBaseUrl}/amenities/${amenityId}/availability`,
+      { params },
+    );
+  }
+
+  /**
+   * Book on an apartment's behalf (`POST /reservations`, staff branch with
+   * `reservations.create`). Born `Confirmed`, or `Pending` when the area needs
+   * approval or payment — the response says which. Creating it notifies nobody.
+   */
+  create(body: CreateStaffReservationRequest): Observable<ReservationDto> {
+    return this.http.post<ReservationDto>(this.base, body);
   }
 
   /** Fetch the full detail of one reservation (`GET /reservations/{id}`). */

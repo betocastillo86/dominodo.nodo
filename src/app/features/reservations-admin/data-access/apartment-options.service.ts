@@ -3,7 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { catchError, map, Observable, of } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { PagedResult } from '../../../core/models/paged-result';
-import { ApartmentDetailDto, ApartmentDto } from '../../apartments/data-access/apartment.models';
+import { ApartmentDetailDto, ApartmentDto, ResidentDto } from '../../apartments/data-access/apartment.models';
 
 /** One page is plenty for a typeahead: the resident narrows by typing, not by scrolling. */
 const LOOKUP_PAGE_SIZE = 20;
@@ -49,5 +49,15 @@ export class ApartmentOptionsService {
     return this.http
       .get<ApartmentDetailDto>(`${this.base}/${id}`)
       .pipe(catchError(() => of<ApartmentDetailDto | null>(null)));
+  }
+
+  /**
+   * The apartment's residents (`GET /apartments/{id}/residents`, apartments.view),
+   * active and ended alike — the caller filters. Unlike the two reads above it
+   * does NOT swallow its error: the booking form must tell "no residents" from
+   * "could not load them".
+   */
+  residents(apartmentId: string): Observable<ResidentDto[]> {
+    return this.http.get<ResidentDto[]>(`${this.base}/${apartmentId}/residents`);
   }
 }

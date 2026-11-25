@@ -1,4 +1,13 @@
-<app-page-header title="Reservas" pretitle="Áreas sociales" />
+<app-page-header title="Reservas" pretitle="Áreas sociales">
+  @if (canCreate()) {
+    <div actions>
+      <a routerLink="/reservations/new" class="btn btn-primary">
+        <tabler-icon name="plus" class="me-1" />
+        Nueva reserva
+      </a>
+    </div>
+  }
+</app-page-header>
 
 <div class="card">
   <div class="card-header d-block">
