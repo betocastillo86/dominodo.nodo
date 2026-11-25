@@ -105,20 +105,29 @@ export const IMPORT_MAX_BYTES = 5 * 1024 * 1024;
  * underscore ("Número", "VIVE AQUÍ"), and every English name from the first
  * draft of the contract still loads as an alias — but these are the canonical
  * ones, and the only ones worth teaching.
+ *
+ * The last seven columns (API ADR-0030) are optional and hold LISTS: several
+ * values in one cell separated by `/`. The first three are unit-level (annexes),
+ * the rest belong to the person of the row.
  */
 export const IMPORT_CSV_HEADER =
-  'torre,numero,tipo,telefono,nombre,apellido,correo,relacion,vive_aqui';
+  'torre,numero,tipo,telefono,nombre,apellido,correo,relacion,vive_aqui,' +
+  'placas,parqueaderos,depositos,correos_adicionales,telefonos_adicionales,' +
+  'tipo_documento,numero_documento';
 
 /**
  * Three rows that cover the cases the format exists for: a unit with its owner,
  * a second resident on that same unit (the repeated unit IS the mechanism), and
  * a unit with no resident at all (an empty `phone` is the switch between the two
- * use cases).
+ * use cases). Rows of the same unit that carry annexes must carry the same ones
+ * (`ApartmentImport.ConflictingAnnexes`), so A-101 repeats them verbatim.
  */
 export const IMPORT_CSV_SAMPLE_ROWS = [
-  'A,101,Apartamento,+573001112233,María,Gómez,maria@correo.com,Propietario,si',
-  'A,101,Apartamento,+573004445566,Juan,Gómez,,Arrendatario,si',
-  'A,102,Apartamento,,,,,,',
+  'A,101,Apartamento,+573001112233,María,Gómez,maria@correo.com,Propietario,si,' +
+    'ABC123 (Mazda 3)/XYZ789,P12/P13,D3,maria.trabajo@correo.com,+573109998877,CC,1020304050',
+  'A,101,Apartamento,+573004445566,Juan,Gómez,,Arrendatario,si,' +
+    'ABC123 (Mazda 3)/XYZ789,P12/P13,D3,,,,',
+  'A,102,Apartamento,,,,,,,,P20,,,,,',
 ];
 
 /**
@@ -150,7 +159,7 @@ export const IMPORT_COLUMNS: readonly ImportColumnHelp[] = [
   {
     name: 'tipo',
     required: 'No',
-    rule: 'Apartamento, Casa o Local. Vacío = Apartamento. Parqueaderos y depósitos no son unidades: se registran en el detalle del apartamento.',
+    rule: 'Apartamento, Casa o Local. Vacío = Apartamento. Parqueaderos y depósitos no son unidades: van en las columnas parqueaderos y depositos.',
   },
   {
     name: 'telefono',
@@ -178,6 +187,41 @@ export const IMPORT_COLUMNS: readonly ImportColumnHelp[] = [
     required: 'No',
     rule: 'si o no. Vacío = si (el residente vive en la unidad).',
   },
+  {
+    name: 'placas',
+    required: 'No',
+    rule: 'Vehículos de la unidad separados por /, cada uno PLACA o PLACA (Modelo): ABC123 (Mazda 3)/XYZ789. Máximo 10; placa hasta 20 caracteres y modelo hasta 100.',
+  },
+  {
+    name: 'parqueaderos',
+    required: 'No',
+    rule: 'Parqueaderos de la unidad separados por /: P12/P13. Máximo 10, de hasta 20 caracteres cada uno.',
+  },
+  {
+    name: 'depositos',
+    required: 'No',
+    rule: 'Depósitos de la unidad separados por /: D3. Máximo 10, de hasta 20 caracteres cada uno.',
+  },
+  {
+    name: 'correos_adicionales',
+    required: 'No',
+    rule: 'Otros correos de contacto del residente separados por /. Máximo 5. Si la persona ya existe, se suman a los que tiene.',
+  },
+  {
+    name: 'telefonos_adicionales',
+    required: 'No',
+    rule: 'Otros teléfonos de contacto en formato E.164, separados por /. Máximo 5. Si la persona ya existe, se suman a los que tiene.',
+  },
+  {
+    name: 'tipo_documento',
+    required: 'Con número de documento',
+    rule: 'CC, CE, NIT o Pasaporte. Va junto con numero_documento: ambos o ninguno.',
+  },
+  {
+    name: 'numero_documento',
+    required: 'Con tipo de documento',
+    rule: 'Máximo 50 caracteres. Si la persona ya existe y no tiene documento, se completa; si tiene otro, no se reemplaza.',
+  },
 ];
 
 // ── Report copy ─────────────────────────────────────────────────────────────
@@ -201,6 +245,12 @@ const ISSUE_TEXT: Record<string, string> = {
   'ApartmentImport.DuplicateEmail':
     'Un mismo correo está asignado a teléfonos distintos. Cada correo pertenece a una sola persona.',
   'ApartmentImport.NoValidRows': 'Ninguna fila del archivo pasó la validación.',
+  'ApartmentImport.ConflictingAnnexes':
+    'Las filas de una misma unidad traen anexos distintos. Repite los mismos anexos en cada fila o déjalos vacíos.',
+  'ApartmentImport.ConflictingDocument':
+    'Un mismo teléfono aparece con dos documentos distintos. Cada persona tiene un solo documento.',
+  'ApartmentImport.TooManyAdditionalContacts':
+    'Sumando todas sus filas, un mismo teléfono supera los 5 correos o los 5 teléfonos adicionales.',
 
   // Row-level, unit side (Tenants).
   'ApartmentImport.NumberRequired': 'Falta el número de la unidad.',
@@ -211,10 +261,25 @@ const ISSUE_TEXT: Record<string, string> = {
   'ApartmentImport.TypeInvalid':
     'Tipo de unidad no reconocido. Usa Apartamento, Casa o Local.',
   'ApartmentImport.TypeRetired':
-    'Parqueadero y Depósito ya no son tipos de unidad. Regístralos como anexos en el detalle del apartamento.',
+    'Parqueadero y Depósito ya no son tipos de unidad. Regístralos en las columnas parqueaderos y depositos de la unidad.',
   'ApartmentImport.LivesHereInvalid': 'El valor de vive_aqui no es válido. Usa si o no.',
   'ApartmentImport.RowNotValidated': 'No se pudo validar la fila.',
   'ApartmentImport.RelationInvalid': 'La relación debe ser Propietario o Arrendatario.',
+  'ApartmentImport.VehicleInvalid':
+    'Un vehículo no tiene el formato esperado. Usa PLACA o PLACA (Modelo), separados por /.',
+  'ApartmentImport.DocumentTypeInvalid':
+    'Tipo de documento no reconocido. Usa CC, CE, NIT o Pasaporte.',
+  'Apartment.TooManyVehicles': 'La unidad supera los 10 vehículos.',
+  'Apartment.TooManyParkingSpots': 'La unidad supera los 10 parqueaderos.',
+  'Apartment.TooManyStorageUnits': 'La unidad supera los 10 depósitos.',
+  'Apartment.VehiclePlateRequired': 'Hay un vehículo sin placa.',
+  'Apartment.VehiclePlateTooLong': 'Una placa supera los 20 caracteres.',
+  'Apartment.VehicleModelTooLong': 'El modelo de un vehículo supera los 100 caracteres.',
+  'Apartment.ParkingSpotRequired': 'Hay un parqueadero sin número.',
+  'Apartment.ParkingSpotTooLong': 'Un parqueadero supera los 20 caracteres.',
+  'Apartment.StorageUnitRequired': 'Hay un depósito sin número.',
+  'Apartment.StorageUnitTooLong': 'Un depósito supera los 20 caracteres.',
+  'Apartment.AnnexSeparatorNotAllowed': 'Los anexos no pueden contener el carácter «|».',
 
   // Row-level, people side (Users).
   'Phone.Required': 'Falta el teléfono del residente.',
@@ -226,6 +291,12 @@ const ISSUE_TEXT: Record<string, string> = {
   'User.EmailTaken': 'El correo ya pertenece a otra persona de la plataforma.',
   'Membership.RelationRequired': 'Falta la relación (Propietario o Arrendatario).',
   'Membership.RelationInvalid': 'La relación debe ser Propietario o Arrendatario.',
+  'User.TooManyAdditionalEmails': 'El residente supera los 5 correos adicionales.',
+  'User.TooManyAdditionalPhones': 'El residente supera los 5 teléfonos adicionales.',
+  'User.DocumentTypeInvalid': 'Tipo de documento no reconocido. Usa CC, CE, NIT o Pasaporte.',
+  'User.DocumentIncomplete':
+    'El tipo y el número de documento van juntos: completa ambos o deja ambos vacíos.',
+  'User.DocumentNumberTooLong': 'El número de documento supera los 50 caracteres.',
 
   // Warnings — nothing is rejected, but nothing is silently changed either.
   'ApartmentImport.UnitReused':
@@ -238,6 +309,14 @@ const ISSUE_TEXT: Record<string, string> = {
     'El usuario existente no tenía correo: se completará con el del archivo.',
   'ApartmentImport.UserEmailNotOverwritten':
     'El usuario existente ya tiene otro correo: no se reemplaza.',
+  'ApartmentImport.AnnexesReplaced':
+    'La unidad ya existe con otros anexos: sus placas, parqueaderos y depósitos se reemplazan por los del archivo.',
+  'ApartmentImport.PersonFieldsIgnored':
+    'La fila no tiene teléfono: se carga solo la unidad y se ignoran los datos de la persona.',
+  'ApartmentImport.UserDocumentNotOverwritten':
+    'El usuario existente ya tiene otro documento: no se reemplaza.',
+  'ApartmentImport.UserAdditionalContactsTruncated':
+    'El usuario existente quedaría con más de 5 correos o teléfonos adicionales: los que sobran no se guardan.',
 };
 
 /**
@@ -248,6 +327,9 @@ const ISSUE_TEXT: Record<string, string> = {
 const DETAILED_CODES = new Set([
   'ApartmentImport.ConflictingUnitType',
   'ApartmentImport.DuplicateEmail',
+  'ApartmentImport.ConflictingAnnexes',
+  'ApartmentImport.ConflictingDocument',
+  'ApartmentImport.TooManyAdditionalContacts',
 ]);
 
 /** Spanish text for a reported code; the server description backs an unknown one. */

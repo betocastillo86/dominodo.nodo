@@ -616,15 +616,21 @@ errors kill the load, row errors kill a row, warnings kill nothing but must stil
 "unit reused" and "user reused" are exactly what the administrator would otherwise assume was updated.
 
 The CSV itself is the one place where the platform speaks **Spanish**: columns are
-`torre,numero,tipo,telefono,nombre,apellido,correo,relacion,vive_aqui` and the values are
-`Apartamento|Casa|Local`, `Propietario|Arrendatario` and `si|no` — the API's
+`torre,numero,tipo,telefono,nombre,apellido,correo,relacion,vive_aqui` plus seven optional ones from
+API ADR-0030 — the unit's annexes `placas,parqueaderos,depositos` and the person's
+`correos_adicionales,telefonos_adicionales,tipo_documento,numero_documento` — and the values are
+`Apartamento|Casa|Local`, `Propietario|Arrendatario`, `si|no` and `CC|CE|NIT|Pasaporte`. The seven new
+columns hold lists, several values per cell separated by `/` (a vehicle is `PLATE` or `PLATE (Model)`).
+On a reused unit, annexes in the file **replace** the current ones (warning `AnnexesReplaced`); on an
+existing user, additional contacts are **merged** (cap 5) and the document is only filled when empty.
+The API's
 `ApartmentImportVocabulary` translates them on the way in and everything past it stays English. Matching
 ignores case, accents and space/hyphen-for-underscore, and the original English names still load as
 aliases, so the downloadable template is the contract worth teaching, not the only one accepted.
 
 Report codes are translated in `apartment-import.models.ts`; the server's English `description` is the
-fallback for an unknown code, and is additionally shown for the two file-level codes whose wording names
-the offending unit or rows. Note the import **never sends the welcome message** — the copy says so,
+fallback for an unknown code, and is additionally shown for the file-level codes whose wording names
+the offending unit or rows (`DETAILED_CODES`). Note the import **never sends the welcome message** — the copy says so,
 because it is not configurable.
 
 **Apartments — the account statement.** Each apartment carries an optional `accountStatement`
