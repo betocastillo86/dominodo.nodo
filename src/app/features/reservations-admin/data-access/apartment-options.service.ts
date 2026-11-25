@@ -27,7 +27,10 @@ export class ApartmentOptionsService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiBaseUrl}/apartments`;
 
-  /** Apartments matching `term` (tower/number). An empty term returns the first page. */
+  /**
+   * Apartments matching `term` — the number, or an annex (plate, parking spot,
+   * storage unit; ADR-0029). An empty term returns the first page.
+   */
   search(term: string): Observable<ApartmentDto[]> {
     let params = new HttpParams().set('page', 1).set('pageSize', LOOKUP_PAGE_SIZE);
     const query = term.trim();

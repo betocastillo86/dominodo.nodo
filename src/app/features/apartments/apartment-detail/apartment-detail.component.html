@@ -11,7 +11,7 @@
   <div class="alert alert-danger" role="alert">{{ error() }}</div>
 } @else if (apartment(); as apt) {
   <div class="row row-cards">
-    <!-- Apartment information (read-only) -->
+    <!-- Apartment identity (read-only) -->
     <div class="col-12 col-lg-4">
       <div class="card">
         <div class="card-header">
@@ -36,6 +36,44 @@
         </div>
       </div>
 
+      <!-- Annexes (ADR-0029): vehicles, parking spots, storage units — also search keys. -->
+      <div class="card mt-3">
+        <div class="card-header">
+          <h3 class="card-title">Anexos</h3>
+          @if (canEdit()) {
+            <div class="card-actions">
+              <button type="button" class="btn btn-sm" (click)="openAnnexes()">
+                <tabler-icon name="edit" class="me-1" />
+                Editar
+              </button>
+            </div>
+          }
+        </div>
+        <div class="card-body">
+          <dl class="row mb-0">
+            <dt class="col-5 text-secondary">Vehículos</dt>
+            <dd class="col-7">
+              @for (vehicle of apt.annexes.vehicles; track $index) {
+                <div>
+                  <span class="fw-medium">{{ vehicle.plate }}</span>
+                  @if (vehicle.model) {
+                    <span class="text-secondary"> · {{ vehicle.model }}</span>
+                  }
+                </div>
+              } @empty {
+                —
+              }
+            </dd>
+
+            <dt class="col-5 text-secondary">Parqueaderos</dt>
+            <dd class="col-7">{{ apt.annexes.parkingSpots.join(', ') || '—' }}</dd>
+
+            <dt class="col-5 text-secondary">Depósitos</dt>
+            <dd class="col-7 mb-0">{{ apt.annexes.storageUnits.join(', ') || '—' }}</dd>
+          </dl>
+        </div>
+      </div>
+
       <!-- Account statement (ADR-0025). Null is "never loaded", not "settled". -->
       <div class="card mt-3">
         <div class="card-header">
@@ -52,7 +90,7 @@
         <div class="card-body">
           @if (apt.accountStatement; as statement) {
             <dl class="row mb-0">
-              <dt class="col-5 text-secondary">Saldo en mora</dt>
+              <dt class="col-5 text-secondary">Saldo actual</dt>
               <dd class="col-7 fw-medium">{{ formatMoney(statement.overdueBalance) }}</dd>
 
               <dt class="col-5 text-secondary">En mora</dt>
@@ -114,7 +152,7 @@
                   <th>Relación</th>
                   <th>Vive aquí</th>
                   <th>Desde</th>
-                  @if (canEdit()) {
+                  @if (canEdit() || canEditResidentProfile()) {
                     <th class="w-1"></th>
                   }
                 </tr>
@@ -137,17 +175,31 @@
                       }
                     </td>
                     <td class="text-secondary text-nowrap">{{ formatDate(resident.startDate) }}</td>
-                    @if (canEdit()) {
-                      <td class="text-end">
-                        <button
-                          type="button"
-                          class="btn btn-icon btn-sm btn-ghost-danger"
-                          aria-label="Finalizar residencia"
-                          [disabled]="saving()"
-                          (click)="confirmEnd(resident, endStep1Tpl, endStep2Tpl)"
-                        >
-                          <tabler-icon name="user-minus" />
-                        </button>
+                    @if (canEdit() || canEditResidentProfile()) {
+                      <td class="text-end text-nowrap">
+                        @if (canEditResidentProfile()) {
+                          <button
+                            type="button"
+                            class="btn btn-icon btn-sm btn-ghost-secondary"
+                            aria-label="Editar datos del residente"
+                            title="Editar datos del residente"
+                            (click)="openResidentProfile(resident)"
+                          >
+                            <tabler-icon name="edit" />
+                          </button>
+                        }
+                        @if (canEdit()) {
+                          <button
+                            type="button"
+                            class="btn btn-icon btn-sm btn-ghost-danger"
+                            aria-label="Finalizar residencia"
+                            title="Finalizar residencia"
+                            [disabled]="saving()"
+                            (click)="confirmEnd(resident, endStep1Tpl, endStep2Tpl)"
+                          >
+                            <tabler-icon name="user-minus" />
+                          </button>
+                        }
                       </td>
                     }
                   </tr>
@@ -455,7 +507,7 @@
       }
 
       <div class="mb-3">
-        <label class="form-label required" for="statement-balance">Saldo en mora</label>
+        <label class="form-label required" for="statement-balance">Saldo actual</label>
         <div class="input-group">
           <span class="input-group-text">$</span>
           <input
@@ -474,7 +526,7 @@
 
       <label class="form-check">
         <input type="checkbox" class="form-check-input" formControlName="isOverdue" />
-        <span class="form-check-label">La unidad está en mora</span>
+        <span class="form-check-label">El apartamento está en mora</span>
       </label>
 
       <p class="form-hint mt-3 mb-0">

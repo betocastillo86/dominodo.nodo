@@ -39,7 +39,9 @@ export function translateFieldError(error: ProblemDetailError): string {
  * when a new validator names one that is missing — the fallback is generic.
  */
 const FIELD_LABELS: Record<string, string> = {
+  additionalemails: 'Correos adicionales',
   additionalinfo: 'Información adicional',
+  additionalphones: 'Celulares adicionales',
   additionalservices: 'Servicios adicionales',
   address: 'Dirección',
   administratorname: 'Nombre del administrador',
@@ -67,6 +69,8 @@ const FIELD_LABELS: Record<string, string> = {
   currentpassword: 'Contraseña actual',
   dayofweek: 'Día de la semana',
   description: 'Descripción',
+  documentnumber: 'Número de documento',
+  documenttype: 'Tipo de documento',
   email: 'Correo electrónico',
   endsatutc: 'Fin',
   filekey: 'Archivo',
@@ -84,13 +88,15 @@ const FIELD_LABELS: Record<string, string> = {
   maxoccupancy: 'Aforo máximo',
   maxperdayperapartment: 'Reservas diarias por apartamento',
   minhours: 'Duración mínima',
+  model: 'Modelo del vehículo',
   name: 'Nombre',
   newpassword: 'Nueva contraseña',
   note: 'Nota',
   number: 'Número',
   openinghours: 'Horario de atención',
-  overduebalance: 'Saldo en mora',
+  overduebalance: 'Saldo actual',
   page: 'Página',
+  parkingspots: 'Parqueaderos',
   pagesize: 'Tamaño de página',
   password: 'Contraseña',
   paymentproofexpiryhours: 'Plazo del comprobante de pago',
@@ -98,6 +104,7 @@ const FIELD_LABELS: Record<string, string> = {
   permissionids: 'Permisos',
   phone: 'Teléfono',
   photokey: 'Foto',
+  plate: 'Placa',
   photokeys: 'Fotos',
   photourl: 'Foto',
   policy: 'Reglas de reserva',
@@ -109,6 +116,7 @@ const FIELD_LABELS: Record<string, string> = {
   schedules: 'Horarios',
   slug: 'Identificador',
   status: 'Estado',
+  storageunits: 'Depósitos',
   text: 'Texto',
   theme: 'Tema',
   title: 'Título',
@@ -121,6 +129,7 @@ const FIELD_LABELS: Record<string, string> = {
   validfrom: 'Fecha de inicio',
   validuntil: 'Fecha final',
   value: 'Valor',
+  vehicles: 'Vehículos',
   vehicleplate: 'Placa del vehículo',
   visibility: 'Visibilidad',
   visitordocument: 'Documento del visitante',
@@ -155,6 +164,12 @@ const CUSTOM_MESSAGES: Record<string, string> = {
   'Phone must be in E.164 format (e.g. +573001234567).':
     'El teléfono no tiene un formato válido (por ejemplo, +573001234567).',
   'Purpose is not a known handoff purpose.': 'El propósito del enlace no es válido.',
+  'Annex values cannot contain \'|\'.': 'Los anexos no pueden contener el carácter «|».',
+  'Blank values are not allowed.': 'Hay un parqueadero o depósito sin número.',
+  'Document type and document number must be provided together.':
+    'El tipo y el número de documento van juntos: completa ambos o deja ambos vacíos.',
+  'Phone number must be in E.164 format (e.g. +573001234567).':
+    'El teléfono no tiene un formato válido (por ejemplo, +573001234567).',
   'Slug must be lowercase kebab-case (letters, digits and hyphens only).':
     'El identificador solo puede tener minúsculas, números y guiones.',
   'The tower list cannot repeat a tower.': 'Hay torres repetidas.',
@@ -173,6 +188,7 @@ const CUSTOM_PATTERNS: [RegExp, (m: RegExpExecArray) => string][] = [
   [/^Each tower must be at most (\d+) characters\.$/, (m) => `Cada torre puede tener máximo ${m[1]} caracteres.`],
   [/^Between (\d+) and (\d+) photo keys are required\.$/, (m) => `Agrega entre ${m[1]} y ${m[2]} fotos.`],
   [/^The range cannot span more than (\d+) days\.$/, (m) => `El rango no puede superar ${m[1]} días.`],
+  [/^Values cannot exceed (\d+) characters\.$/, (m) => `Cada parqueadero o depósito puede tener máximo ${m[1]} caracteres.`],
 ];
 
 /** FluentValidation's default English templates (and System.Text.Json's binding error). */

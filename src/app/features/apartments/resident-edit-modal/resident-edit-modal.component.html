@@ -1,0 +1,223 @@
+<form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+  <div class="modal-header">
+    <h5 class="modal-title">Editar residente</h5>
+    <button
+      type="button"
+      class="btn-close"
+      aria-label="Cerrar"
+      [disabled]="saving()"
+      (click)="activeModal.dismiss()"
+    ></button>
+  </div>
+
+  <div class="modal-body">
+    @if (loading()) {
+      <app-spinner />
+    } @else if (loadError()) {
+      <div class="alert alert-danger mb-0" role="alert">{{ loadError() }}</div>
+    } @else if (user(); as u) {
+      @if (error(); as message) {
+        <div class="alert alert-danger" role="alert">{{ message }}</div>
+      }
+
+      <div class="row">
+        <div class="col-12 col-md-6 mb-3">
+          <label class="form-label required" for="resident-first-name">Nombre</label>
+          <input
+            id="resident-first-name"
+            type="text"
+            class="form-control"
+            maxlength="100"
+            formControlName="firstName"
+            [class.is-invalid]="submitted() && form.controls.firstName.invalid"
+          />
+          <div class="invalid-feedback">El nombre es obligatorio.</div>
+        </div>
+        <div class="col-12 col-md-6 mb-3">
+          <label class="form-label required" for="resident-last-name">Apellido</label>
+          <input
+            id="resident-last-name"
+            type="text"
+            class="form-control"
+            maxlength="100"
+            formControlName="lastName"
+            [class.is-invalid]="submitted() && form.controls.lastName.invalid"
+          />
+          <div class="invalid-feedback">El apellido es obligatorio.</div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-12 col-md-6 mb-3">
+          <span class="form-label">Teléfono</span>
+          <div class="form-control-plaintext py-0">{{ u.phone }}</div>
+          <small class="form-hint">Es el usuario con el que inicia sesión; no se cambia desde aquí.</small>
+        </div>
+        <div class="col-12 col-md-6 mb-3">
+          <label class="form-label" for="resident-email">Correo</label>
+          <input
+            id="resident-email"
+            type="email"
+            class="form-control"
+            formControlName="email"
+            [class.is-invalid]="submitted() && form.controls.email.invalid"
+          />
+          <div class="invalid-feedback">Ingresa un correo válido.</div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-12 col-md-6 mb-3">
+          <label class="form-label" for="resident-document-type">Tipo de documento</label>
+          <select
+            id="resident-document-type"
+            class="form-select"
+            formControlName="documentType"
+            [class.is-invalid]="submitted() && form.hasError('documentIncomplete') && !form.controls.documentType.value"
+          >
+            <option [ngValue]="null">Sin documento</option>
+            @for (option of documentTypes; track option[0]) {
+              <option [ngValue]="option[0]">{{ option[1] }}</option>
+            }
+          </select>
+          <div class="invalid-feedback">Selecciona el tipo de documento.</div>
+        </div>
+        <div class="col-12 col-md-6 mb-3">
+          <label class="form-label" for="resident-document-number">Número de documento</label>
+          <input
+            id="resident-document-number"
+            type="text"
+            class="form-control"
+            [attr.maxlength]="documentNumberMaxLength"
+            formControlName="documentNumber"
+            [class.is-invalid]="
+              submitted() &&
+              (form.controls.documentNumber.invalid ||
+                (form.hasError('documentIncomplete') && !!form.controls.documentType.value))
+            "
+          />
+          <div class="invalid-feedback">
+            @if (form.controls.documentNumber.errors?.['maxlength']) {
+              Máximo {{ documentNumberMaxLength }} caracteres.
+            } @else {
+              Ingresa el número de documento.
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Additional contacts (ADR-0029 §3): contact data only, never a login. -->
+      <div class="mb-3" formArrayName="additionalEmails">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <span class="form-label mb-0">Correos adicionales</span>
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-primary"
+            [disabled]="form.controls.additionalEmails.length >= maxContacts"
+            (click)="addEmail()"
+          >
+            <tabler-icon name="plus" class="me-1" />
+            Agregar correo
+          </button>
+        </div>
+        @for (email of form.controls.additionalEmails.controls; track email; let i = $index) {
+          <div class="d-flex gap-2 mb-2">
+            <div class="flex-grow-1">
+              <input
+                type="email"
+                class="form-control"
+                aria-label="Correo adicional"
+                [formControlName]="i"
+                [class.is-invalid]="submitted() && email.invalid"
+              />
+              <div class="invalid-feedback">Ingresa un correo válido.</div>
+            </div>
+            <button
+              type="button"
+              class="btn btn-icon btn-ghost-danger"
+              aria-label="Quitar correo"
+              (click)="form.controls.additionalEmails.removeAt(i)"
+            >
+              <tabler-icon name="trash" />
+            </button>
+          </div>
+        } @empty {
+          <p class="text-secondary small mb-0">Sin correos adicionales.</p>
+        }
+      </div>
+
+      <div class="mb-3" formArrayName="additionalPhones">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <span class="form-label mb-0">Celulares adicionales</span>
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-primary"
+            [disabled]="form.controls.additionalPhones.length >= maxContacts"
+            (click)="addPhone()"
+          >
+            <tabler-icon name="plus" class="me-1" />
+            Agregar celular
+          </button>
+        </div>
+        @for (phone of form.controls.additionalPhones.controls; track phone; let i = $index) {
+          <div class="d-flex gap-2 mb-2" [formGroupName]="i">
+            <div class="input-group has-validation flex-grow-1">
+              <select
+                class="form-select w-auto flex-grow-0"
+                formControlName="dialCode"
+                aria-label="Indicativo del país"
+              >
+                @for (option of dialCodes; track option.code) {
+                  <option [value]="option.code">{{ option.label }}</option>
+                }
+              </select>
+              <input
+                type="tel"
+                inputmode="tel"
+                class="form-control"
+                placeholder="300 123 4567"
+                aria-label="Celular adicional"
+                formControlName="phone"
+                [class.is-invalid]="submitted() && phone.controls.phone.invalid"
+              />
+              <div class="invalid-feedback">Ingresa el número sin el indicativo, por ejemplo 3001234567.</div>
+            </div>
+            <button
+              type="button"
+              class="btn btn-icon btn-ghost-danger"
+              aria-label="Quitar celular"
+              (click)="form.controls.additionalPhones.removeAt(i)"
+            >
+              <tabler-icon name="trash" />
+            </button>
+          </div>
+        } @empty {
+          <p class="text-secondary small mb-0">Sin celulares adicionales.</p>
+        }
+      </div>
+
+      <p class="form-hint mb-0">
+        Los contactos adicionales son solo informativos: no sirven para iniciar sesión ni para
+        recuperar la contraseña. Máximo {{ maxContacts }} de cada uno. Los cambios se ven en todos los
+        conjuntos a los que pertenece la persona.
+      </p>
+    }
+  </div>
+
+  <div class="modal-footer">
+    <button
+      type="button"
+      class="btn btn-link link-secondary"
+      [disabled]="saving()"
+      (click)="activeModal.dismiss()"
+    >
+      Cancelar
+    </button>
+    <button type="submit" class="btn btn-primary" [disabled]="saving() || loading() || !user()">
+      @if (saving()) {
+        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+      }
+      Guardar
+    </button>
+  </div>
+</form>

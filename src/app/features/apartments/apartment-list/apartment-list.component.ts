@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  signal,
+  TemplateRef,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -9,6 +18,7 @@ import { TenantInfoService } from '../../../core/tenant/tenant-info.service';
 import {
   DataTableComponent,
   TableColumn,
+  TableSort,
 } from '../../../shared/ui/data-table/data-table.component';
 import { PageHeaderComponent } from '../../../shared/ui/page-header/page-header.component';
 import {
@@ -18,8 +28,10 @@ import {
 import {
   APARTMENT_STATUS_BADGE,
   APARTMENT_STATUS_LABEL,
-  APARTMENT_TYPE_LABEL,
   ApartmentDto,
+  ApartmentSort,
+  ApartmentSortBy,
+  DEFAULT_APARTMENT_SORT,
   formatMoney,
 } from '../data-access/apartment.models';
 import {
@@ -47,9 +59,20 @@ import { ResidentsLookupService } from '../data-access/residents-lookup.service'
     ReactiveFormsModule,
     TablerIconComponent,
     RouterLink,
+    NgTemplateOutlet,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './apartment-list.component.html',
+  styles: [
+    `
+      /* An annex cell stacks one value per line; with several, the smaller type
+         keeps the row from growing taller than its neighbours need. */
+      .annex-values-many {
+        font-size: 0.75rem;
+        line-height: 1.2;
+      }
+    `,
+  ],
 })
 export class ApartmentListComponent {
   private readonly service = inject(ApartmentsService);
@@ -80,10 +103,16 @@ export class ApartmentListComponent {
   readonly loading = this.service.loading;
   readonly error = this.service.error;
 
+  /** Header sort; the API's own default (tower, then number) until a header is clicked. */
+  readonly sort = signal<TableSort>(toTableSort(DEFAULT_APARTMENT_SORT));
+
   /** True while the export is in flight — disables the button against double clicks. */
   readonly exporting = signal(false);
 
-  /** Free text → `search`, which the API matches against the apartment NUMBER only. */
+  /**
+   * Free text → `search`, which the API matches against the apartment NUMBER
+   * and its annexes — plate, parking spot or storage unit (ADR-0029 §1).
+   */
   readonly searchControl = new FormControl('', { nonNullable: true });
   /** Holds the picked resident's userId → sent as `residentUserId`. */
   readonly residentControl = new FormControl<string | null>(null);
@@ -113,23 +142,62 @@ export class ApartmentListComponent {
       ),
     );
 
-  readonly columns: readonly TableColumn<ApartmentDto>[] = [
+  /** Annex cells: one value per line, "—" when there is none. */
+  private readonly plateCell = viewChild<TemplateRef<{ $implicit: ApartmentDto }>>('plateCell');
+  private readonly parkingCell = viewChild<TemplateRef<{ $implicit: ApartmentDto }>>('parkingCell');
+  private readonly storageCell = viewChild<TemplateRef<{ $implicit: ApartmentDto }>>('storageCell');
+
+  readonly columns = computed<readonly TableColumn<ApartmentDto>[]>(() => [
     {
       header: 'Torre',
       value: (a) => a.tower ?? '—',
+      sortKey: 'Tower' satisfies ApartmentSortBy,
       class: 'w-1 text-nowrap text-secondary',
     },
-    { header: 'Apartamento', value: (a) => a.number, class: 'fw-medium' },
-    { header: 'Tipo', value: (a) => APARTMENT_TYPE_LABEL[a.type] },
+    {
+      header: 'Apartamento',
+      value: (a) => a.number,
+      class: 'w-1 text-nowrap fw-medium',
+      sortKey: 'Number' satisfies ApartmentSortBy,
+    },
     {
       header: 'Estado',
       value: (a) => APARTMENT_STATUS_LABEL[a.status],
       badgeClass: (a) => APARTMENT_STATUS_BADGE[a.status],
+      class: 'w-1 text-nowrap',
+    },
+    // Annexes (ADR-0029): what the search box also matches. "—" = none registered.
+    // No fixed width: the three share the room the compact columns leave over.
+    {
+      header: 'Placa',
+      value: (a) => joinOrDash(a.annexes.vehicles.map((v) => v.plate)),
+      class: 'text-center',
+      cellTemplate: this.plateCell(),
+    },
+    {
+      header: 'Parqueadero',
+      value: (a) => joinOrDash(a.annexes.parkingSpots),
+      class: 'text-center',
+      cellTemplate: this.parkingCell(),
+    },
+    {
+      header: 'Depósito',
+      value: (a) => joinOrDash(a.annexes.storageUnits),
+      class: 'text-center',
+      cellTemplate: this.storageCell(),
     },
     // Two columns because the figures are independent (ADR-0025): a unit with a
     // balance may be exempted, a settled one may stay flagged. "—" = never loaded.
     {
+      header: 'Saldo actual',
+      sortKey: 'OverdueBalance' satisfies ApartmentSortBy,
+      value: (a) => (a.accountStatement ? formatMoney(a.accountStatement.overdueBalance) : '—'),
+      class: 'w-1 text-nowrap text-end',
+      hint: 'Según el último estado de cuenta cargado. Vacío si la unidad nunca tuvo uno.',
+    },
+    {
       header: 'En mora',
+      sortKey: 'IsOverdue' satisfies ApartmentSortBy,
       value: (a) => (a.accountStatement ? (a.accountStatement.isOverdue ? 'Sí' : 'No') : '—'),
       badgeClass: (a) =>
         a.accountStatement
@@ -139,13 +207,9 @@ export class ApartmentListComponent {
           : '',
       class: 'w-1 text-nowrap',
     },
-    {
-      header: 'Saldo en mora',
-      value: (a) => (a.accountStatement ? formatMoney(a.accountStatement.overdueBalance) : '—'),
-      class: 'w-1 text-nowrap text-end',
-      hint: 'Según el último estado de cuenta cargado. Vacío si la unidad nunca tuvo uno.',
-    },
-  ];
+  ]);
+
+  readonly plates = (a: ApartmentDto): string[] => a.annexes.vehicles.map((v) => v.plate);
 
   readonly rowKey = (a: ApartmentDto): string => a.id;
   readonly detailLink = (a: ApartmentDto): unknown[] => ['/apartments', a.id];
@@ -184,6 +248,12 @@ export class ApartmentListComponent {
     this.reload(page);
   }
 
+  /** A header sort click reorders from the first page; the filters stay as they are. */
+  onSortChange(sort: TableSort): void {
+    this.sort.set(sort);
+    this.reload(1);
+  }
+
   /**
    * Downloads every apartment matching the CURRENT filters (not just the page
    * on screen). A failure is already toasted by the error interceptor.
@@ -210,8 +280,25 @@ export class ApartmentListComponent {
       this.searchControl.value,
       this.residentControl.value,
       this.towerControl.value || null,
+      fromTableSort(this.sort()),
     );
   }
+}
+
+/** The API's sort as the table's header state (`Asc` → `asc`). */
+function toTableSort(sort: ApartmentSort): TableSort {
+  return { key: sort.sortBy, direction: sort.direction === 'Asc' ? 'asc' : 'desc' };
+}
+
+function fromTableSort(sort: TableSort): ApartmentSort {
+  return {
+    sortBy: sort.key as ApartmentSortBy,
+    direction: sort.direction === 'asc' ? 'Asc' : 'Desc',
+  };
+}
+
+function joinOrDash(values: string[]): string {
+  return values.length ? values.join(', ') : '—';
 }
 
 /**

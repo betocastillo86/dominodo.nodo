@@ -7,8 +7,11 @@
  * as strings.
  */
 
-/** `ApartmentType` (Tenants/Apartments/ApartmentType.cs). */
-export type ApartmentType = 'Apartment' | 'House' | 'Commercial' | 'Parking' | 'Storage';
+/**
+ * `ApartmentType` (Tenants/Apartments/ApartmentType.cs). Parking and storage are
+ * no longer units but annexes of an apartment (API ADR-0029 §2).
+ */
+export type ApartmentType = 'Apartment' | 'House' | 'Commercial';
 
 /** `ApartmentStatus` (Tenants/Apartments/ApartmentStatus.cs). */
 export type ApartmentStatus = 'Occupied' | 'Vacant';
@@ -37,7 +40,22 @@ export interface UpdateAccountStatementRequest {
   isOverdue: boolean;
 }
 
-/** List item returned by `GET /apartments` (`ApartmentDto`). */
+/**
+ * `sortBy` of `GET /apartments` (`ApartmentSortField`). `Tower` orders by tower
+ * then number, `Number` by number then tower; the two account-statement fields
+ * put units that never had a statement last, in either direction.
+ */
+export type ApartmentSortBy = 'Tower' | 'Number' | 'OverdueBalance' | 'IsOverdue';
+
+export interface ApartmentSort {
+  sortBy: ApartmentSortBy;
+  direction: 'Asc' | 'Desc';
+}
+
+/** What the API applies when no sort is sent. */
+export const DEFAULT_APARTMENT_SORT: ApartmentSort = { sortBy: 'Tower', direction: 'Asc' };
+
+/** List item returned by `GET /apartments` (`ApartmentListItemDto`). */
 export interface ApartmentDto {
   id: string;
   tenantId: string;
@@ -47,6 +65,8 @@ export interface ApartmentDto {
   status: ApartmentStatus;
   /** Null while the unit has never received one — not the same as a zeroed statement. */
   accountStatement: AccountStatementDto | null;
+  /** Never null: a unit that never got annexes reads as three empty lists. */
+  annexes: ApartmentAnnexesDto;
 }
 
 /** `GET /apartments/{id}` (`ApartmentDetailDto`). Residents are NOT inline. */
@@ -65,7 +85,38 @@ export interface ApartmentDetailDto {
   updatedBy: string | null;
   /** Null while the unit has never received one — not the same as a zeroed statement. */
   accountStatement: AccountStatementDto | null;
+  /** Never null: a unit that never got annexes reads as three empty lists. */
+  annexes: ApartmentAnnexesDto;
 }
+
+export interface ApartmentVehicleDto {
+  /** Normalized by the API: uppercase, no spaces or hyphens. */
+  plate: string;
+  model: string | null;
+}
+
+/**
+ * Vehicles, parking spots and storage units of an apartment (API ADR-0029 §1).
+ * Nothing is unique — the same plate or spot may repeat, even across units —
+ * and every value is also a search key of `GET /apartments?search=`.
+ */
+export interface ApartmentAnnexesDto {
+  vehicles: ApartmentVehicleDto[];
+  parkingSpots: string[];
+  storageUnits: string[];
+}
+
+/**
+ * Body of `PUT /apartments/{id}/annexes` (requires apartments.edit) → 204. A full
+ * replace: an empty list clears it, so the form always sends all three.
+ */
+export type UpdateApartmentAnnexesRequest = ApartmentAnnexesDto;
+
+/** Limits enforced by the API (`ApartmentAnnexes`). */
+export const ANNEX_MAX_ITEMS = 10;
+export const ANNEX_PLATE_MAX_LENGTH = 20;
+export const ANNEX_MODEL_MAX_LENGTH = 100;
+export const ANNEX_LABEL_MAX_LENGTH = 20;
 
 /** Nested profile on `ResidentDto`. Null when Users can't resolve the id. */
 export interface ResidentUserDto {
@@ -139,8 +190,6 @@ export const APARTMENT_TYPE_LABEL: Record<ApartmentType, string> = {
   Apartment: 'Apartamento',
   House: 'Casa',
   Commercial: 'Local comercial',
-  Parking: 'Parqueadero',
-  Storage: 'Depósito',
 };
 
 export const APARTMENT_STATUS_LABEL: Record<ApartmentStatus, string> = {

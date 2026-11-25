@@ -56,6 +56,8 @@ export const API_ERROR_MESSAGES: Record<string, ApiErrorMessage> = {
   'Phone.Invalid': 'El teléfono no tiene un formato válido (por ejemplo, +573001234567).',
   'Phone.Required': 'El teléfono es obligatorio.',
   'User.AlreadyActive': 'El usuario ya está activo.',
+  'User.DocumentIncomplete': 'El tipo y el número de documento van juntos: completa ambos o deja ambos vacíos.',
+  'User.DocumentNumberTooLong': (p) => tooLong('El número de documento', p),
   'User.EmailAlreadyRegistered': 'Ya existe un usuario con este correo electrónico.',
   'User.EmailTaken': 'Este correo electrónico ya pertenece a otro usuario.',
   'User.FirstNameRequired': 'El nombre es obligatorio.',
@@ -67,6 +69,8 @@ export const API_ERROR_MESSAGES: Record<string, ApiErrorMessage> = {
   'User.PasswordNotSet': 'La cuenta aún no tiene contraseña. Usa la opción de recuperar contraseña.',
   'User.PhoneAlreadyRegistered': 'Ya existe un usuario con este teléfono.',
   'User.PhoneAlreadyVerified': 'El teléfono ya está verificado.',
+  'User.TooManyAdditionalEmails': (p) => tooMany('correos adicionales', p),
+  'User.TooManyAdditionalPhones': (p) => tooMany('celulares adicionales', p),
 
   // ── Memberships, roles, invitations ────────────────────────────────────────
   'Invitation.AlreadyAccepted': 'Esta persona ya aceptó una invitación a este conjunto.',
@@ -116,18 +120,31 @@ export const API_ERROR_MESSAGES: Record<string, ApiErrorMessage> = {
   'TenantFile.UnknownPurpose': 'Este tipo de carga de archivo no está soportado.',
 
   // ── Apartments, residents, account statements ──────────────────────────────
-  'AccountStatement.BalanceNegative': 'El saldo en mora no puede ser negativo.',
+  'AccountStatement.BalanceNegative': 'El saldo actual no puede ser negativo.',
   'Apartment.AlreadyExists': 'Ya existe un apartamento con esa torre y ese número.',
+  'Apartment.AnnexSeparatorNotAllowed': 'Los anexos no pueden contener el carácter «|».',
   'Apartment.NotAMember': 'No eres miembro activo de este conjunto.',
   'Apartment.NotFound': 'El apartamento no existe.',
   'Apartment.NumberRequired': 'El número del apartamento es obligatorio.',
+  // Annex codes built by interpolation (`Apartment.{ParkingSpot|StorageUnit}…`) are invisible to
+  // `check:error-codes`; keep them in step with `ApartmentAnnexes.NormalizeLabels` by hand.
+  'Apartment.ParkingSpotRequired': 'Hay un parqueadero sin número.',
+  'Apartment.ParkingSpotTooLong': (p) => tooLong('Cada parqueadero', p),
+  'Apartment.StorageUnitRequired': 'Hay un depósito sin número.',
+  'Apartment.StorageUnitTooLong': (p) => tooLong('Cada depósito', p),
   'Apartment.TenantRequired': 'Falta el conjunto.',
+  'Apartment.TooManyParkingSpots': (p) => tooMany('parqueaderos', p),
+  'Apartment.TooManyStorageUnits': (p) => tooMany('depósitos', p),
+  'Apartment.TooManyVehicles': (p) => tooMany('vehículos', p),
   'Apartment.TowerNotAllowed': (p) => {
     const tower = /'([^']*)'/.exec(p.detail ?? '')?.[1];
     return tower
       ? `La torre «${tower}» no está registrada en el conjunto.`
       : 'La torre no está registrada en el conjunto.';
   },
+  'Apartment.VehicleModelTooLong': (p) => tooLong('El modelo del vehículo', p),
+  'Apartment.VehiclePlateRequired': 'Todos los vehículos necesitan placa.',
+  'Apartment.VehiclePlateTooLong': (p) => tooLong('La placa', p),
   'ApartmentResident.AlreadyAssigned': 'Esta persona ya es residente activo de este apartamento.',
   'ApartmentResident.AlreadyEnded': 'Esta residencia ya terminó.',
   'ApartmentResident.NotFound': 'La residencia no existe en este apartamento.',
@@ -445,6 +462,11 @@ function firstNumber(problem: ProblemDetails): number | null {
 function tooLong(subject: string, problem: ProblemDetails): string {
   const max = firstNumber(problem);
   return max ? `${subject}: máximo ${max} caracteres.` : `${subject}: el texto es demasiado largo.`;
+}
+
+function tooMany(items: string, problem: ProblemDetails): string {
+  const max = firstNumber(problem);
+  return max ? `Máximo ${max} ${items}.` : `Hay demasiados ${items}.`;
 }
 
 function formatMegabytes(bytes: number): string {

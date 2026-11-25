@@ -298,13 +298,15 @@ src/app/
     │                       #    permission codes) · announcement-list / -detail / -edit components
     ├── apartments/         # ✅ READ-ONLY apartments + resident management (permission: apartments.view;
                             #    no FeatureKey.Apartments exists server-side, so no feature gate)
-                            #    List filters: number (search), resident (typeahead → residentUserId)
+                            #    List filters: number OR annex — plate, parking spot, storage unit
+                            #    (search, ADR-0029), resident (typeahead → residentUserId)
                             #    and tower (exact `tower`, options from TenantInfoService). The tower
                             #    select hides when the conjunto declares none; towers sit behind
                             #    `tenant.info`, so a role without it just does not get that filter.
                             #    data-access/ (apartment.models, apartments.service signals,
                             #    residents-lookup.service, apartment-import.*, apartment.permissions)
-                            #    apartment-list / -detail components + apartment-import/ (bulk load
+                            #    apartment-list / -detail components, apartment-annexes-modal +
+                            #    resident-edit-modal (opened from the detail) + apartment-import/ (bulk load
                             #    wizard, apartments.create AND memberships.manage) +
                             #    account-statement-import/ (bulk account-statement wizard, see below)
     ├── reservations-admin/ # ✅ admin view of amenity bookings (permission: reservations.view;
@@ -558,8 +560,9 @@ those hours would have nowhere to land) and `[requireOpenDay]="false"` makes an 
 amenity-schedule.ts` converts between the envelope and the slot list; holidays are dropped there too,
 so a hand-crafted value can never smuggle them into the API.
 
-**Apartments — the two write paths.** Apartments themselves are never created, edited or deleted here;
-what the administrator manages is the resident list of `GET /apartments/{id}/residents`. Adding one
+**Apartments — the two write paths.** Apartments themselves are never created or deleted here, and their
+identity (tower, number, type) is never edited; what the administrator manages is the resident list of
+`GET /apartments/{id}/residents`, the account statement and the annexes (below). Adding a resident
 branches on whether the person already belongs to the conjunto, because the API models membership and
 residency as separate rows in different modules:
 
@@ -575,8 +578,23 @@ immediate refetch may not show the new resident yet. Removal disables the **resi
 as history — the membership is deliberately untouched; the API deactivates it on its own when warranted.
 
 The resident filter on the list resolves a phone to a `userId` through `GET /memberships?search=` before
-sending `residentUserId`, because `GET /apartments` has no phone filter and its `search` matches the
-apartment **number** only.
+sending `residentUserId`, because `GET /apartments` has no phone filter. Its `search` matches the
+apartment **number** or any **annex** — vehicle plate, parking spot or storage unit — partially and
+ignoring case, spaces and hyphens (API ADR-0029 §1). Every apartment typeahead built on it (PQRS,
+reservations, visits) inherits that, so a plate finds its apartment there too.
+
+**Apartments — annexes and resident profiles (API ADR-0029).** Parking spots and storage units are no
+longer units (`ApartmentType` lost `Parking` / `Storage`; the import rejects them with
+`ApartmentImport.TypeRetired`) but **annexes** of an apartment, next to its vehicles (plate + optional
+model). The detail shows them in an *Anexos* card; *Editar* (`apartments.edit`) opens
+`apartment-annexes-modal` → `PUT /apartments/{id}/annexes`, a **full replace** of the three lists (max 10
+each, repeats allowed, no `|`). From a resident's row, the pencil (`users.edit`) opens
+`resident-edit-modal`: it loads `GET /users/{id}` and saves `PUT /users/{id}` — name, email, document
+(type and number together or neither) and up to 5 additional emails / phones, which are contact data
+only (no login, no password recovery). Also a **full replace**, so the form sends back everything it
+loaded; `preferredLanguage` is not in `UserDto` and goes empty (= `es`). The login phone is read-only. A
+`User` is global, so the edit is visible from every conjunto the person belongs to, and with `X-Tenant`
+the API only reaches members of this one (anyone else → `404 User.NotFound`).
 
 **Apartments — the bulk import.** The one path that does create units is the CSV load
 (`features/apartments/apartment-import/`, API ADR-0012), reached from the list header and gated by
@@ -599,7 +617,7 @@ errors kill the load, row errors kill a row, warnings kill nothing but must stil
 
 The CSV itself is the one place where the platform speaks **Spanish**: columns are
 `torre,numero,tipo,telefono,nombre,apellido,correo,relacion,vive_aqui` and the values are
-`Apartamento|Casa|Local|Parqueadero|Depósito`, `Propietario|Arrendatario` and `si|no` — the API's
+`Apartamento|Casa|Local`, `Propietario|Arrendatario` and `si|no` — the API's
 `ApartmentImportVocabulary` translates them on the way in and everything past it stays English. Matching
 ignores case, accents and space/hyphen-for-underscore, and the original English names still load as
 aliases, so the downloadable template is the contract worth teaching, not the only one accepted.

@@ -40,7 +40,8 @@
           <input
             type="text"
             class="form-control"
-            placeholder="Buscar por número de apartamento…"
+            placeholder="Buscar por apartamento, placa, parqueadero o depósito…"
+            aria-label="Buscar por apartamento, placa, parqueadero o depósito"
             [formControl]="searchControl"
           />
         </div>
@@ -61,7 +62,7 @@
           class="btn w-100"
           [disabled]="exporting()"
           (click)="exportCsv()"
-          title="Descarga torre, apartamento, en mora y saldo en mora de los apartamentos filtrados"
+          title="Descarga torre, apartamento, saldo actual y en mora de los apartamentos filtrados"
         >
           @if (exporting()) {
             <span class="spinner-border spinner-border-sm me-2" role="status"></span>
@@ -75,14 +76,39 @@
   </div>
 
   <app-data-table
-    [columns]="columns"
+    [columns]="columns()"
     [rows]="items()"
     [paging]="paging()"
     [loading]="loading()"
     [error]="error()"
     [rowKey]="rowKey"
+    [sort]="sort()"
+    (sortChange)="onSortChange($event)"
     [actionLink]="detailLink"
     actionIcon="eye"
     (pageChange)="onPageChange($event)"
   />
 </div>
+
+<!-- Annex cells (ADR-0029). One value per line; several shrink to fit. -->
+<ng-template #plateCell let-a>
+  <ng-container *ngTemplateOutlet="annexValues; context: { $implicit: plates(a) }" />
+</ng-template>
+<ng-template #parkingCell let-a>
+  <ng-container *ngTemplateOutlet="annexValues; context: { $implicit: a.annexes.parkingSpots }" />
+</ng-template>
+<ng-template #storageCell let-a>
+  <ng-container *ngTemplateOutlet="annexValues; context: { $implicit: a.annexes.storageUnits }" />
+</ng-template>
+
+<ng-template #annexValues let-values>
+  @if (values.length === 0) {
+    <span class="text-secondary">—</span>
+  } @else {
+    <div [class.annex-values-many]="values.length > 1">
+      @for (value of values; track $index) {
+        <div>{{ value }}</div>
+      }
+    </div>
+  }
+</ng-template>

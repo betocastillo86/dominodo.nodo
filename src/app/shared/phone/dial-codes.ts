@@ -24,3 +24,17 @@ export function toE164(dialCode: string, phone: string): string {
   const digits = trimmed.replace(/\D/g, '');
   return trimmed.startsWith('+') ? `+${digits}` : `${dialCode}${digits}`;
 }
+
+/**
+ * The reverse of `toE164`, to prefill a prefix select + national input from a
+ * stored number. A prefix outside `DIAL_CODES` stays inside the national part,
+ * `+` included — `toE164` keeps such a number as-is, so the round trip holds.
+ */
+export function splitE164(phone: string): { dialCode: string; phone: string } {
+  const match = [...DIAL_CODES]
+    .sort((a, b) => b.code.length - a.code.length)
+    .find((option) => phone.startsWith(option.code));
+  return match
+    ? { dialCode: match.code, phone: phone.slice(match.code.length) }
+    : { dialCode: DEFAULT_DIAL_CODE, phone };
+}

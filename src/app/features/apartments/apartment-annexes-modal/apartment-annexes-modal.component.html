@@ -1,0 +1,169 @@
+<form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+  <div class="modal-header">
+    <h5 class="modal-title">Editar anexos</h5>
+    <button
+      type="button"
+      class="btn-close"
+      aria-label="Cerrar"
+      [disabled]="saving()"
+      (click)="activeModal.dismiss()"
+    ></button>
+  </div>
+
+  <div class="modal-body">
+    @if (error(); as message) {
+      <div class="alert alert-danger" role="alert">{{ message }}</div>
+    }
+
+    <p class="text-secondary small">
+      Se pueden repetir entre apartamentos y sirven para buscarlo desde el listado.
+      Máximo {{ maxItems }} por lista.
+    </p>
+
+    <!-- Vehicles: plate (required) + model (optional) -->
+    <div class="mb-4" formArrayName="vehicles">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <span class="form-label mb-0">Vehículos</span>
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-primary"
+          [disabled]="form.controls.vehicles.length >= maxItems"
+          (click)="addVehicle()"
+        >
+          <tabler-icon name="plus" class="me-1" />
+          Agregar vehículo
+        </button>
+      </div>
+      @for (vehicle of form.controls.vehicles.controls; track vehicle; let i = $index) {
+        <div class="row g-2 mb-2" [formGroupName]="i">
+          <div class="col-5">
+            <input
+              type="text"
+              class="form-control text-uppercase"
+              placeholder="Placa"
+              aria-label="Placa"
+              autocomplete="off"
+              formControlName="plate"
+              [class.is-invalid]="submitted() && vehicle.controls.plate.invalid"
+            />
+            <div class="invalid-feedback">
+              @if (vehicle.controls.plate.errors?.['maxlength']) {
+                Máximo {{ plateMaxLength }} caracteres.
+              } @else if (vehicle.controls.plate.errors?.['separator']) {
+                No puede contener «|».
+              } @else {
+                La placa es obligatoria.
+              }
+            </div>
+          </div>
+          <div class="col">
+            <input
+              type="text"
+              class="form-control"
+              placeholder="Modelo (opcional)"
+              aria-label="Modelo"
+              formControlName="model"
+              [class.is-invalid]="submitted() && vehicle.controls.model.invalid"
+            />
+            <div class="invalid-feedback">
+              @if (vehicle.controls.model.errors?.['maxlength']) {
+                Máximo {{ modelMaxLength }} caracteres.
+              } @else {
+                No puede contener «|».
+              }
+            </div>
+          </div>
+          <div class="col-auto">
+            <button
+              type="button"
+              class="btn btn-icon btn-ghost-danger"
+              aria-label="Quitar vehículo"
+              (click)="form.controls.vehicles.removeAt(i)"
+            >
+              <tabler-icon name="trash" />
+            </button>
+          </div>
+        </div>
+      } @empty {
+        <p class="text-secondary small mb-0">Sin vehículos.</p>
+      }
+    </div>
+
+    <!-- Parking spots and storage units: just the number -->
+    <div class="row">
+      @for (
+        annex of [
+          { name: 'parkingSpots', list: form.controls.parkingSpots, title: 'Parqueaderos', item: 'parqueadero' },
+          { name: 'storageUnits', list: form.controls.storageUnits, title: 'Depósitos', item: 'depósito' },
+        ];
+        track annex.name
+      ) {
+        <div class="col-12 col-md-6 mb-3" [formArrayName]="annex.name">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <span class="form-label mb-0">{{ annex.title }}</span>
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-primary"
+              [disabled]="annex.list.length >= maxItems"
+              (click)="addLabel(annex.list)"
+            >
+              <tabler-icon name="plus" class="me-1" />
+              Agregar
+            </button>
+          </div>
+          @for (label of annex.list.controls; track label; let i = $index) {
+            <div class="d-flex gap-2 mb-2">
+              <div class="flex-grow-1">
+                <input
+                  type="text"
+                  class="form-control"
+                  [placeholder]="'Número de ' + annex.item"
+                  [attr.aria-label]="'Número de ' + annex.item"
+                  autocomplete="off"
+                  [formControlName]="i"
+                  [class.is-invalid]="submitted() && label.invalid"
+                />
+                <div class="invalid-feedback">
+                  @if (label.errors?.['maxlength']) {
+                    Máximo {{ labelMaxLength }} caracteres.
+                  } @else if (label.errors?.['separator']) {
+                    No puede contener «|».
+                  } @else {
+                    El número es obligatorio.
+                  }
+                </div>
+              </div>
+              <button
+                type="button"
+                class="btn btn-icon btn-ghost-danger"
+                [attr.aria-label]="'Quitar ' + annex.item"
+                (click)="annex.list.removeAt(i)"
+              >
+                <tabler-icon name="trash" />
+              </button>
+            </div>
+          } @empty {
+            <p class="text-secondary small mb-0">Sin {{ annex.title.toLowerCase() }}.</p>
+          }
+        </div>
+      }
+    </div>
+  </div>
+
+  <div class="modal-footer">
+    <button
+      type="button"
+      class="btn btn-link link-secondary"
+      [disabled]="saving()"
+      (click)="activeModal.dismiss()"
+    >
+      Cancelar
+    </button>
+    <button type="submit" class="btn btn-primary" [disabled]="saving()">
+      @if (saving()) {
+        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+      }
+      Guardar
+    </button>
+  </div>
+</form>

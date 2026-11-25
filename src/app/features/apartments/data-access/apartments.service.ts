@@ -7,12 +7,14 @@ import { PagedResult } from '../../../core/models/paged-result';
 import {
   ApartmentDetailDto,
   ApartmentDto,
+  ApartmentSort,
   AssignResidentRequest,
   EndResidencyRequest,
   InviteResidentRequest,
   InviteResidentResponse,
   ResidentDto,
   UpdateAccountStatementRequest,
+  UpdateApartmentAnnexesRequest,
 } from './apartment.models';
 
 /**
@@ -22,7 +24,7 @@ import {
  *
  * Apartments themselves are READ-ONLY in this portal: the API exposes create /
  * update / status endpoints, but they are deliberately not surfaced here. Only
- * the resident links are mutable.
+ * the resident links, the account statement and the annexes are mutable.
  */
 @Injectable({ providedIn: 'root' })
 export class ApartmentsService {
@@ -43,8 +45,10 @@ export class ApartmentsService {
   /**
    * Load a page of apartments (`GET /apartments`, requires apartments.view).
    *
-   * `search` matches the apartment NUMBER only (server-side `Number.Contains`)
-   * — it does not touch the tower or any resident field. `tower` is an exact
+   * `search` matches the apartment NUMBER or any of its annexes — a vehicle
+   * plate, parking spot or storage unit (API ADR-0029 §1), partially and
+   * ignoring case, spaces and hyphens. It does not touch the tower or any
+   * resident field. `tower` is an exact
    * match against one of the conjunto's declared towers. Filtering by a
    * resident is done with `residentUserId`, which only matches ACTIVE
    * residencies; the caller resolves a phone → userId beforehand (see
@@ -56,11 +60,16 @@ export class ApartmentsService {
     search: string,
     residentUserId: string | null,
     tower: string | null,
+    sort: ApartmentSort,
   ): void {
     this._loading.set(true);
     this._error.set(null);
 
-    let params = new HttpParams().set('page', page).set('pageSize', pageSize);
+    let params = new HttpParams()
+      .set('page', page)
+      .set('pageSize', pageSize)
+      .set('sortBy', sort.sortBy)
+      .set('direction', sort.direction);
     if (search.trim()) params = params.set('search', search.trim());
     if (residentUserId) params = params.set('residentUserId', residentUserId);
     if (tower) params = params.set('tower', tower);
@@ -160,5 +169,14 @@ export class ApartmentsService {
     body: UpdateAccountStatementRequest,
   ): Observable<void> {
     return this.http.put<void>(`${this.base}/${apartmentId}/account-statement`, body);
+  }
+
+  /**
+   * Replace the unit's vehicles, parking spots and storage units
+   * (`PUT /apartments/{id}/annexes`, requires apartments.edit) → 204. A full
+   * replace, so the three lists are always sent; an empty one clears it.
+   */
+  updateAnnexes(apartmentId: string, body: UpdateApartmentAnnexesRequest): Observable<void> {
+    return this.http.put<void>(`${this.base}/${apartmentId}/annexes`, body);
   }
 }

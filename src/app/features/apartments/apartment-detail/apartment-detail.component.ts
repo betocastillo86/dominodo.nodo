@@ -41,10 +41,12 @@ import {
   STATUS_LABEL,
   TYPE_LABEL,
 } from '../../requests/data-access/request.models';
+import { ApartmentAnnexesModalComponent } from '../apartment-annexes-modal/apartment-annexes-modal.component';
 import { ApartmentRequestsService } from '../data-access/apartment-requests.service';
 import { ApartmentsService } from '../data-access/apartments.service';
 import { ResidentsLookupService } from '../data-access/residents-lookup.service';
 import { DEFAULT_DIAL_CODE, DIAL_CODES, toE164 } from '../../../shared/phone/dial-codes';
+import { ResidentEditModalComponent } from '../resident-edit-modal/resident-edit-modal.component';
 
 /**
  * The national part of a phone number, as typed: digits with optional spacing,
@@ -61,9 +63,12 @@ const PHONE_INPUT = /^\+?[\d\s-]{6,20}$/;
 const RESIDENT_LINK_POLL_DELAYS_MS = [0, 1000, 2000, 3000];
 
 /**
- * Apartment detail. The apartment itself is read-only; what the administrator
- * manages here is its residents and its account statement (a one-off manual
- * correction — the monthly figures arrive through the bulk load).
+ * Apartment detail. The apartment's identity (tower, number, type) is
+ * read-only; what the administrator manages here is its residents, its
+ * account statement (a one-off manual correction — the monthly figures arrive
+ * through the bulk load) and its annexes: vehicles, parking spots and storage
+ * units (API ADR-0029). A resident's own profile — document and additional
+ * contacts included — is edited from their row, with users.edit.
  *
  * Adding a resident takes one of two API paths, chosen by whether the person
  * already belongs to the conjunto:
@@ -156,6 +161,8 @@ export class ApartmentDetailComponent {
   /** Same permission the API demands for `PUT /apartments/{id}/account-statement`. */
   readonly canEditStatement = computed(() => this.permissions.has('apartments.edit'));
   readonly canAddResident = computed(() => this.canEdit() || this.canInvite());
+  /** `PUT /users/{id}`; the API also requires the person to be a member of this conjunto. */
+  readonly canEditResidentProfile = computed(() => this.permissions.has('users.edit'));
   /** The apartment's PQRS card is only fetched (and shown) with requests.view. */
   readonly canViewRequests = computed(() => this.permissions.has('requests.view'));
 
@@ -322,6 +329,38 @@ export class ApartmentDetailComponent {
   }
 
   readonly formatMoney = formatMoney;
+
+  // ── Annexes (ADR-0029) ─────────────────────────────────────────────────────
+
+  openAnnexes(): void {
+    const apartment = this.apartment();
+    if (!apartment) return;
+
+    const ref = this.modal.open(ApartmentAnnexesModalComponent, { size: 'lg' });
+    (ref.componentInstance as ApartmentAnnexesModalComponent).init(this.id, apartment.annexes);
+    ref.result.then(
+      () => {
+        this.notifications.success('Anexos actualizados.');
+        this.refreshApartment();
+      },
+      () => undefined,
+    );
+  }
+
+  // ── Resident profile ───────────────────────────────────────────────────────
+
+  openResidentProfile(resident: ResidentDto): void {
+    const ref = this.modal.open(ResidentEditModalComponent, { size: 'lg' });
+    (ref.componentInstance as ResidentEditModalComponent).init(resident.userId);
+    ref.result.then(
+      () => {
+        this.notifications.success(`Datos de ${this.residentName(resident)} actualizados.`);
+        // The residents list carries the name, which may just have changed.
+        this.fetchResidents();
+      },
+      () => undefined,
+    );
+  }
 
   // ── End residency (double confirmation) ────────────────────────────────────
 

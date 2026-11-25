@@ -150,7 +150,7 @@ export const IMPORT_COLUMNS: readonly ImportColumnHelp[] = [
   {
     name: 'tipo',
     required: 'No',
-    rule: 'Apartamento, Casa, Local, Parqueadero o Depósito. Vacío = Apartamento.',
+    rule: 'Apartamento, Casa o Local. Vacío = Apartamento. Parqueaderos y depósitos no son unidades: se registran en el detalle del apartamento.',
   },
   {
     name: 'telefono',
@@ -209,7 +209,9 @@ const ISSUE_TEXT: Record<string, string> = {
   'ApartmentImport.TowerNotAllowed':
     'La torre no está entre las que declara el conjunto. Revisa la lista en Mi Conjunto → Configuración.',
   'ApartmentImport.TypeInvalid':
-    'Tipo de unidad no reconocido. Usa Apartamento, Casa, Local, Parqueadero o Depósito.',
+    'Tipo de unidad no reconocido. Usa Apartamento, Casa o Local.',
+  'ApartmentImport.TypeRetired':
+    'Parqueadero y Depósito ya no son tipos de unidad. Regístralos como anexos en el detalle del apartamento.',
   'ApartmentImport.LivesHereInvalid': 'El valor de vive_aqui no es válido. Usa si o no.',
   'ApartmentImport.RowNotValidated': 'No se pudo validar la fila.',
   'ApartmentImport.RelationInvalid': 'La relación debe ser Propietario o Arrendatario.',
