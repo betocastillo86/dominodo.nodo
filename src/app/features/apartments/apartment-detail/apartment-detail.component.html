@@ -36,6 +36,33 @@
         </div>
       </div>
 
+      <!-- Administration fee: unit configuration, not morosidad. Null = not configured, 0 = exempt. -->
+      <div class="card mt-3">
+        <div class="card-header">
+          <h3 class="card-title">Administración</h3>
+          @if (canEdit()) {
+            <div class="card-actions">
+              <button type="button" class="btn btn-sm" (click)="openFee(feeTpl)">
+                <tabler-icon name="edit" class="me-1" />
+                Editar
+              </button>
+            </div>
+          }
+        </div>
+        <div class="card-body">
+          @if (apt.administrationFee !== null) {
+            <dl class="row mb-0">
+              <dt class="col-5 text-secondary">Valor mensual</dt>
+              <dd class="col-7 fw-medium mb-0">{{ formatMoney(apt.administrationFee) }}</dd>
+            </dl>
+          } @else {
+            <p class="text-secondary mb-0">
+              Este apartamento no tiene valor de administración configurado.
+            </p>
+          }
+        </div>
+      </div>
+
       <!-- Annexes (ADR-0029): vehicles, parking spots, storage units — also search keys. -->
       <div class="card mt-3">
         <div class="card-header">
@@ -495,6 +522,51 @@
 </ng-template>
 
 <!-- Account statement ---------------------------------------------------------->
+<ng-template #feeTpl let-modal>
+  <form [formGroup]="feeForm" (ngSubmit)="submitFee()" novalidate>
+    <div class="modal-header">
+      <h5 class="modal-title">Valor de administración</h5>
+      <button type="button" class="btn-close" aria-label="Cerrar" (click)="modal.dismiss()"></button>
+    </div>
+    <div class="modal-body">
+      @if (feeError(); as message) {
+        <div class="alert alert-danger" role="alert">{{ message }}</div>
+      }
+
+      <label class="form-label" for="administration-fee">Valor mensual</label>
+      <div class="input-group">
+        <span class="input-group-text">$</span>
+        <input
+          id="administration-fee"
+          type="number"
+          min="0"
+          step="any"
+          inputmode="decimal"
+          class="form-control"
+          formControlName="administrationFee"
+          [class.is-invalid]="feeSubmitted() && feeForm.controls.administrationFee.invalid"
+        />
+        <div class="invalid-feedback">Indica un valor igual o mayor a cero.</div>
+      </div>
+
+      <p class="form-hint mt-3 mb-0">
+        Déjalo vacío si el apartamento no tiene un valor configurado. Un valor de 0 significa que
+        está exento. También se puede cargar en la carga masiva con la columna
+        <code>valor_administracion</code>.
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-link link-secondary" (click)="modal.dismiss()">Cancelar</button>
+      <button type="submit" class="btn btn-primary" [disabled]="saving()">
+        @if (saving()) {
+          <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        }
+        Guardar
+      </button>
+    </div>
+  </form>
+</ng-template>
+
 <ng-template #statementTpl let-modal>
   <form [formGroup]="statementForm" (ngSubmit)="submitStatement()" novalidate>
     <div class="modal-header">

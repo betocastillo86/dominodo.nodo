@@ -67,6 +67,8 @@ export interface ApartmentDto {
   accountStatement: AccountStatementDto | null;
   /** Never null: a unit that never got annexes reads as three empty lists. */
   annexes: ApartmentAnnexesDto;
+  /** Monthly administration fee. Null = not configured, which is not the same as 0 (an exempt unit). */
+  administrationFee: number | null;
 }
 
 /** `GET /apartments/{id}` (`ApartmentDetailDto`). Residents are NOT inline. */
@@ -87,6 +89,24 @@ export interface ApartmentDetailDto {
   accountStatement: AccountStatementDto | null;
   /** Never null: a unit that never got annexes reads as three empty lists. */
   annexes: ApartmentAnnexesDto;
+  /** Monthly administration fee. Null = not configured, which is not the same as 0 (an exempt unit). */
+  administrationFee: number | null;
+}
+
+/**
+ * Body of `PUT /apartments/{id}` (requires apartments.edit) → 204. A FULL
+ * replace: an omitted or null `attributes` / `administrationFee` is cleared, so
+ * whoever changes one field echoes every other one as it was. The tower is only
+ * checked against the conjunto's list when it changes, so echoing a legacy one
+ * is safe.
+ */
+export interface UpdateApartmentRequest {
+  number: string;
+  type: ApartmentType;
+  tower: string | null;
+  attributes: string | null;
+  /** >= 0; the server rounds to 2 decimals. Null clears it. */
+  administrationFee: number | null;
 }
 
 export interface ApartmentVehicleDto {

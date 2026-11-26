@@ -65,9 +65,9 @@ const RESIDENT_LINK_POLL_DELAYS_MS = [0, 1000, 2000, 3000];
 /**
  * Apartment detail. The apartment's identity (tower, number, type) is
  * read-only; what the administrator manages here is its residents, its
- * account statement (a one-off manual correction — the monthly figures arrive
- * through the bulk load) and its annexes: vehicles, parking spots and storage
- * units (API ADR-0029). A resident's own profile — document and additional
+ * monthly administration fee, its account statement (a one-off manual
+ * correction — the monthly figures arrive through the bulk load) and its
+ * annexes: vehicles, parking spots and storage units (API ADR-0029). A resident's own profile — document and additional
  * contacts included — is edited from their row, with users.edit.
  *
  * Adding a resident takes one of two API paths, chosen by whether the person
@@ -144,6 +144,17 @@ export class ApartmentDetailComponent {
   readonly statementSubmitted = signal(false);
   readonly statementError = signal<string | null>(null);
   private statementModal: NgbModalRef | null = null;
+
+  /**
+   * The administration-fee dialog. Empty means "not configured" (null), which
+   * is not the same as 0 — an exempt unit — so the field is not required.
+   */
+  readonly feeForm = new FormGroup({
+    administrationFee: new FormControl<number | null>(null, [Validators.min(0)]),
+  });
+  readonly feeSubmitted = signal(false);
+  readonly feeError = signal<string | null>(null);
+  private feeModal: NgbModalRef | null = null;
 
   /** The residency the end-residency confirmation is currently about. */
   readonly targetResident = signal<ResidentDto | null>(null);
@@ -329,6 +340,52 @@ export class ApartmentDetailComponent {
   }
 
   readonly formatMoney = formatMoney;
+
+  // ── Administration fee ─────────────────────────────────────────────────────
+
+  openFee(tpl: TemplateRef<unknown>): void {
+    this.feeForm.reset({ administrationFee: this.apartment()?.administrationFee ?? null });
+    this.feeSubmitted.set(false);
+    this.feeError.set(null);
+    this.feeModal = this.modal.open(tpl);
+    this.feeModal.result.then(
+      () => (this.feeModal = null),
+      () => (this.feeModal = null),
+    );
+  }
+
+  /**
+   * `PUT /apartments/{id}` is a full replace, so the identity and attributes go
+   * back exactly as the detail read them; only the fee changes.
+   */
+  submitFee(): void {
+    this.feeSubmitted.set(true);
+    this.feeError.set(null);
+    const apartment = this.apartment();
+    if (!apartment || this.feeForm.invalid) return;
+
+    this.saving.set(true);
+    this.service
+      .update(this.id, {
+        number: apartment.number,
+        type: apartment.type,
+        tower: apartment.tower,
+        attributes: apartment.attributes,
+        administrationFee: this.feeForm.controls.administrationFee.value,
+      })
+      .subscribe({
+        next: () => {
+          this.saving.set(false);
+          this.feeModal?.close();
+          this.notifications.success('Valor de administración actualizado.');
+          this.refreshApartment();
+        },
+        error: (error: HttpErrorResponse) => {
+          this.saving.set(false);
+          this.feeError.set(toMessage(error));
+        },
+      });
+  }
 
   // ── Annexes (ADR-0029) ─────────────────────────────────────────────────────
 

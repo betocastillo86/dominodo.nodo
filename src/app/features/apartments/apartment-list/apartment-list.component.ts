@@ -118,6 +118,12 @@ export class ApartmentListComponent {
   readonly residentControl = new FormControl<string | null>(null);
   /** Exact tower name → sent as `tower`. Empty string means "every tower". */
   readonly towerControl = new FormControl('', { nonNullable: true });
+  /**
+   * → sent as `isOverdue`. "No" also keeps the units that never received an
+   * account statement: for the filter, no statement reads as not in arrears.
+   * Empty string means "every unit".
+   */
+  readonly overdueControl = new FormControl<'' | 'true' | 'false'>('', { nonNullable: true });
 
   /**
    * The towers the conjunto declared, from `GET /tenants/info`. Empty when the
@@ -186,6 +192,13 @@ export class ApartmentListComponent {
       class: 'text-center',
       cellTemplate: this.storageCell(),
     },
+    // The fee is unit configuration, not morosidad: null = not configured, 0 = exempt.
+    {
+      header: 'Administración',
+      value: (a) => (a.administrationFee !== null ? formatMoney(a.administrationFee) : '—'),
+      class: 'w-1 text-nowrap text-end',
+      hint: 'Valor mensual de la administración. Vacío si no se ha configurado.',
+    },
     // Two columns because the figures are independent (ADR-0025): a unit with a
     // balance may be exempted, a settled one may stay flagged. "—" = never loaded.
     {
@@ -229,6 +242,10 @@ export class ApartmentListComponent {
       .pipe(distinctUntilChanged(), takeUntilDestroyed())
       .subscribe(() => this.reload(1));
 
+    this.overdueControl.valueChanges
+      .pipe(distinctUntilChanged(), takeUntilDestroyed())
+      .subscribe(() => this.reload(1));
+
     // The towers live behind `tenant.info`, which an apartments-only role may
     // not hold. Asking anyway would 403 on every visit, so the filter simply
     // does not exist for them. Permissive while the snapshot is still loading,
@@ -261,7 +278,12 @@ export class ApartmentListComponent {
   exportCsv(): void {
     this.exporting.set(true);
     this.service
-      .export(this.searchControl.value, this.residentControl.value, this.towerControl.value || null)
+      .export(
+        this.searchControl.value,
+        this.residentControl.value,
+        this.towerControl.value || null,
+        this.isOverdue(),
+      )
       .subscribe({
         next: (response) => {
           this.exporting.set(false);
@@ -280,8 +302,14 @@ export class ApartmentListComponent {
       this.searchControl.value,
       this.residentControl.value,
       this.towerControl.value || null,
+      this.isOverdue(),
       fromTableSort(this.sort()),
     );
+  }
+
+  private isOverdue(): boolean | null {
+    const value = this.overdueControl.value;
+    return value === '' ? null : value === 'true';
   }
 }
 

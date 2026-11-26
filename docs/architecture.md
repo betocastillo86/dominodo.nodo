@@ -562,7 +562,8 @@ so a hand-crafted value can never smuggle them into the API.
 
 **Apartments — the two write paths.** Apartments themselves are never created or deleted here, and their
 identity (tower, number, type) is never edited; what the administrator manages is the resident list of
-`GET /apartments/{id}/residents`, the account statement and the annexes (below). Adding a resident
+`GET /apartments/{id}/residents`, the administration fee, the account statement and the annexes (below).
+Adding a resident
 branches on whether the person already belongs to the conjunto, because the API models membership and
 residency as separate rows in different modules:
 
@@ -595,6 +596,16 @@ only (no login, no password recovery). Also a **full replace**, so the form send
 loaded; `preferredLanguage` is not in `UserDto` and goes empty (= `es`). The login phone is read-only. A
 `User` is global, so the edit is visible from every conjunto the person belongs to, and with `X-Tenant`
 the API only reaches members of this one (anyone else → `404 User.NotFound`).
+
+**Apartments — administration fee and overdue filter (API ADR-0025/0030, 2026-11-25 amendments).**
+`administrationFee` (list + detail) is the unit's monthly fee: `null` = not configured, `0` = exempt, so
+the list shows `—` only for `null`. The detail's *Administración* card (`apartments.edit`) saves it with
+`PUT /apartments/{id}`, a **full replace** of number/type/tower/attributes/fee — the identity and
+attributes are echoed from the detail unchanged (the tower allowlist is only checked when the tower moves,
+so a legacy tower is safe), and an empty field sends `null`. The bulk import also accepts it in the
+optional unit-level column `valor_administracion` (es-CO amount; blank = leave the stored fee alone). The
+list's *Mora* filter sends `isOverdue` to both `GET /apartments` and `/export`: `true` = flagged in
+arrears, `false` = **everything else, including units that never got an account statement**.
 
 **Apartments — the bulk import.** The one path that does create units is the CSV load
 (`features/apartments/apartment-import/`, API ADR-0012), reached from the list header and gated by

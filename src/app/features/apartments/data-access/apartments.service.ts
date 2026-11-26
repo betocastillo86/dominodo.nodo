@@ -15,6 +15,7 @@ import {
   ResidentDto,
   UpdateAccountStatementRequest,
   UpdateApartmentAnnexesRequest,
+  UpdateApartmentRequest,
 } from './apartment.models';
 
 /**
@@ -22,9 +23,11 @@ import {
  * writes return Observables the component manages. X-Tenant is attached
  * globally by tenantInterceptor — no per-call handling.
  *
- * Apartments themselves are READ-ONLY in this portal: the API exposes create /
- * update / status endpoints, but they are deliberately not surfaced here. Only
- * the resident links, the account statement and the annexes are mutable.
+ * An apartment's identity (tower, number, type) is READ-ONLY in this portal:
+ * the API exposes create / update / status endpoints, but only `update` is
+ * surfaced, and only to set the administration fee — the identity travels back
+ * unchanged. Otherwise only the resident links, the account statement and the
+ * annexes are mutable.
  */
 @Injectable({ providedIn: 'root' })
 export class ApartmentsService {
@@ -53,6 +56,10 @@ export class ApartmentsService {
    * resident is done with `residentUserId`, which only matches ACTIVE
    * residencies; the caller resolves a phone → userId beforehand (see
    * `ResidentsLookupService`), because the API has no phone filter.
+   *
+   * `isOverdue` = true keeps only units flagged in arrears; false keeps EVERY
+   * other unit, those that never received an account statement included
+   * (API ADR-0025, 2026-11-25 amendment). Null sends nothing.
    */
   list(
     page: number,
@@ -60,6 +67,7 @@ export class ApartmentsService {
     search: string,
     residentUserId: string | null,
     tower: string | null,
+    isOverdue: boolean | null,
     sort: ApartmentSort,
   ): void {
     this._loading.set(true);
@@ -73,6 +81,7 @@ export class ApartmentsService {
     if (search.trim()) params = params.set('search', search.trim());
     if (residentUserId) params = params.set('residentUserId', residentUserId);
     if (tower) params = params.set('tower', tower);
+    if (isOverdue !== null) params = params.set('isOverdue', isOverdue);
 
     this.http.get<PagedResult<ApartmentDto>>(this.base, { params }).subscribe({
       next: (result) => {
@@ -100,11 +109,13 @@ export class ApartmentsService {
     search: string,
     residentUserId: string | null,
     tower: string | null,
+    isOverdue: boolean | null,
   ): Observable<HttpResponse<Blob>> {
     let params = new HttpParams();
     if (search.trim()) params = params.set('search', search.trim());
     if (residentUserId) params = params.set('residentUserId', residentUserId);
     if (tower) params = params.set('tower', tower);
+    if (isOverdue !== null) params = params.set('isOverdue', isOverdue);
 
     return this.http.get(`${this.base}/export`, {
       params,
@@ -116,6 +127,15 @@ export class ApartmentsService {
   /** One apartment (`GET /apartments/{id}`). Residents come from `listResidents`. */
   getById(id: string): Observable<ApartmentDetailDto> {
     return this.http.get<ApartmentDetailDto>(`${this.base}/${id}`);
+  }
+
+  /**
+   * Replace the apartment (`PUT /apartments/{id}`, requires apartments.edit) →
+   * 204. A full replace — see `UpdateApartmentRequest` — used here only to set
+   * the administration fee, with the rest echoed from the detail.
+   */
+  update(id: string, body: UpdateApartmentRequest): Observable<void> {
+    return this.http.put<void>(`${this.base}/${id}`, body);
   }
 
   /**

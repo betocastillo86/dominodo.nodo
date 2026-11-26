@@ -44,6 +44,7 @@ const FIELD_LABELS: Record<string, string> = {
   additionalphones: 'Celulares adicionales',
   additionalservices: 'Servicios adicionales',
   address: 'Dirección',
+  administrationfee: 'Valor de administración',
   administratorname: 'Nombre del administrador',
   amenityid: 'Área social',
   amountpaid: 'Valor pagado',

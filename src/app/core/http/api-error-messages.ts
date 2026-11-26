@@ -58,6 +58,7 @@ export const API_ERROR_MESSAGES: Record<string, ApiErrorMessage> = {
   'User.AlreadyActive': 'El usuario ya está activo.',
   'User.DocumentIncomplete': 'El tipo y el número de documento van juntos: completa ambos o deja ambos vacíos.',
   'User.DocumentNumberTooLong': (p) => tooLong('El número de documento', p),
+  'User.DocumentTypeInvalid': 'Tipo de documento no reconocido. Usa CC, CE, NIT o Pasaporte.',
   'User.EmailAlreadyRegistered': 'Ya existe un usuario con este correo electrónico.',
   'User.EmailTaken': 'Este correo electrónico ya pertenece a otro usuario.',
   'User.FirstNameRequired': 'El nombre es obligatorio.',
@@ -121,6 +122,7 @@ export const API_ERROR_MESSAGES: Record<string, ApiErrorMessage> = {
 
   // ── Apartments, residents, account statements ──────────────────────────────
   'AccountStatement.BalanceNegative': 'El saldo actual no puede ser negativo.',
+  'Apartment.AdministrationFeeNegative': 'El valor de administración no puede ser negativo.',
   'Apartment.AlreadyExists': 'Ya existe un apartamento con esa torre y ese número.',
   'Apartment.AnnexSeparatorNotAllowed': 'Los anexos no pueden contener el carácter «|».',
   'Apartment.NotAMember': 'No eres miembro activo de este conjunto.',
@@ -159,6 +161,8 @@ export const API_ERROR_MESSAGES: Record<string, ApiErrorMessage> = {
   'ApartmentImport.HeaderInvalid':
     'La primera fila del archivo debe ser el encabezado con las columnas obligatorias.',
   'ApartmentImport.PhoneRequired': 'Cada fila de residente necesita un teléfono.',
+  'ApartmentImport.VehicleInvalid':
+    'Un vehículo no tiene el formato esperado. Usa PLACA o PLACA (Modelo), separados por /.',
   ...importMessages('AccountStatementImport'),
   'AccountStatementImport.FileEmpty': 'El archivo está vacío.',
   'AccountStatementImport.HeaderInvalid':
