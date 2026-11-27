@@ -132,7 +132,7 @@ export const ACCOUNT_STATEMENT_COLUMNS: readonly AccountStatementColumnHelp[] = 
   {
     name: 'saldo_en_mora',
     required: 'Sí',
-    rule: 'Saldo adeudado, cero o mayor. Se leen los formatos de Excel en Colombia: 450.000,50 o 450000.',
+    rule: 'Saldo adeudado; un valor negativo es un saldo a favor. Se leen los formatos de Excel en Colombia: 450.000,50 o 450000.',
   },
 ];
 

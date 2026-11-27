@@ -585,14 +585,13 @@
           <input
             id="statement-balance"
             type="number"
-            min="0"
             step="any"
             inputmode="decimal"
             class="form-control"
             formControlName="overdueBalance"
             [class.is-invalid]="statementSubmitted() && statementForm.controls.overdueBalance.invalid"
           />
-          <div class="invalid-feedback">Indica un saldo igual o mayor a cero.</div>
+          <div class="invalid-feedback">Indica el saldo actual.</div>
         </div>
       </div>
 
@@ -603,7 +602,8 @@
 
       <p class="form-hint mt-3 mb-0">
         Son datos independientes: una unidad con saldo puede no estar en mora (por ejemplo, con
-        acuerdo de pago) y una al día puede seguir marcada. Esto reemplaza el estado de cuenta actual.
+        acuerdo de pago) y una al día puede seguir marcada. Un saldo negativo es un saldo a favor. Esto
+        reemplaza el estado de cuenta actual.
       </p>
     </div>
     <div class="modal-footer">

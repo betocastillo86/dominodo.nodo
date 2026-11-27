@@ -135,10 +135,11 @@ export class ApartmentDetailComponent {
   /**
    * The account-statement dialog. The two fields are independent on purpose
    * (ADR-0025 §2): `isOverdue` is a separate decision, never derived from the
-   * balance, so the form carries both and sends both.
+   * balance, so the form carries both and sends both. The balance has no floor:
+   * a negative one is a credit (saldo a favor).
    */
   readonly statementForm = new FormGroup({
-    overdueBalance: new FormControl<number | null>(null, [Validators.required, Validators.min(0)]),
+    overdueBalance: new FormControl<number | null>(null, Validators.required),
     isOverdue: new FormControl(false, { nonNullable: true }),
   });
   readonly statementSubmitted = signal(false);

@@ -663,7 +663,7 @@ It is set two ways:
 
 The CSV is Spanish again: `torre` (optional) + `apto` (the unit is that pair — the old combined
 `apartamento` column, `A-101`, fails at the header with `HeaderLegacyApartment`), `en_mora`
-(`si|no`, **required** — an empty cell is a row error, never a "no"), `saldo_en_mora`. Amounts are read
+(`si|no`, **required** — an empty cell is a row error, never a "no"), `saldo_en_mora` (any sign — a negative balance is a credit, API ADR-0025 amendment). Amounts are read
 with Colombian separators (`450.000,50`). The list's **"Descargar reporte"** (`GET /apartments/export`,
 `apartments.view`, the list's current filters, unpaged) returns exactly this header in the `;` es-CO
 dialect, so a downloaded report is a pre-filled file to edit and re-upload; the static template matches it. Gating: the three load endpoints need only `apartments.edit`, but the CSV goes
