@@ -45,6 +45,7 @@ const NO_HOLDER = 'none';
 /** Codes that mean the slot picked no longer holds: reload the day and pick again. */
 const STALE_SLOT_CODES = [
   'Reservation.SlotTaken',
+  'Reservation.SlotBlocked',
   'Reservation.DayAlreadyBooked',
   'Reservation.StartInPast',
   'Reservation.WindowInvalid',

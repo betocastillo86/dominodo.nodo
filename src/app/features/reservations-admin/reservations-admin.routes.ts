@@ -17,6 +17,16 @@ export const reservationsAdminRoutes: Routes = [
         (m) => m.ReservationAdminCreateComponent,
       ),
   },
+  // Before `:id`, which would otherwise swallow the literal segment. Listing blocks is
+  // `amenities.view` on the API (ADR-0031 §5), not a reservations permission.
+  {
+    path: 'blocks',
+    canActivate: [permissionGuard('amenities.view')],
+    loadComponent: () =>
+      import('./amenity-block-list/amenity-block-list.component').then(
+        (m) => m.AmenityBlockListComponent,
+      ),
+  },
   {
     path: ':id',
     loadComponent: () =>

@@ -1,0 +1,172 @@
+<form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+  <div class="modal-header">
+    <h5 class="modal-title">{{ block() ? 'Editar bloqueo' : 'Bloquear área' }}</h5>
+    <button
+      type="button"
+      class="btn-close"
+      aria-label="Cerrar"
+      [disabled]="saving()"
+      (click)="activeModal.dismiss()"
+    ></button>
+  </div>
+
+  <div class="modal-body">
+    @if (error(); as message) {
+      <div class="alert alert-danger" role="alert">{{ message }}</div>
+    }
+
+    <div class="mb-3">
+      <label class="form-label required" for="block-area">Área social</label>
+      <select
+        id="block-area"
+        class="form-select"
+        formControlName="amenityId"
+        [class.is-invalid]="submitted() && form.controls.amenityId.invalid"
+      >
+        <option value="" disabled>Selecciona un área</option>
+        @for (area of areas(); track area.id) {
+          <option [value]="area.id">{{ area.name }}</option>
+        }
+      </select>
+      <div class="invalid-feedback">
+        {{ form.controls.amenityId.errors?.['server'] ?? 'Selecciona el área social.' }}
+      </div>
+      @if (block()) {
+        <small class="form-hint">El área de un bloqueo no se cambia: cancélalo y crea otro.</small>
+      }
+    </div>
+
+    <div class="row">
+      <div class="col-12 col-md-6 mb-3">
+        <span class="form-label required">Desde</span>
+        <div class="d-flex gap-2">
+          <input
+            type="date"
+            class="form-control"
+            aria-label="Fecha de inicio"
+            formControlName="startDay"
+            [class.is-invalid]="submitted() && form.controls.startDay.invalid"
+            (change)="onStartDayChange()"
+          />
+          <app-time-input
+            [value]="form.controls.startTime.value"
+            [invalid]="submitted() && form.controls.startTime.invalid"
+            [disabled]="saving()"
+            ariaLabel="Hora de inicio"
+            (valueChange)="setTime('startTime', $event)"
+          />
+        </div>
+        @if (
+          submitted() && (form.controls.startDay.invalid || form.controls.startTime.invalid)
+        ) {
+          <div class="invalid-feedback d-block">Indica la fecha y la hora de inicio.</div>
+        }
+      </div>
+      <div class="col-12 col-md-6 mb-3">
+        <span class="form-label required">Hasta</span>
+        <div class="d-flex gap-2">
+          <input
+            type="date"
+            class="form-control"
+            aria-label="Fecha de fin"
+            formControlName="endDay"
+            [min]="form.controls.startDay.value || today"
+            [class.is-invalid]="
+              submitted() &&
+              (form.controls.endDay.invalid ||
+                form.hasError('rangeOrder') ||
+                form.hasError('endsInPast'))
+            "
+          />
+          <app-time-input
+            [value]="form.controls.endTime.value"
+            [invalid]="
+              submitted() &&
+              (form.controls.endTime.invalid ||
+                form.hasError('rangeOrder') ||
+                form.hasError('endsInPast'))
+            "
+            [disabled]="saving()"
+            ariaLabel="Hora de fin"
+            (valueChange)="setTime('endTime', $event)"
+          />
+        </div>
+        @if (submitted()) {
+          @if (form.controls.endDay.invalid || form.controls.endTime.invalid) {
+            <div class="invalid-feedback d-block">Indica la fecha y la hora de fin.</div>
+          } @else if (form.hasError('rangeOrder')) {
+            <div class="invalid-feedback d-block">El fin debe ser posterior al inicio.</div>
+          } @else if (form.hasError('endsInPast')) {
+            <div class="invalid-feedback d-block">El bloqueo debe terminar en el futuro.</div>
+          }
+        }
+      </div>
+    </div>
+    <p class="form-hint mt-n2 mb-3">
+      Hora del conjunto. El bloqueo puede abarcar varios días y no tiene en cuenta el horario de
+      atención del área. Termina justo a la hora de fin: para todo el día usa 00:00 a 23:59.
+    </p>
+
+    <div class="mb-3">
+      <label class="form-label required" for="block-title">Título</label>
+      <input
+        id="block-title"
+        type="text"
+        class="form-control"
+        placeholder="Novenas de diciembre"
+        [attr.maxlength]="titleMaxLength"
+        formControlName="title"
+        [class.is-invalid]="submitted() && form.controls.title.invalid"
+      />
+      <div class="invalid-feedback">
+        @if (form.controls.title.errors?.['server']; as server) {
+          {{ server }}
+        } @else if (form.controls.title.errors?.['maxlength']) {
+          Máximo {{ titleMaxLength }} caracteres.
+        } @else {
+          El título es obligatorio.
+        }
+      </div>
+      <small class="form-hint">Solo lo ve la administración: el residente ve el horario como no disponible.</small>
+    </div>
+
+    <div class="mb-0">
+      <label class="form-label" for="block-notes">Notas</label>
+      <textarea
+        id="block-notes"
+        class="form-control"
+        rows="3"
+        [attr.maxlength]="notesMaxLength"
+        formControlName="notes"
+        [class.is-invalid]="submitted() && form.controls.notes.invalid"
+      ></textarea>
+      <div class="invalid-feedback">
+        {{ form.controls.notes.errors?.['server'] ?? 'Máximo ' + notesMaxLength + ' caracteres.' }}
+      </div>
+    </div>
+
+    @if (!block()) {
+      <p class="form-hint mt-3 mb-0">
+        Si hay reservas pendientes o confirmadas en ese rango, el bloqueo no se crea: primero
+        cancélalas desde el listado de reservas.
+      </p>
+    }
+  </div>
+
+  <div class="modal-footer">
+    <button
+      type="button"
+      class="btn btn-link link-secondary"
+      [disabled]="saving()"
+      (click)="activeModal.dismiss()"
+    >
+      Cancelar
+    </button>
+    <button type="submit" class="btn btn-primary" [disabled]="saving()">
+      @if (saving()) {
+        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+      }
+      {{ block() ? 'Guardar' : 'Bloquear' }}
+    </button>
+  </div>
+</form>

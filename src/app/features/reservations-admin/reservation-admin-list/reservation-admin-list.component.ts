@@ -113,6 +113,8 @@ export class ReservationAdminListComponent {
   private readonly permissions = inject(PermissionStore);
 
   readonly canCreate = computed(() => this.permissions.has('reservations.create'));
+  /** Administrative blocks (API ADR-0031) hang off the area, so they ride on `amenities.view`. */
+  readonly canViewBlocks = computed(() => this.permissions.has('amenities.view'));
 
   readonly items = this.service.items;
   readonly paging = this.service.paging;

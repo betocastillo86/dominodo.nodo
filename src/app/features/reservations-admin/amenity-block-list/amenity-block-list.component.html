@@ -1,0 +1,145 @@
+<app-page-header title="Bloqueos de áreas" pretitle="Reservas">
+  <div actions class="d-flex gap-2">
+    <a routerLink="/reservations" class="btn btn-outline-secondary">
+      <tabler-icon name="arrow-left" class="me-1" />
+      Reservas
+    </a>
+    @if (canEdit()) {
+      <button
+        type="button"
+        class="btn btn-primary"
+        [disabled]="!areas().length"
+        (click)="openCreate()"
+      >
+        <tabler-icon name="plus" class="me-1" />
+        Nuevo bloqueo
+      </button>
+    }
+  </div>
+</app-page-header>
+
+<div class="card">
+  <div class="card-header d-block">
+    <p class="text-secondary small mb-3">
+      Mientras un bloqueo está activo nadie puede reservar el área en ese rango; el residente lo ve
+      como no disponible, sin el motivo.
+    </p>
+    <div class="row g-2 w-100">
+      <div class="col-12 col-lg">
+        <label class="form-label mb-1" for="blocks-area">Área social</label>
+        <select id="blocks-area" class="form-select" [formControl]="amenityControl">
+          @for (area of areas(); track area.id) {
+            <option [value]="area.id">{{ area.name }}</option>
+          }
+        </select>
+      </div>
+      <div class="col-12 col-lg-2">
+        <label class="form-label mb-1" for="blocks-status">Estado</label>
+        <select id="blocks-status" class="form-select" [formControl]="statusControl">
+          <option value="">Todos los estados</option>
+          @for (status of statuses; track status[0]) {
+            <option [value]="status[0]">{{ status[1] }}</option>
+          }
+        </select>
+      </div>
+      <div class="col-6 col-lg-2" title="Bloqueos que siguen vigentes desde este día">
+        <label class="form-label mb-1" for="blocks-from">Desde</label>
+        <input id="blocks-from" type="date" class="form-control" [formControl]="fromControl" />
+      </div>
+      <div class="col-6 col-lg-2" title="Bloqueos que empiezan hasta este día">
+        <label class="form-label mb-1" for="blocks-to">Hasta</label>
+        <input id="blocks-to" type="date" class="form-control" [formControl]="toControl" />
+      </div>
+    </div>
+  </div>
+
+  @if (areasError(); as message) {
+    <div class="card-body">
+      <div class="alert alert-danger mb-0" role="alert">{{ message }}</div>
+    </div>
+  } @else if (areasLoaded() && !areas().length) {
+    <div class="card-body text-secondary">
+      Este conjunto aún no tiene áreas sociales para bloquear.
+    </div>
+  } @else {
+    <app-data-table
+      [columns]="columns()"
+      [rows]="items()"
+      [paging]="paging()"
+      [loading]="loading() || !areasLoaded()"
+      [error]="error()"
+      [rowKey]="rowKey"
+      (pageChange)="onPageChange($event)"
+    />
+  }
+</div>
+
+<!-- Edit and cancel only make sense on a block still in force. -->
+<ng-template #actionsCell let-block>
+  @if (block.status === 'Active') {
+    <div class="btn-list flex-nowrap justify-content-end">
+      <button
+        type="button"
+        class="btn btn-icon btn-ghost-primary"
+        title="Editar bloqueo"
+        [attr.aria-label]="'Editar el bloqueo ' + block.title"
+        (click)="openEdit(block)"
+      >
+        <tabler-icon name="edit" />
+      </button>
+      <button
+        type="button"
+        class="btn btn-icon btn-ghost-danger"
+        title="Cancelar bloqueo"
+        [attr.aria-label]="'Cancelar el bloqueo ' + block.title"
+        (click)="confirmCancel(block)"
+      >
+        <tabler-icon name="ban" />
+      </button>
+    </div>
+  }
+</ng-template>
+
+<ng-template #cancelTpl let-modal>
+  <div class="modal-header">
+    <h5 class="modal-title">Cancelar bloqueo</h5>
+    <button
+      type="button"
+      class="btn-close"
+      aria-label="Cerrar"
+      [disabled]="cancelBusy()"
+      (click)="modal.dismiss()"
+    ></button>
+  </div>
+  <div class="modal-body">
+    @if (cancelError(); as message) {
+      <div class="alert alert-danger" role="alert">{{ message }}</div>
+    }
+    @if (cancelling(); as block) {
+      ¿Quieres cancelar el bloqueo "{{ block.title }}"? El área vuelve a quedar disponible para
+      reservar del {{ formatInstant(block.startsAtUtc) }} al {{ formatInstant(block.endsAtUtc) }}.
+      El bloqueo queda en el histórico.
+    }
+  </div>
+  <div class="modal-footer">
+    <button
+      type="button"
+      class="btn btn-link link-secondary"
+      [disabled]="cancelBusy()"
+      (click)="modal.dismiss()"
+    >
+      Volver
+    </button>
+    <button
+      type="button"
+      class="btn btn-danger"
+      [disabled]="cancelBusy()"
+      (click)="cancelBlock(modal)"
+    >
+      @if (cancelBusy()) {
+        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+      }
+      Cancelar bloqueo
+    </button>
+  </div>
+</ng-template>

@@ -33,6 +33,12 @@ const MESSAGES: Record<string, BookingFailure> = {
     message: 'Alguien acaba de reservar ese horario. Elige otro, por favor.',
     staleAvailability: true,
   },
+  // The calendar draws a blocked slot as booked (API ADR-0031 §4), so the resident never learns of
+  // the block — this only fires when the block landed after the calendar was drawn.
+  'Reservation.SlotBlocked': {
+    message: 'Ese horario ya no está disponible. Elige otro, por favor.',
+    staleAvailability: true,
+  },
   'Reservation.DayAlreadyBooked': {
     message: 'Esta área ya tiene una reserva ese día. Elige otro día.',
     staleAvailability: true,

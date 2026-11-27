@@ -247,7 +247,26 @@ export const API_ERROR_MESSAGES: Record<string, ApiErrorMessage> = {
     const max = firstNumber(p);
     return max ? `Un área social puede tener máximo ${max} fotos.` : 'El área social tiene demasiadas fotos.';
   },
-  'AmenityPhoto.ContentTypeNotAllowed': 'Este tipo de archivo no está permitido para fotos.',
+  // Administrative blocks (API ADR-0031).
+  'AmenityBlock.ActorRequired': 'No pudimos identificar quién cancela el bloqueo. Inicia sesión nuevamente.',
+  'AmenityBlock.AlreadyCancelled': 'Este bloqueo ya está cancelado. Actualiza el listado.',
+  'AmenityBlock.AmenityRequired': 'Selecciona el área social.',
+  // The reservation codes travel only in the English detail (`Error` carries no metadata), so they
+  // are lifted from it: without them the administrator cannot tell which bookings to cancel.
+  'AmenityBlock.ConflictsWithReservations': (p) => {
+    const codes = (p.detail ?? '').match(/\bR\d{3,7}\b/g);
+    return codes?.length
+      ? `Hay reservas pendientes o confirmadas en ese rango: ${codes.join(', ')}. Cancélalas primero y vuelve a intentarlo.`
+      : 'Hay reservas pendientes o confirmadas en ese rango. Cancélalas primero y vuelve a intentarlo.';
+  },
+  'AmenityBlock.EndsInPast': 'El bloqueo debe terminar en el futuro.',
+  'AmenityBlock.InvalidRange': 'El fin del bloqueo debe ser posterior a su inicio.',
+  'AmenityBlock.NotFound': 'El bloqueo no existe. Actualiza el listado.',
+  'AmenityBlock.NotesTooLong': (p) => tooLong('Las notas', p),
+  'AmenityBlock.TenantRequired': 'Falta el conjunto.',
+  'AmenityBlock.TitleRequired': 'El título es obligatorio.',
+  'AmenityBlock.TitleTooLong': (p) => tooLong('El título', p),
+  'AmenityPhoto.ContentTypeNotAllowed':'Este tipo de archivo no está permitido para fotos.',
   'AmenityPhoto.Forbidden': 'No tienes permiso para subir fotos de áreas sociales.',
   'ReservationPolicy.AdditionalServicesTooLong': (p) => tooLong('Los servicios adicionales', p),
   'ReservationPolicy.CancelBeforeTotalDaysInvalid': (p) => {
@@ -335,6 +354,7 @@ export const API_ERROR_MESSAGES: Record<string, ApiErrorMessage> = {
     'Solo se pueden adjuntar comprobantes a una reserva pendiente o confirmada.',
   'Reservation.ReasonRequired': 'Escribe el motivo.',
   'Reservation.ReasonTooLong': (p) => tooLong('El motivo', p),
+  'Reservation.SlotBlocked': 'La administración bloqueó el área en ese horario. Elige otro.',
   'Reservation.SlotTaken': 'Ese horario ya está reservado. Elige otro.',
   'Reservation.StartInPast': 'Ese horario ya pasó. Elige uno más adelante.',
   'Reservation.StartNotOnTheHour': 'La reserva debe empezar en una hora en punto.',

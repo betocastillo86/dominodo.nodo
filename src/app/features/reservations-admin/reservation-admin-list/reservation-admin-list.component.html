@@ -1,10 +1,18 @@
 <app-page-header title="Reservas" pretitle="Áreas sociales">
-  @if (canCreate()) {
-    <div actions>
-      <a routerLink="/reservations/new" class="btn btn-primary">
-        <tabler-icon name="plus" class="me-1" />
-        Nueva reserva
-      </a>
+  @if (canViewBlocks() || canCreate()) {
+    <div actions class="d-flex gap-2">
+      @if (canViewBlocks()) {
+        <a routerLink="/reservations/blocks" class="btn btn-outline-secondary">
+          <tabler-icon name="lock" class="me-1" />
+          Bloquear áreas
+        </a>
+      }
+      @if (canCreate()) {
+        <a routerLink="/reservations/new" class="btn btn-primary">
+          <tabler-icon name="plus" class="me-1" />
+          Nueva reserva
+        </a>
+      }
     </div>
   }
 </app-page-header>
