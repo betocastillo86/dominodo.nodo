@@ -66,9 +66,14 @@
                   </li>
                   <li>
                     Si una unidad ya existe en el conjunto, <strong>se reutiliza</strong> y se le
-                    suman los residentes; no se duplica. Solo cambian sus anexos y su valor de
-                    administración, y únicamente si el archivo los trae para ella: en ese caso
-                    <strong>reemplazan</strong> a los actuales.
+                    suman los residentes; no se duplica. Solo cambian sus anexos, y únicamente si
+                    el archivo los trae para ella: en ese caso <strong>reemplazan</strong> a los
+                    actuales.
+                  </li>
+                  <li>
+                    El <strong>valor de administración</strong> ya no va en este archivo: se carga
+                    con la carga de estados de cuenta. Un archivo con la columna
+                    <code>valor_administracion</code> se rechaza completo.
                   </li>
                   <li>
                     Si un teléfono ya pertenece a un usuario de la plataforma, se reutiliza su

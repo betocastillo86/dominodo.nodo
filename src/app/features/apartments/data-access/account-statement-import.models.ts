@@ -87,18 +87,23 @@ export const ACCOUNT_STATEMENT_MAX_BYTES = 5 * 1024 * 1024;
  * `GET /apartments/export`, so the list's "Descargar reporte" is a pre-filled
  * template. Matching ignores case, accents and a space or hyphen typed for an
  * underscore; the server accepts `,` or `;` between columns.
+ *
+ * `valor_administracion` (API ADR-0025, 2026-11-27 amendment) moved here from
+ * the apartment import. Unlike the statement, a blank cell says nothing: the
+ * fee is the unit's configuration, not part of the statement the file replaces.
  */
-export const ACCOUNT_STATEMENT_CSV_HEADER = 'torre;apto;en_mora;saldo_en_mora';
+export const ACCOUNT_STATEMENT_CSV_HEADER = 'torre;apto;en_mora;saldo_en_mora;valor_administracion';
 
 /**
  * Three rows covering the cases the format exists for — and the one people trip
  * on: a unit that owes and is flagged, a unit that owes but is deliberately NOT
- * flagged (payment agreement), and a settled unit of a conjunto without towers.
+ * flagged (payment agreement), and a settled unit of a conjunto without towers
+ * whose blank fee keeps the one it has.
  */
 export const ACCOUNT_STATEMENT_CSV_SAMPLE_ROWS = [
-  'A;101;si;450000',
-  'A;102;no;1.250.000',
-  ';305;no;0',
+  'A;101;si;450000;350.000',
+  'A;102;no;1.250.000;350.000',
+  ';305;no;0;',
 ];
 
 /** Prefixed with a UTF-8 BOM so Excel opens the file correctly; the server skips it. */
@@ -127,12 +132,17 @@ export const ACCOUNT_STATEMENT_COLUMNS: readonly AccountStatementColumnHelp[] = 
   {
     name: 'en_mora',
     required: 'Sí',
-    rule: 'si o no. Es independiente del saldo: una unidad con saldo puede quedar sin marcar, y no se asume nada si la celda está vacía.',
+    rule: 'si o no. Vacío = no. Es independiente del saldo: una unidad con saldo puede quedar sin marcar.',
   },
   {
     name: 'saldo_en_mora',
-    required: 'Sí',
-    rule: 'Saldo adeudado; un valor negativo es un saldo a favor. Se leen los formatos de Excel en Colombia: 450.000,50 o 450000.',
+    required: 'Si está en mora',
+    rule: 'Saldo adeudado; un valor negativo es un saldo a favor. Vacío = 0. Se leen los formatos de Excel en Colombia: 450.000,50 o 450000.',
+  },
+  {
+    name: 'valor_administracion',
+    required: 'No',
+    rule: 'Valor mensual de la administración de la unidad, por ejemplo 350.000 o $ 350.000. 0 = exenta. Vacío = conserva el valor actual; si trae otro, lo reemplaza.',
   },
 ];
 
@@ -166,10 +176,14 @@ const ISSUE_TEXT: Record<string, string> = {
   'AccountStatementImport.OverdueRequired':
     'Falta indicar si está en mora. Usa si o no; no se asume a partir del saldo.',
   'AccountStatementImport.OverdueInvalid': 'El valor de en_mora no es válido. Usa si o no.',
+  'AccountStatementImport.InvalidAdministrationFee':
+    'El valor de administración no es un valor válido. Escribe un valor igual o mayor a cero, por ejemplo 350.000. La fila no se carga.',
 
   // Warnings — the row loads, but not silently.
   'AccountStatementImport.StatementReplaced':
     'La unidad ya tenía un estado de cuenta: se reemplaza por el del archivo.',
+  'AccountStatementImport.AdministrationFeeReplaced':
+    'La unidad ya tenía otro valor de administración: se reemplaza por el del archivo.',
 };
 
 /**

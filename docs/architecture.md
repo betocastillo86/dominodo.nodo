@@ -602,8 +602,10 @@ the API only reaches members of this one (anyone else → `404 User.NotFound`).
 the list shows `—` only for `null`. The detail's *Administración* card (`apartments.edit`) saves it with
 `PUT /apartments/{id}`, a **full replace** of number/type/tower/attributes/fee — the identity and
 attributes are echoed from the detail unchanged (the tower allowlist is only checked when the tower moves,
-so a legacy tower is safe), and an empty field sends `null`. The bulk import also accepts it in the
-optional unit-level column `valor_administracion` (es-CO amount; blank = leave the stored fee alone). The
+so a legacy tower is safe), and an empty field sends `null`. In bulk it travels with the **account-statement
+load**, not the apartment import (2026-11-27 amendments): optional column `valor_administracion` (es-CO
+amount; blank = leave the stored fee alone). An apartment-import file that still has the column is rejected
+whole with `ApartmentImport.HeaderAdministrationFeeMoved`. The
 list's *Mora* filter sends `isOverdue` to both `GET /apartments` and `/export`: `true` = flagged in
 arrears, `false` = **everything else, including units that never got an account statement**.
 
@@ -663,7 +665,10 @@ It is set two ways:
 
 The CSV is Spanish again: `torre` (optional) + `apto` (the unit is that pair — the old combined
 `apartamento` column, `A-101`, fails at the header with `HeaderLegacyApartment`), `en_mora`
-(`si|no`, **required** — an empty cell is a row error, never a "no"), `saldo_en_mora` (any sign — a negative balance is a credit, API ADR-0025 amendment). Amounts are read
+(`si|no`, blank = `no`), `saldo_en_mora` (any sign — a negative balance is a credit, API ADR-0025
+amendment; blank = 0, required only when `en_mora` is `si`), and the optional `valor_administracion` (≥ 0;
+blank keeps the unit's fee, a different one replaces it with an `AdministrationFeeReplaced` warning, an
+invalid one rejects the whole row). Amounts are read
 with Colombian separators (`450.000,50`). The list's **"Descargar reporte"** (`GET /apartments/export`,
 `apartments.view`, the list's current filters, unpaged) returns exactly this header in the `;` es-CO
 dialect, so a downloaded report is a pre-filled file to edit and re-upload; the static template matches it. Gating: the three load endpoints need only `apartments.edit`, but the CSV goes

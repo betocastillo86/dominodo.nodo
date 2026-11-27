@@ -106,31 +106,31 @@ export const IMPORT_MAX_BYTES = 5 * 1024 * 1024;
  * draft of the contract still loads as an alias — but these are the canonical
  * ones, and the only ones worth teaching.
  *
- * The last eight columns (API ADR-0030) are optional. The first four are
- * unit-level — the annexes, lists of values separated by `/`, and the monthly
- * administration fee, an es-CO amount — the rest belong to the person of the
- * row.
+ * The last seven columns (API ADR-0030) are optional. The first three are
+ * unit-level — the annexes, lists of values separated by `/` — the rest belong
+ * to the person of the row. The administration fee is NOT here: it moved to the
+ * account-statement load (ADR-0030, 2026-11-27 amendment), and a file that
+ * still carries `valor_administracion` is rejected whole with
+ * `HeaderAdministrationFeeMoved`.
  */
 export const IMPORT_CSV_HEADER =
   'torre,numero,tipo,telefono,nombre,apellido,correo,relacion,vive_aqui,' +
-  'placas,parqueaderos,depositos,valor_administracion,correos_adicionales,' +
+  'placas,parqueaderos,depositos,correos_adicionales,' +
   'telefonos_adicionales,tipo_documento,numero_documento';
 
 /**
  * Three rows that cover the cases the format exists for: a unit with its owner,
  * a second resident on that same unit (the repeated unit IS the mechanism), and
  * a unit with no resident at all (an empty `phone` is the switch between the two
- * use cases). Rows of the same unit that carry annexes or a fee must carry the
- * same ones (`ApartmentImport.ConflictingAnnexes` / `ConflictingAdministrationFee`),
- * so A-101 repeats them verbatim. The fee has no comma on purpose: `350.000` is
- * es-CO thousands, and a comma would split the cell.
+ * use cases). Rows of the same unit that carry annexes must carry the same ones
+ * (`ApartmentImport.ConflictingAnnexes`), so A-101 repeats them verbatim.
  */
 export const IMPORT_CSV_SAMPLE_ROWS = [
   'A,101,Apartamento,+573001112233,María,Gómez,maria@correo.com,Propietario,si,' +
-    'ABC123 (Mazda 3)/XYZ789,P12/P13,D3,350.000,maria.trabajo@correo.com,+573109998877,CC,1020304050',
+    'ABC123 (Mazda 3)/XYZ789,P12/P13,D3,maria.trabajo@correo.com,+573109998877,CC,1020304050',
   'A,101,Apartamento,+573004445566,Juan,Gómez,,Arrendatario,si,' +
-    'ABC123 (Mazda 3)/XYZ789,P12/P13,D3,350.000,,,,',
-  'A,102,Apartamento,,,,,,,,P20,,280.000,,,,',
+    'ABC123 (Mazda 3)/XYZ789,P12/P13,D3,,,,',
+  'A,102,Apartamento,,,,,,,,P20,,,,,',
 ];
 
 /**
@@ -206,11 +206,6 @@ export const IMPORT_COLUMNS: readonly ImportColumnHelp[] = [
     rule: 'Depósitos de la unidad separados por /: D3. Máximo 10, de hasta 20 caracteres cada uno.',
   },
   {
-    name: 'valor_administracion',
-    required: 'No',
-    rule: 'Valor mensual de la administración de la unidad, por ejemplo 350.000 o $ 350.000. 0 = exenta. Vacío = conserva el valor actual; si trae otro, lo reemplaza.',
-  },
-  {
     name: 'correos_adicionales',
     required: 'No',
     rule: 'Otros correos de contacto del residente separados por /. Máximo 5. Si la persona ya existe, se suman a los que tiene.',
@@ -248,6 +243,8 @@ const ISSUE_TEXT: Record<string, string> = {
   'ApartmentImport.FileTooLarge': 'El archivo supera el máximo de 5 MB.',
   'ApartmentImport.HeaderInvalid':
     'Falta el encabezado. La primera fila debe traer al menos la columna "numero".',
+  'ApartmentImport.HeaderAdministrationFeeMoved':
+    'El archivo trae la columna "valor_administracion", que ya no hace parte de esta carga. Quítala y carga el valor de administración con la carga de estados de cuenta.',
   'ApartmentImport.ConflictingUnitType':
     'La misma unidad aparece con dos tipos distintos. Deja un solo tipo por unidad.',
   'ApartmentImport.DuplicateEmail':
@@ -255,8 +252,6 @@ const ISSUE_TEXT: Record<string, string> = {
   'ApartmentImport.NoValidRows': 'Ninguna fila del archivo pasó la validación.',
   'ApartmentImport.ConflictingAnnexes':
     'Las filas de una misma unidad traen anexos distintos. Repite los mismos anexos en cada fila o déjalos vacíos.',
-  'ApartmentImport.ConflictingAdministrationFee':
-    'Las filas de una misma unidad traen valores de administración distintos. Repite el mismo valor en cada fila o déjalo vacío.',
   'ApartmentImport.ConflictingDocument':
     'Un mismo teléfono aparece con dos documentos distintos. Cada persona tiene un solo documento.',
   'ApartmentImport.TooManyAdditionalContacts':
@@ -277,8 +272,6 @@ const ISSUE_TEXT: Record<string, string> = {
   'ApartmentImport.RelationInvalid': 'La relación debe ser Propietario o Arrendatario.',
   'ApartmentImport.VehicleInvalid':
     'Un vehículo no tiene el formato esperado. Usa PLACA o PLACA (Modelo), separados por /.',
-  'ApartmentImport.InvalidAdministrationFee':
-    'El valor de administración no es un valor válido. Escribe un valor igual o mayor a cero, por ejemplo 350.000.',
   'ApartmentImport.DocumentTypeInvalid':
     'Tipo de documento no reconocido. Usa CC, CE, NIT o Pasaporte.',
   'Apartment.TooManyVehicles': 'La unidad supera los 10 vehículos.',
@@ -323,8 +316,6 @@ const ISSUE_TEXT: Record<string, string> = {
     'El usuario existente ya tiene otro correo: no se reemplaza.',
   'ApartmentImport.AnnexesReplaced':
     'La unidad ya existe con otros anexos: sus placas, parqueaderos y depósitos se reemplazan por los del archivo.',
-  'ApartmentImport.AdministrationFeeReplaced':
-    'La unidad ya existe con otro valor de administración: se reemplaza por el del archivo.',
   'ApartmentImport.PersonFieldsIgnored':
     'La fila no tiene teléfono: se carga solo la unidad y se ignoran los datos de la persona.',
   'ApartmentImport.UserDocumentNotOverwritten':
@@ -342,7 +333,6 @@ const DETAILED_CODES = new Set([
   'ApartmentImport.ConflictingUnitType',
   'ApartmentImport.DuplicateEmail',
   'ApartmentImport.ConflictingAnnexes',
-  'ApartmentImport.ConflictingAdministrationFee',
   'ApartmentImport.ConflictingDocument',
   'ApartmentImport.TooManyAdditionalContacts',
 ]);

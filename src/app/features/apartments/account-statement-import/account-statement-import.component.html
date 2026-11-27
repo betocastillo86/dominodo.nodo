@@ -46,8 +46,8 @@
         <div class="card-body">
           <p>
             Sube un archivo <strong>CSV</strong> con <strong>una fila por unidad</strong>: su
-            torre y su número <strong>en columnas separadas</strong>, si está en mora y su saldo en
-            mora. Es el archivo que exporta tu software
+            torre y su número <strong>en columnas separadas</strong>, si está en mora, su saldo en
+            mora y, si quieres, su valor de administración. Es el archivo que exporta tu software
             contable cada mes.
           </p>
 
@@ -71,7 +71,13 @@
                   </li>
                   <li>
                     El saldo y "en mora" son <strong>independientes</strong>: tener saldo no marca
-                    a la unidad como en mora. Por eso la columna <code>en_mora</code> es obligatoria.
+                    a la unidad como en mora. Si <code>en_mora</code> está vacía, la unidad queda al
+                    día.
+                  </li>
+                  <li>
+                    El <strong>valor de administración</strong> es opcional: si la celda está vacía,
+                    la unidad conserva el que tiene. Si trae otro distinto, lo reemplaza y se te
+                    avisa en el informe.
                   </li>
                   <li>
                     Cargar los estados de cuenta <strong>no envía mensajes</strong> a los
@@ -124,12 +130,13 @@
         <div class="card-body">
           <p class="text-secondary">
             Tres filas de ejemplo: una unidad con saldo y en mora, una con saldo pero sin marcar
-            (por ejemplo, con acuerdo de pago) y una al día.
+            (por ejemplo, con acuerdo de pago) y una al día que conserva su valor de
+            administración.
           </p>
           <p class="text-secondary">
             También puedes partir del <strong>reporte de apartamentos</strong> (botón «Descargar
             reporte» en el listado): trae todas las unidades con estas mismas columnas, listo para
-            actualizar los saldos y volver a subirlo.
+            actualizar los saldos y los valores de administración y volver a subirlo.
           </p>
           <button type="button" class="btn btn-outline-primary w-100" (click)="downloadTemplate()">
             <tabler-icon name="download" class="me-1" />

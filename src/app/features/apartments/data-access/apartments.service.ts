@@ -100,7 +100,7 @@ export class ApartmentsService {
 
   /**
    * Every apartment matching the list filters as a CSV (`GET /apartments/export`,
-   * requires apartments.view) — unpaged, `torre;apto;en_mora;saldo_en_mora`,
+   * requires apartments.view) — unpaged, `torre;apto;en_mora;saldo_en_mora;valor_administracion`,
    * the same header the account-statement load reads, so the download doubles
    * as a pre-filled template. Fetched through HttpClient (not a plain link) so
    * the interceptors attach X-Tenant and the bearer token.

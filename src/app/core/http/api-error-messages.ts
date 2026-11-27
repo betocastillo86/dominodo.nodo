@@ -160,6 +160,8 @@ export const API_ERROR_MESSAGES: Record<string, ApiErrorMessage> = {
   'ApartmentImport.FileEmpty': 'El archivo tiene encabezado pero ninguna fila de datos.',
   'ApartmentImport.HeaderInvalid':
     'La primera fila del archivo debe ser el encabezado con las columnas obligatorias.',
+  'ApartmentImport.HeaderAdministrationFeeMoved':
+    'La columna «valor_administracion» ya no va en esta carga: quítala y cárgala con la carga de estados de cuenta.',
   'ApartmentImport.PhoneRequired': 'Cada fila de residente necesita un teléfono.',
   'ApartmentImport.VehicleInvalid':
     'Un vehículo no tiene el formato esperado. Usa PLACA o PLACA (Modelo), separados por /.',
