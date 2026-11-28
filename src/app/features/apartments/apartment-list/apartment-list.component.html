@@ -20,27 +20,7 @@
 <div class="card">
   <div class="card-header">
     <div class="row g-2 w-100">
-      <!-- Only when the conjunto declared towers: with none there is nothing to
-           pick, and a role without `tenant.info` never gets the list at all. -->
-      @if (towers().length) {
-        <div class="col-12 col-lg-3">
-          <select class="form-select" [formControl]="towerControl" aria-label="Filtrar por torre">
-            <option value="">Torre</option>
-            @for (tower of towers(); track tower) {
-              <option [value]="tower">{{ tower }}</option>
-            }
-          </select>
-        </div>
-      }
-      <!-- "Sin mora" also lists the units that never received an account statement. -->
-      <div class="col-12 col-lg-2">
-        <select class="form-select" [formControl]="overdueControl" aria-label="Filtrar por mora">
-          <option value="">Mora</option>
-          <option value="true">En mora</option>
-          <option value="false">Sin mora</option>
-        </select>
-      </div>
-      <div class="col-12 col-lg">
+      <div class="col-12 col-lg-5">
         <div class="input-group">
           <span class="input-group-text">
             <tabler-icon name="search" />
@@ -61,6 +41,26 @@
           placeholder="Filtrar por teléfono o nombre del residente…"
           clearLabel="Quitar filtro de residente"
         />
+      </div>
+      <!-- Only when the conjunto declared towers: with none there is nothing to
+           pick, and a role without `tenant.info` never gets the list at all. -->
+      @if (towers().length) {
+        <div class="col-6 col-lg-auto">
+          <select class="form-select" [formControl]="towerControl" aria-label="Filtrar por torre">
+            <option value="">Torre</option>
+            @for (tower of towers(); track tower) {
+              <option [value]="tower">{{ tower }}</option>
+            }
+          </select>
+        </div>
+      }
+      <!-- "Sin mora" also lists the units that never received an account statement. -->
+      <div class="col-6 col-lg-auto">
+        <select class="form-select" [formControl]="overdueControl" aria-label="Filtrar por mora">
+          <option value="">¿En mora?</option>
+          <option value="true">En mora</option>
+          <option value="false">Sin mora</option>
+        </select>
       </div>
       <!-- Downloads every unit matching the filters above, not only this page.
            Same columns as the account-statement load, so it is re-uploadable. -->
